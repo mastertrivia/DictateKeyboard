@@ -179,6 +179,11 @@ configure<ApplicationExtension> {
 
     lint {
         baseline = file("lint.xml")
+        // FileTranscriptionActivity registers an activity result on a plain ComponentActivity (no
+        // Fragments involved), so the activity-result registration needs no Fragment dependency.
+        // Mirrors the same disable in :wear. The check otherwise fails lintVitalRelease with a
+        // false positive, because no androidx.fragment:fragment >= 1.3.0 is on the classpath.
+        disable.add("InvalidFragmentVersionForActivityResult")
     }
 
     testOptions {
