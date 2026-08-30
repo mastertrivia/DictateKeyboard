@@ -1,0 +1,155 @@
+name: Build APK
+
+# Builds the real Dictate Keyboard Android app on GitHub's cloud runners and
+# publishes the resulting APK as a workflow artifact (optionally as a Release).
+#
+# The workflow is designed to use only the toolchain already present on the
+# ubuntu-latest image plus the exact SDK components this repository requires:
+#
+#   - JDK 17  (see gradle/tools.versions.toml -> jdk)
+#   - platforms;android-36  (compileSdk / targetSdk 36, see gradle.properties)
+#   - build-tools;36.0.0    (see gradle/tools.versions.toml -> buildTools)
+#   - sherpa-onnx native .so/.jar for on-device STT, fetched from the pinned
+#     GitHub release by tools/fetch-sherpa-onnx.sh
+#
+# No NDK, CMake or Rust are needed: the repository ships no C/C++ sources and
+# all native libraries are prebuilt, vendored by the fetch script above.
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'APK variant to build (release, debug or beta)'
+        type: choice
+        required: true
+        default: 'release'
+        options:
+          - 'release'
+          - 'debug'
+          - 'beta'
+      create_release:
+        description: 'Create a GitHub Release containing the APK'
+        type: boolean
+        required: false
+        default: false
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: build-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    env:
+      BUILD_TYPE: ${{ github.event.inputs.build_type || 'release' }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('gradle/libs.versions.toml', 'gradle/tools.versions.toml', 'gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
+      - name: Set up Android SDK components
+        shell: bash
+        run: |
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$SDKMANAGER" ]; then SDKMANAGER="$(command -v sdkmanager)"; fi
+          if [ -z "$SDKMANAGER" ]; then
+            echo "::error::sdkmanager not found in \$ANDROID_HOME or on PATH"
+            exit 1
+          fi
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" --install "platforms;android-36" "build-tools;36.0.0"
+          "$SDKMANAGER" --list_installed
+
+      - name: Fetch sherpa-onnx native libraries
+        shell: bash
+        run: bash tools/fetch-sherpa-onnx.sh
+
+      - name: Configure release signing
+        shell: bash
+        run: |
+          KS_PASS="${{ secrets.KEYSTORE_PASSWORD }}"
+          KEY_ALIAS="${{ secrets.KEY_ALIAS }}"
+          KEY_PASS="${{ secrets.KEY_PASSWORD }}"
+          [ -n "$KS_PASS" ] || KS_PASS="android"
+          [ -n "$KEY_ALIAS" ] || KEY_ALIAS="dictate"
+          [ -n "$KEY_PASS" ] || KEY_PASS="android"
+          if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
+            echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > "$HOME/keystore.jks"
+          else
+            keytool -genkey -v -keystore "$HOME/keystore.jks" -alias "$KEY_ALIAS" \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass "$KS_PASS" -keypass "$KEY_PASS" \
+              -dname "CN=Dictate Keyboard,O=Dictate,C=US"
+          fi
+          cat > keystore.properties <<EOF
+          storeFile=$HOME/keystore.jks
+          storePassword=$KS_PASS
+          keyAlias=$KEY_ALIAS
+          keyPassword=$KEY_PASS
+          EOF
+
+      - name: Build APK
+        shell: bash
+        run: |
+          case "$BUILD_TYPE" in
+            debug) TASK="assembleDebug" ;;
+            beta)  TASK="assembleBeta" ;;
+            *)     TASK="assembleRelease" ;;
+          esac
+          ./gradlew "$TASK" --stacktrace --no-daemon
+
+      - name: Verify APK
+        shell: bash
+        run: |
+          APK_DIR="app/build/outputs/apk/$BUILD_TYPE"
+          ls -la "$APK_DIR"
+          APK="$(ls "$APK_DIR"/*.apk | head -1)"
+          if [ -z "$APK" ] || [ ! -s "$APK" ]; then
+            echo "::error::No APK produced in $APK_DIR"
+            exit 1
+          fi
+          echo "APK=$APK" >> "$GITHUB_ENV"
+          echo "APK_SIZE=$(stat -c %s "$APK")" >> "$GITHUB_ENV"
+          echo "APK_VERSION=$(jq -r '.elements[0].versionName' "$APK_DIR/output-metadata.json")" >> "$GITHUB_ENV"
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dictate-keyboard-${{ env.BUILD_TYPE }}-apk
+          path: app/build/outputs/apk/${{ env.BUILD_TYPE }}/*.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Create GitHub Release
+        if: github.event_name == 'workflow_dispatch' && inputs.create_release == true
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "dictate-v${APK_VERSION}-${GITHUB_RUN_ID}" "$APK" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Dictate Keyboard v${APK_VERSION}" \
+            --notes "Automated APK build of the Dictate Keyboard source (commit \`${GITHUB_SHA}\`, run ${GITHUB_RUN_NUMBER}). Artifact: \`${APK}\`, size: ${APK_SIZE} bytes."
