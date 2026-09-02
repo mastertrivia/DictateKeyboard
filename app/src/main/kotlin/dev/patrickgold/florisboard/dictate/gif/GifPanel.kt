@@ -67,7 +67,9 @@ import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
 import dev.patrickgold.florisboard.ime.ImeUiMode
 import dev.patrickgold.florisboard.ime.editor.EditorInstance
+import dev.patrickgold.florisboard.ime.input.LocalInputFeedbackController
 import dev.patrickgold.florisboard.ime.keyboard.FlorisImeSizing
+import dev.patrickgold.florisboard.ime.text.keyboard.TextKeyData
 import dev.patrickgold.florisboard.ime.theme.FlorisImeUi
 import dev.patrickgold.florisboard.keyboardManager
 import dev.patrickgold.jetpref.datastore.model.collectAsState as collectPrefAsState
@@ -104,6 +106,7 @@ fun GifPanel(
     val history by prefs.gif.history.collectPrefAsState()
     val submittedQuery by keyboardManager.gifSearchSubmit.collectAsState()
     val scope = rememberCoroutineScope()
+    val inputFeedbackController = LocalInputFeedbackController.current
     val hasKey = apiKey.isNotBlank()
 
     var gifs by remember { mutableStateOf<List<GifItem>>(emptyList()) }
@@ -128,7 +131,7 @@ fun GifPanel(
         submittedQuery?.takeIf { it.isNotBlank() }?.let { GifHistoryHelper.addSearch(prefs, it) }
         try {
             val first = loadPage(1)
-            gifs = first.items
+            gifs = appendUnseenGifs(emptyList(), first.items)
             hasNext = first.hasNext
         } catch (e: Exception) {
             loadError = true
@@ -144,8 +147,7 @@ fun GifPanel(
                     loadingMore = true
                     try {
                         val next = loadPage(page + 1)
-                        val seen = gifs.mapTo(HashSet()) { it.id }
-                        gifs = gifs + next.items.filterNot { it.id in seen }
+                        gifs = appendUnseenGifs(gifs, next.items)
                         page += 1
                         hasNext = next.hasNext
                     } catch (e: Exception) {
@@ -273,8 +275,14 @@ fun GifPanel(
                                         GifThumb(
                                             item = item,
                                             fixedHeight = true,
-                                            onClick = { insert(item) },
-                                            onLongClick = { confirmDeleteGifId = item.id },
+                                            onClick = {
+                                                inputFeedbackController.keyPress(TextKeyData.UNSPECIFIED)
+                                                insert(item)
+                                            },
+                                            onLongClick = {
+                                                inputFeedbackController.keyLongPress(TextKeyData.UNSPECIFIED)
+                                                confirmDeleteGifId = item.id
+                                            },
                                         )
                                         DropdownMenu(
                                             expanded = confirmDeleteGifId == item.id,
@@ -315,7 +323,13 @@ fun GifPanel(
                                 verticalItemSpacing = 4.dp,
                             ) {
                                 items(gifs, key = { it.id }) { item ->
-                                    GifThumb(item = item, onClick = { insert(item) })
+                                    GifThumb(
+                                        item = item,
+                                        onClick = {
+                                            inputFeedbackController.keyPress(TextKeyData.UNSPECIFIED)
+                                            insert(item)
+                                        },
+                                    )
                                 }
                             }
                         }

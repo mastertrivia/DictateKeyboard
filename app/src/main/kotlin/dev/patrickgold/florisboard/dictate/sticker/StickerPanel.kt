@@ -10,9 +10,11 @@
 
 package dev.patrickgold.florisboard.dictate.sticker
 
+import android.graphics.drawable.Animatable
 import android.net.Uri
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -63,6 +65,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -73,13 +76,16 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.window.PopupProperties
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
+import coil3.DrawableImage
 import coil3.compose.AsyncImage
 import dev.patrickgold.florisboard.FlorisImeService
 import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
 import dev.patrickgold.florisboard.ime.ImeUiMode
 import dev.patrickgold.florisboard.ime.editor.EditorInstance
+import dev.patrickgold.florisboard.ime.input.LocalInputFeedbackController
 import dev.patrickgold.florisboard.ime.keyboard.FlorisImeSizing
+import dev.patrickgold.florisboard.ime.text.keyboard.TextKeyData
 import dev.patrickgold.florisboard.ime.theme.FlorisImeUi
 import dev.patrickgold.florisboard.keyboardManager
 import dev.patrickgold.jetpref.datastore.model.collectAsState as collectPrefAsState
@@ -171,6 +177,14 @@ fun StickerPanel(
             }
         }
     }
+
+    /**
+     * The folder [item] actually lives in, which is what every history write is keyed on — not the tab
+     * it was tapped from. The combined tab shows stickers from every pack, so the two differ there, and
+     * keying on the tab is what made a pack's own list disagree with the combined one (#308).
+     */
+    fun ownerOf(item: StickerItem): String =
+        index?.categoryOf(item.docId) ?: StickerCategory.ROOT_ID
 
     fun insert(item: StickerItem, categoryId: String, asGif: Boolean = false) {
         val treeUri = folderUri.takeIf { it.isNotBlank() }?.toUri() ?: return
@@ -338,7 +352,11 @@ fun StickerPanel(
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1f),
-                        beyondViewportPageCount = 1,
+                        // Only the page being looked at. Keeping the neighbour composed made swiping
+                        // between tabs seamless, but a composed page of animated stickers is a second
+                        // grid of running decoders behind the first one — which is why the frame rate
+                        // was reported as dropping on tab switches specifically (#308).
+                        beyondViewportPageCount = 0,
                     ) { page ->
                         val category = categories[page]
                         val isRoot = category.id == StickerCategory.ROOT_ID
@@ -366,19 +384,19 @@ fun StickerPanel(
                                 emptyList()
                             },
                             packOf = { docId -> currentIndex!!.categoryOf(docId) },
-                            onInsert = { item -> insert(item, category.id) },
+                            onInsert = { item -> insert(item, ownerOf(item)) },
                             onDelete = { item -> deleteFile(item) },
                             onShare = { item -> shareSticker(item) },
-                            onInsertAsGif = { item -> insert(item, category.id, asGif = true) },
+                            onInsertAsGif = { item -> insert(item, ownerOf(item), asGif = true) },
                             onMoveToPack = { item, packId -> moveToPack(item, packId) },
                             onPin = { item ->
-                                scope.launch { StickerHistoryHelper.pin(prefs, historyKey, item.docId) }
+                                scope.launch { StickerHistoryHelper.pin(prefs, ownerOf(item), item.docId) }
                             },
                             onUnpin = { item ->
-                                scope.launch { StickerHistoryHelper.unpin(prefs, historyKey, item.docId) }
+                                scope.launch { StickerHistoryHelper.unpin(prefs, ownerOf(item), item.docId) }
                             },
                             onForget = { item ->
-                                scope.launch { StickerHistoryHelper.removeRecent(prefs, historyKey, item.docId) }
+                                scope.launch { StickerHistoryHelper.removeRecent(prefs, ownerOf(item), item.docId) }
                             },
                         )
                     }
@@ -412,7 +430,21 @@ private fun StickerCategoryPage(
     onForget: (StickerItem) -> Unit,
 ) {
     val gridState = rememberLazyGridState()
+    val prefs by FlorisPreferenceStore
+    val inputFeedbackController = LocalInputFeedbackController.current
+    val confirmBeforeInsert by prefs.sticker.confirmBeforeInsert.collectPrefAsState()
     var menuFor by remember { mutableStateOf<String?>(null) }
+    // Which sticker is waiting for its confirming tap, by the same section/doc key the menu uses — the
+    // same sticker can appear under favourites and again in the grid, and only the one that was tapped
+    // should light up. Cleared as soon as the grid moves: a sticker armed before a scroll is a sticker
+    // the user has stopped looking at, and leaving it armed is how a confirmation turns into a misfire
+    // of its own.
+    var armedKey by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(gridState) {
+        snapshotFlow { gridState.isScrollInProgress }.collect { scrolling ->
+            if (scrolling) armedKey = null
+        }
+    }
     // Deleting removes the user's own file, so it takes a second tap. Held per menu rather than per
     // sticker so closing the menu also cancels the armed confirmation.
     var deleteArmed by remember { mutableStateOf(false) }
@@ -421,12 +453,12 @@ private fun StickerCategoryPage(
     var packPickerOpen by remember { mutableStateOf(false) }
 
     val byId = remember(pool) { pool.associateBy { it.docId } }
-    // Favourites and recents live on the first tab only. Inside a pack every sticker is equal — the
-    // pack *is* the sorting, and repeating a sticker at the top under a second heading only made it
-    // harder to find the one you came for.
-    val showHistory = category.id == StickerCategory.ROOT_ID
-    val pinned = if (showHistory) history.pinnedIn(historyKey).mapNotNull { byId[it] } else emptyList()
-    val recent = if (showHistory) history.recentIn(historyKey).mapNotNull { byId[it] } else emptyList()
+    // Every tab carries its own favourites and recents (#308). They were once shown on the first tab
+    // alone, on the argument that inside a pack every sticker is equal — but a pack of two hundred is
+    // exactly where "the six I actually use" is worth the two rows it costs, and it is what the folder
+    // feature was described as doing.
+    val pinned = history.pinnedIn(historyKey).mapNotNull { byId[it] }
+    val recent = history.recentIn(historyKey).mapNotNull { byId[it] }
     val shown = remember(pinned, recent, category.items) {
         val used = HashSet<String>(pinned.size + recent.size)
         pinned.mapTo(used) { it.docId }
@@ -439,12 +471,33 @@ private fun StickerCategoryPage(
     fun Cell(item: StickerItem, section: String) {
         val menuKey = "$section/${item.docId}"
         val isPinned = history.isPinned(historyKey, item.docId)
+        val isArmed = armedKey == menuKey
         Box {
             StickerThumb(
                 item = item,
                 treeUri = treeUri,
-                onClick = { onInsert(item) },
-                onLongClick = { menuFor = menuKey; deleteArmed = false; packPickerOpen = false },
+                armed = isArmed,
+                accent = accent,
+                scrolling = { gridState.isScrollInProgress },
+                onClick = {
+                    inputFeedbackController.keyPress(TextKeyData.UNSPECIFIED)
+                    // With confirmation on, the first tap arms and the second sends. A quick
+                    // double-tap therefore sends in one motion without a shortcut of its own, and
+                    // tapping a different sticker moves the armed state rather than sending it.
+                    if (!confirmBeforeInsert || isArmed) {
+                        armedKey = null
+                        onInsert(item)
+                    } else {
+                        armedKey = menuKey
+                    }
+                },
+                onLongClick = {
+                    inputFeedbackController.keyLongPress(TextKeyData.UNSPECIFIED)
+                    armedKey = null
+                    menuFor = menuKey
+                    deleteArmed = false
+                    packPickerOpen = false
+                },
             )
             if (preparingDocId == item.docId) {
                 // Sized to the cell so it reads as "this one is busy" rather than "the panel is busy".
@@ -622,19 +675,55 @@ private fun StickerCategoryPage(
 private fun StickerThumb(
     item: StickerItem,
     treeUri: Uri,
+    armed: Boolean,
+    accent: Color,
+    scrolling: () -> Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
 ) {
+    // An animated sticker keeps decoding frames for as long as it is on screen, and a grid of them
+    // does it in parallel — which is the work that has to give way while the grid is moving. Nobody
+    // reads an animation mid-fling, so it is paused for the duration and resumed the moment the grid
+    // settles; the sticker stays animated, it just stops competing with the scroll (#308).
+    //
+    // Coil hands over an AnimatedImageDrawable and starts it when the cell is composed. It is never
+    // memory-cached — a running drawable cannot be shared between callers, so `Image.shareable` is
+    // false and the cache refuses it — which is also why every cell that scrolls back into view pays
+    // for a fresh decode. Pausing does not fix that; it stops it landing all at once.
+    var animation by remember(item.docId) { mutableStateOf<Animatable?>(null) }
+    LaunchedEffect(animation) {
+        val running = animation ?: return@LaunchedEffect
+        // snapshotFlow rather than reading the flag in composition: the cell must not recompose twice
+        // per scroll gesture just to learn something only its drawable acts on.
+        snapshotFlow { scrolling() }.collect { moving ->
+            if (moving) running.stop() else running.start()
+        }
+    }
+    // Waiting for its confirming tap: the accent ring and its wash mark one cell out of the grid
+    // without moving anything, so the answer to "which one did I hit" needs no second look. Drawn on
+    // the cell itself rather than as a popup over the panel — a focusable popup raised by an input
+    // method takes focus off the field, the system hides the keyboard, and the keyboard takes the
+    // popup down with it.
+    val ring = if (armed) {
+        Modifier
+            .border(2.dp, accent, RoundedCornerShape(8.dp))
+            .background(accent.copy(alpha = 0.16f))
+    } else {
+        Modifier.background(Color(0x14808080))
+    }
     AsyncImage(
         model = StickerScanner.documentUri(treeUri, item.docId),
         contentDescription = item.name,
         // Fit, not Crop: a sticker cropped to a square loses exactly the part that makes it readable.
         contentScale = ContentScale.Fit,
+        onSuccess = { state ->
+            animation = (state.result.image as? DrawableImage)?.drawable as? Animatable
+        },
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(1f)
             .clip(RoundedCornerShape(8.dp))
-            .background(Color(0x14808080))
+            .then(ring)
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .padding(3.dp),
     )
