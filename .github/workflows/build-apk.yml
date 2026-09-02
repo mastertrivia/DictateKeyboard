@@ -87,25 +87,39 @@ jobs:
         shell: bash
         run: bash tools/fetch-sherpa-onnx.sh
 
+      # The APK signature must be stable between builds, or Android refuses to
+      # install a newer build over an older one ("App not installed"). The signing
+      # key is therefore generated ONCE and reused from the Actions cache on every
+      # subsequent run. Optionally override with your own keystore via the
+      # KEYSTORE_BASE64 / KEYSTORE_PASSWORD / KEY_ALIAS / KEY_PASSWORD secrets.
+      - name: Restore CI signing keystore
+        uses: actions/cache@v4
+        with:
+          path: ~/.ci-signing
+          key: dictate-ci-signing-keystore-v1
+
       - name: Configure release signing
         shell: bash
         run: |
           KS_PASS="${{ secrets.KEYSTORE_PASSWORD }}"
           KEY_ALIAS="${{ secrets.KEY_ALIAS }}"
           KEY_PASS="${{ secrets.KEY_PASSWORD }}"
-          [ -n "$KS_PASS" ] || KS_PASS="android"
+          [ -n "$KS_PASS" ] || KS_PASS="dictate-ci-2026"
           [ -n "$KEY_ALIAS" ] || KEY_ALIAS="dictate"
-          [ -n "$KEY_PASS" ] || KEY_PASS="android"
+          [ -n "$KEY_PASS" ] || KEY_PASS="$KS_PASS"
+          KEYSTORE_DIR="$HOME/.ci-signing"
+          KEYSTORE="$KEYSTORE_DIR/ci-release.jks"
+          mkdir -p "$KEYSTORE_DIR"
           if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
-            echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > "$HOME/keystore.jks"
-          else
-            keytool -genkey -v -keystore "$HOME/keystore.jks" -alias "$KEY_ALIAS" \
-              -keyalg RSA -keysize 2048 -validity 10000 \
+            echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > "$KEYSTORE"
+          elif [ ! -f "$KEYSTORE" ]; then
+            keytool -genkey -v -keystore "$KEYSTORE" -alias "$KEY_ALIAS" \
+              -keyalg RSA -keysize 4096 -validity 10000 -storetype JKS \
               -storepass "$KS_PASS" -keypass "$KEY_PASS" \
-              -dname "CN=Dictate Keyboard,O=Dictate,C=US"
+              -dname "CN=Dictate Keyboard CI,O=Dictate CI,C=US"
           fi
           cat > keystore.properties <<EOF
-          storeFile=$HOME/keystore.jks
+          storeFile=$KEYSTORE
           storePassword=$KS_PASS
           keyAlias=$KEY_ALIAS
           keyPassword=$KEY_PASS
