@@ -1,0 +1,65 @@
+name: Sync upstream
+
+# Keeps this fork in step with the upstream repository (DevEmperor/DictateKeyboard):
+# on a schedule (and on manual trigger) it fetches upstream/main and merges it into
+# this fork's main, then pushes. Pushing to main automatically re-runs the
+# "Build APK" workflow, so a fresh APK of the latest upstream source is produced
+# every time upstream publishes something new.
+#
+# If upstream ever edits the exact same lines this fork changed (gradle.properties
+# heap settings, the :app lint disable, ...), the merge stops with a conflict and
+# this run fails loudly - resolve it locally and push, or open the repo in the
+# browser and use "Sync fork".
+
+on:
+  schedule:
+    # Runs daily at 03:17 UTC to pick up whatever the developer published the day before.
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-upstream
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure git
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Merge upstream/main and push
+        shell: bash
+        run: |
+          git remote add upstream https://github.com/DevEmperor/DictateKeyboard.git
+          git fetch upstream main
+
+          BEHIND=$(git rev-list --count HEAD..upstream/main)
+          echo "Commits behind upstream: $BEHIND"
+
+          if [ "$BEHIND" -eq 0 ]; then
+            echo "Already up to date with upstream."
+            exit 0
+          fi
+
+          echo "Merging upstream/main into main ..."
+          if ! git merge upstream/main --no-edit; then
+            echo "::error::Merge conflict while syncing upstream. This fork's local edits collide with upstream changes. Resolve the conflict and push manually."
+            exit 1
+          fi
+
+          echo "Pushing synced main to origin ..."
+          git push origin main
+          echo "Sync complete."
