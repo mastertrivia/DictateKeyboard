@@ -41,7 +41,10 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
       - name: Merge upstream/main and push
+        id: merge
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           git remote add upstream https://github.com/DevEmperor/DictateKeyboard.git
           git fetch upstream main
@@ -51,6 +54,7 @@ jobs:
 
           if [ "$BEHIND" -eq 0 ]; then
             echo "Already up to date with upstream."
+            echo "merged=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -63,3 +67,15 @@ jobs:
           echo "Pushing synced main to origin ..."
           git push origin main
           echo "Sync complete."
+          echo "merged=true" >> "$GITHUB_OUTPUT"
+
+      # A push made with GITHUB_TOKEN does not itself fire the Build APK workflow,
+      # so dispatch it explicitly to produce an APK of the freshly synced source.
+      - name: Trigger APK build
+        if: steps.merge.outputs.merged == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run "Build APK" --repo "$GITHUB_REPOSITORY" --ref main -f build_type=release
+          echo "Dispatched Build APK on the synced main."
