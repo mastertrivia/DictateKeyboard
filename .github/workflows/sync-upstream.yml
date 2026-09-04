@@ -4,7 +4,8 @@ name: Sync upstream
 # on a schedule (and on manual trigger) it fetches upstream/main and merges it into
 # this fork's main, then pushes. Because a push made with GITHUB_TOKEN does not
 # itself fire the "Build APK" workflow, the build is dispatched explicitly
-# afterwards - so every upstream update produces a fresh APK automatically.
+# afterwards (this needs the actions: write permission above) - so every upstream
+# update produces a fresh APK automatically.
 #
 # The workflow also touches the shared CI signing-keystore cache every day. GitHub
 # evicts cache entries not accessed for 7 days, and the signing key MUST stay the
@@ -21,9 +22,21 @@ on:
     # Runs daily at 03:17 UTC to pick up whatever the developer published the day before.
     - cron: '17 3 * * *'
   workflow_dispatch:
+    inputs:
+      upstream_repo:
+        description: 'Repository to sync from (owner/name)'
+        required: false
+        default: 'DevEmperor/DictateKeyboard'
+        type: string
+      upstream_branch:
+        description: 'Branch to sync from'
+        required: false
+        default: 'main'
+        type: string
 
 permissions:
   contents: write
+  actions: write
 
 concurrency:
   group: sync-upstream
@@ -80,12 +93,14 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          UPSTREAM_REPO: ${{ github.event.inputs.upstream_repo || 'DevEmperor/DictateKeyboard' }}
+          UPSTREAM_BRANCH: ${{ github.event.inputs.upstream_branch || 'main' }}
         run: |
-          git remote add upstream https://github.com/DevEmperor/DictateKeyboard.git
-          git fetch upstream main
+          git remote add upstream "https://github.com/${UPSTREAM_REPO}.git"
+          git fetch upstream "${UPSTREAM_BRANCH}"
 
-          BEHIND=$(git rev-list --count HEAD..upstream/main)
-          echo "Commits behind upstream: $BEHIND"
+          BEHIND=$(git rev-list --count "HEAD..upstream/${UPSTREAM_BRANCH}")
+          echo "Commits behind upstream (${UPSTREAM_REPO}:${UPSTREAM_BRANCH}): $BEHIND"
 
           if [ "$BEHIND" -eq 0 ]; then
             echo "Already up to date with upstream."
@@ -93,8 +108,8 @@ jobs:
             exit 0
           fi
 
-          echo "Merging upstream/main into main ..."
-          if ! git merge upstream/main --no-edit; then
+          echo "Merging upstream/${UPSTREAM_BRANCH} into main ..."
+          if ! git merge "upstream/${UPSTREAM_BRANCH}" --no-edit; then
             echo "::error::Merge conflict while syncing upstream. This fork's local edits collide with upstream changes. Resolve the conflict and push manually."
             exit 1
           fi
