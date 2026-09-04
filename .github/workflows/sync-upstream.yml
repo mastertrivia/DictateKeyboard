@@ -2,9 +2,14 @@ name: Sync upstream
 
 # Keeps this fork in step with the upstream repository (DevEmperor/DictateKeyboard):
 # on a schedule (and on manual trigger) it fetches upstream/main and merges it into
-# this fork's main, then pushes. Pushing to main automatically re-runs the
-# "Build APK" workflow, so a fresh APK of the latest upstream source is produced
-# every time upstream publishes something new.
+# this fork's main, then pushes. Because a push made with GITHUB_TOKEN does not
+# itself fire the "Build APK" workflow, the build is dispatched explicitly
+# afterwards - so every upstream update produces a fresh APK automatically.
+#
+# The workflow also touches the shared CI signing-keystore cache every day. GitHub
+# evicts cache entries not accessed for 7 days, and the signing key MUST stay the
+# same forever (Android refuses to install an update signed with a different key).
+# The daily restore keeps the key alive indefinitely and recreates it on a miss.
 #
 # If upstream ever edits the exact same lines this fork changed (gradle.properties
 # heap settings, the :app lint disable, ...), the merge stops with a conflict and
@@ -33,6 +38,36 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # Restore the shared CI signing keystore so this (nearly daily) run counts as
+      # an access and GitHub never evicts it. Populates it on a cold cache too.
+      - name: Restore CI signing keystore
+        id: keystore-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.ci-signing
+          key: dictate-ci-signing-keystore-v1
+
+      - name: Ensure CI signing keystore exists
+        shell: bash
+        run: |
+          KEYSTORE="$HOME/.ci-signing/ci-release.jks"
+          if [ ! -f "$KEYSTORE" ]; then
+            mkdir -p "$HOME/.ci-signing"
+            keytool -genkey -v -keystore "$KEYSTORE" -alias "dictate" \
+              -keyalg RSA -keysize 4096 -validity 10000 -storetype JKS \
+              -storepass "dictate-ci-2026" -keypass "dictate-ci-2026" \
+              -dname "CN=Dictate Keyboard CI,O=Dictate CI,C=US"
+            echo "Generated fresh CI signing keystore."
+          else
+            echo "Using cached CI signing keystore."
+          fi
 
       - name: Configure git
         shell: bash
