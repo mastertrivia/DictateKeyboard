@@ -159,6 +159,11 @@ jobs:
           echo "APK=$APK" >> "$GITHUB_ENV"
           echo "APK_SIZE=$(stat -c %s "$APK")" >> "$GITHUB_ENV"
           echo "APK_VERSION=$(jq -r '.elements[0].versionName' "$APK_DIR/output-metadata.json")" >> "$GITHUB_ENV"
+          APKSIGNER="$(ls "$ANDROID_HOME"/build-tools/*/apksigner 2>/dev/null | sort -V | tail -1)"
+          echo "apksigner: $APKSIGNER"
+          if [ -n "$APKSIGNER" ]; then
+            "$APKSIGNER" verify --print-certs "$APK" || true
+          fi
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
