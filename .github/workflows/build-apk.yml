@@ -135,6 +135,17 @@ jobs:
           esac
           ./gradlew "$TASK" --stacktrace --no-daemon
 
+      - name: Print used signing certificate
+        shell: bash
+        run: |
+          echo "keystore file:"
+          ls -la "$HOME/.ci-signing/" 2>&1 || true
+          sha256sum "$HOME/.ci-signing/ci-release.jks" 2>&1 || true
+          echo "certificate fingerprints:"
+          keytool -list -v -keystore "$HOME/.ci-signing/ci-release.jks" \
+            -storepass dictate-ci-2026 -alias dictate 2>&1 | \
+            grep -iE "Alias name|SHA1:|SHA256:" || echo "(could not read keystore)"
+
       - name: Verify APK
         shell: bash
         run: |
