@@ -298,7 +298,7 @@
     <string name="pref__input_feedback__any_feat_key_press__summary" comment="Preference summary">напр. клавіші, кнопки, вкладки емоджі</string>
     <string name="pref__input_feedback__any_feat_key_long_press__summary" comment="Preference summary">напр. спливаюче меню</string>
     <string name="pref__input_feedback__any_feat_key_repeated_action__summary" comment="Preference summary">напр. клавіша видалення</string>
-    <string name="pref__input_feedback__any_feat_gesture_swipe__summary" comment="Preference summary">не реалізовано</string>
+    <string name="pref__input_feedback__any_feat_gesture_swipe__summary" comment="Preference summary">наприклад, зміна мови жестом, набір ковзанням</string>
     <string name="pref__input_feedback__any_feat_gesture_moving_swipe__summary" comment="Preference summary">наприклад, жест переміщення курсора</string>
     <string name="settings__keyboard__title" comment="Title of Keyboard preferences screen">Клавіатура</string>
     <string name="pref__keyboard__number_row__label" comment="Preference title">Рядок з цифрами</string>
@@ -1449,7 +1449,6 @@
     <string name="dictate__providers_field_transcription_rewording_model">Модель транскрипції та переформулювання</string>
     <string name="dictate__providers_single_call_title">Один мультимодальний запит</string>
     <string name="dictate__providers_single_call_summary">Одна модель із підтримкою аудіо транскрибує та форматує за один запит.</string>
-    <string name="dictate__providers_single_call_pick_audio">Виберіть модель із підтримкою аудіо (позначена 🎤 у списку моделей).</string>
     <string name="dictate__providers_rewording_single_call_note">Зараз не використовується — ваш постачальник транскрипції виконує переформулювання у своєму єдиному запиті.</string>
     <string name="dictate__wear_title">Wear OS</string>
     <string name="dictate__wear_summary">Параметри диктування з парного годинника</string>
@@ -1913,6 +1912,13 @@
     <string name="sticker__section_rest">Усі стікери</string>
     <string name="sticker__pin">До обраного</string>
     <string name="sticker__unpin">Прибрати з обраного</string>
+    <string name="sticker__reorder">Змінити позицію</string>
+    <string name="sticker__reorder_hint">Переміщуйте стрілками</string>
+    <string name="sticker__reorder_earlier">Перемістити до початку</string>
+    <string name="sticker__reorder_later">Перемістити до кінця</string>
+    <string name="sticker__search">Пошук стікерів</string>
+    <string name="sticker__search_placeholder">Пошук за іменем файлу</string>
+    <string name="sticker__search_no_results">Немає стікера з такою назвою</string>
     <string name="sticker__setup_needed">Виберіть теку, щоб використовувати власні стікери</string>
     <string name="sticker__setup_needed_action">Відкрити налаштування</string>
     <string name="sticker__folder_empty">У цій теці немає зображень</string>
@@ -1962,6 +1968,9 @@
     <string name="sticker__pack_new">Створити набір</string>
     <string name="sticker__pack_name">Назва набору</string>
     <string name="sticker__pack_rename">Перейменувати</string>
+    <string name="sticker__pack_reorder_hint">Утримуйте набір, щоб перемістити</string>
+    <string name="sticker__pack_icon_set">Зробити значком набору</string>
+    <string name="sticker__pack_icon_clear">Прибрати значок набору</string>
     <string name="sticker__pack_delete">Видалити набір</string>
     <string name="sticker__pack_delete_confirm">Видалити набір «{name}» і {n} стікерів у ньому?</string>
     <string name="sticker__pack_failed">Не вийшло — можливо, тека захищена від запису</string>

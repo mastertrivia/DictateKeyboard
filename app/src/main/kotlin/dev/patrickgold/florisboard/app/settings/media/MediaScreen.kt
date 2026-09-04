@@ -22,7 +22,9 @@ import android.net.Uri
 import android.provider.DocumentsContract
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -33,6 +35,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AddPhotoAlternate
 import androidx.compose.material.icons.outlined.Apps
+import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Downloading
 import androidx.compose.material.icons.outlined.Edit
@@ -58,17 +61,26 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState as collectFlowAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.toMutableStateList
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.core.net.toUri
 import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.app.settings.search.settingsSearchAnchor
@@ -78,6 +90,8 @@ import dev.patrickgold.florisboard.dictate.sticker.StickerCategory
 import dev.patrickgold.florisboard.dictate.sticker.StickerHistoryHelper
 import dev.patrickgold.florisboard.dictate.sticker.StickerImports
 import dev.patrickgold.florisboard.dictate.sticker.StickerNormalizer
+import dev.patrickgold.florisboard.dictate.sticker.StickerPackSettings
+import dev.patrickgold.florisboard.dictate.sticker.StickerPackSettingsHelper
 import dev.patrickgold.florisboard.dictate.sticker.StickerIndex
 import dev.patrickgold.florisboard.dictate.sticker.StickerScanner
 import dev.patrickgold.florisboard.dictate.sticker.StickerWriter
@@ -104,6 +118,7 @@ import org.florisboard.lib.android.showLongToastSync
 import org.florisboard.lib.compose.pluralsRes
 import org.florisboard.lib.compose.florisDialogScroll
 import org.florisboard.lib.compose.stringRes
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalJetPrefDatastoreUi::class)
 @Composable
@@ -808,11 +823,18 @@ private fun StickerSourceDialog(
 }
 
 /**
- * Creating, renaming and deleting sticker packs — which are the subfolders of the chosen folder.
+ * Creating, renaming, reordering and deleting sticker packs — which are the subfolders of the chosen
+ * folder.
  *
  * Lives in settings rather than in the keyboard panel for one practical reason: naming a pack means
  * typing, and the panel *is* the keyboard. Moving a sticker into an existing pack needs no text and
- * stays where it belongs, on the sticker's own long-press menu.
+ * stays where it belongs, on the sticker's own long-press menu. The tab order joined it here for a
+ * different reason (issue #317): it is a list of packs, which this dialog already is, where the panel
+ * would have needed a mode of its own for something done once.
+ *
+ * Reordering is a long press and a drag, the same gesture the prompt list uses, and that is what keeps
+ * the row readable: a pair of arrows would be two more buttons on a line that already could not fit a
+ * name beside four of them.
  */
 @Composable
 private fun StickerPackDialog(
@@ -821,6 +843,8 @@ private fun StickerPackDialog(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val prefs by FlorisPreferenceStore
+    val packSettings by prefs.sticker.packSettings.collectAsState()
     var index by remember { mutableStateOf<StickerIndex?>(null) }
     var reload by remember { mutableStateOf(0) }
     var newName by remember { mutableStateOf("") }
@@ -835,7 +859,29 @@ private fun StickerPackDialog(
         index?.let { withContext(Dispatchers.IO) { StickerScanner.saveCached(context, it) } }
     }
 
-    val packs = index?.categories.orEmpty().filter { it.id != StickerCategory.ROOT_ID }
+    // Shown in the order the tabs are in — a list you rearrange has to start out looking like the thing
+    // it rearranges. Held in a mutable list so a dragged row can move under the finger; the preference
+    // is written once, on drop.
+    val packs = remember(index, packSettings) {
+        StickerPackSettings
+            .ordered(index?.categories.orEmpty(), packSettings.order)
+            .filter { it.id != StickerCategory.ROOT_ID }
+            .toMutableStateList()
+    }
+    // Where the dragged pack started, and how far the finger has taken it. The list itself is left
+    // alone until the drop — see the comment on the rows for why that matters.
+    var dragFrom by remember { mutableIntStateOf(-1) }
+    var dragOffset by remember { mutableFloatStateOf(0f) }
+    var rowHeight by remember { mutableIntStateOf(0) }
+    // Where it would land if let go now. A function rather than a value, because the drag callbacks
+    // below outlive the composition that created them: a captured value would be the one from when
+    // the gesture handler started, which is none.
+    fun dropTarget(): Int = if (dragFrom < 0 || rowHeight <= 0) {
+        -1
+    } else {
+        (dragFrom + (dragOffset / rowHeight).roundToInt()).coerceIn(0, packs.lastIndex)
+    }
+    val dragTo = dropTarget()
 
     // The create/rename button belongs where every other dialog puts its action: on the button row at
     // the bottom, beside Cancel. It doubles as "rename" while a pack is being edited.
@@ -852,6 +898,12 @@ private fun StickerPackDialog(
                     StickerWriter.renamePack(context, treeUri, target.id, name)
                 } else {
                     StickerWriter.createPack(context, treeUri, name) != null
+                }
+                // A rename is the one moment the old and the new name are both known. Miss it and the
+                // pack's place in the row and its chosen picture are simply gone, since both are kept
+                // under the name — the document id is not the same one after a rename.
+                if (ok && target != null) {
+                    StickerPackSettingsHelper.renamed(prefs, target.name, name)
                 }
                 if (!ok) context.showLongToast(R.string.sticker__pack_failed)
                 newName = ""
@@ -872,16 +924,87 @@ private fun StickerPackDialog(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            for (pack in packs) {
+            if (packs.size > 1) {
+                Text(
+                    text = stringRes(R.string.sticker__pack_reorder_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 4.dp),
+                )
+            }
+            for ((position, pack) in packs.withIndex()) key(pack.name) {
+                val isDragging = dragFrom == position
+                // How far this row steps aside for the one being dragged: the rows between where it
+                // started and where it would land shuffle up or down by exactly one row, and they
+                // animate there, so the list opens a gap rather than snapping into a new order.
+                val displaced = when {
+                    isDragging || dragFrom < 0 || rowHeight <= 0 -> 0f
+                    dragFrom < dragTo && position in (dragFrom + 1)..dragTo -> -rowHeight.toFloat()
+                    dragFrom > dragTo && position in dragTo until dragFrom -> rowHeight.toFloat()
+                    else -> 0f
+                }
+                val shift by animateFloatAsState(displaced, label = "packShift")
+                // **The list is not touched while the finger is down.** Reordering it mid-gesture
+                // changed which pack each slot rendered, which changed the key of `pointerInput`
+                // below, which tore down the running gesture — the row jumped once and then went
+                // dead. Only the drawing moves; the order is written on the drop.
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp)
+                        .zIndex(if (isDragging) 1f else 0f)
+                        .graphicsLayer { translationY = if (isDragging) dragOffset else shift }
+                        .onSizeChanged { rowHeight = it.height }
+                        .pointerInput(pack.name, packs.size) {
+                            detectDragGesturesAfterLongPress(
+                                onDragStart = { dragFrom = position; dragOffset = 0f },
+                                onDragEnd = {
+                                    val from = dragFrom
+                                    val to = dropTarget()
+                                    dragFrom = -1
+                                    dragOffset = 0f
+                                    if (from >= 0 && to >= 0 && from != to) {
+                                        packs.add(to, packs.removeAt(from))
+                                        scope.launch {
+                                            StickerPackSettingsHelper.setOrder(prefs, packs.map { it.name })
+                                        }
+                                    }
+                                },
+                                onDragCancel = {
+                                    dragFrom = -1
+                                    dragOffset = 0f
+                                },
+                                onDrag = { change, amount ->
+                                    change.consume()
+                                    // Held to the list's own extent, so a pack cannot be dragged out
+                                    // over the rest of the dialog.
+                                    val limitUp = -position.toFloat() * rowHeight
+                                    val limitDown = (packs.lastIndex - position).toFloat() * rowHeight
+                                    dragOffset = (dragOffset + amount.y).coerceIn(limitUp, limitDown)
+                                },
+                            )
+                        },
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(Icons.Outlined.Folder, contentDescription = null)
-                    Column(modifier = Modifier.weight(1f).padding(start = 12.dp)) {
-                        Text(text = pack.name)
+                    if (packs.size > 1) {
+                        Icon(
+                            Icons.Default.DragHandle,
+                            contentDescription = null,
+                            modifier = Modifier.padding(end = 8.dp),
+                        )
+                    }
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = pluralsRes(R.plurals.unit__items__written, pack.items.size, "v" to pack.items.size),
+                            text = pack.name,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            text = pluralsRes(
+                                R.plurals.unit__items__written,
+                                pack.items.size,
+                                "v" to pack.items.size,
+                            ),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -917,7 +1040,11 @@ private fun StickerPackDialog(
                 scope.launch {
                     // Deleting a pack deletes a real folder, and the stickers in it go with it — hence
                     // the count in the question rather than a bare "are you sure".
-                    if (!StickerWriter.deletePack(context, treeUri, pack.id)) {
+                    if (StickerWriter.deletePack(context, treeUri, pack.id)) {
+                        // Otherwise the name keeps its place in the tab order, holding a slot open for
+                        // a folder that no longer exists.
+                        StickerPackSettingsHelper.forget(prefs, pack.name)
+                    } else {
                         context.showLongToast(R.string.sticker__pack_failed)
                     }
                     deleting = null

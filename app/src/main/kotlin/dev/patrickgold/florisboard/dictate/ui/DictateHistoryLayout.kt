@@ -46,7 +46,10 @@ import dev.patrickgold.florisboard.dictate.DictateController
 import dev.patrickgold.florisboard.dictate.data.history.DictateHistoryEntry
 import dev.patrickgold.florisboard.dictate.data.history.DictateHistoryStore
 import dev.patrickgold.florisboard.ime.ImeUiMode
+import dev.patrickgold.florisboard.ime.input.LocalInputFeedbackController
 import dev.patrickgold.florisboard.ime.keyboard.FlorisImeSizing
+import dev.patrickgold.florisboard.ime.keyboard.PanelHeaderButton
+import dev.patrickgold.florisboard.ime.text.keyboard.TextKeyData
 import dev.patrickgold.florisboard.ime.theme.FlorisImeUi
 import dev.patrickgold.florisboard.keyboardManager
 import kotlinx.coroutines.Dispatchers
@@ -96,38 +99,41 @@ fun DictateHistoryLayout(
             // Lock to the normal keyboard height so opening history never changes the IME height (no jump).
             .height(FlorisImeSizing.panelUiHeight()),
     ) {
-        // Header: back to the typing keyboard + panel title.
+        // Header: back to the typing keyboard + panel title. Styled as the clipboard's header rather
+        // than as the emoji panel's bottom row, whose 16 dp of vertical padding would leave these icons
+        // about 8 dp in a row this height (#317).
         SnyggRow(
-            elementName = FlorisImeUi.MediaBottomRow.elementName,
+            elementName = FlorisImeUi.ClipboardHeader.elementName,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(FlorisImeSizing.smartbarHeight),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            SnyggIconButton(
-                elementName = FlorisImeUi.MediaBottomRowButton.elementName,
+            PanelHeaderButton(
                 onClick = { keyboardManager.activeState.imeUiMode = ImeUiMode.TEXT },
                 modifier = Modifier.size(FlorisImeSizing.smartbarHeight),
             ) {
-                SnyggIcon(imageVector = Icons.AutoMirrored.Filled.ArrowBack)
+                SnyggIcon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    modifier = Modifier.size(FlorisImeSizing.mediaHeaderIconSize),
+                )
             }
             SnyggText(
-                elementName = FlorisImeUi.MediaEmojiSubheader.elementName,
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(start = 4.dp),
+                // The clipboard's title element. This one used to be the emoji subheader, which is
+                // bold and carries a margin — so of the three panel titles no two matched (#317).
+                elementName = FlorisImeUi.ClipboardHeaderText.elementName,
+                modifier = Modifier.weight(1f),
                 text = stringRes(R.string.dictate__history_title),
             )
             // Jump straight to the full history management screen in the settings app.
-            SnyggIconButton(
-                elementName = FlorisImeUi.MediaBottomRowButton.elementName,
+            PanelHeaderButton(
                 onClick = { FlorisImeService.launchSettings("settings/dictate/history") },
                 modifier = Modifier.size(FlorisImeSizing.smartbarHeight),
             ) {
                 Icon(
                     imageVector = Icons.Default.Settings,
                     contentDescription = null,
-                    modifier = Modifier.size(34.dp),
+                    modifier = Modifier.size(FlorisImeSizing.mediaHeaderIconSize),
                 )
             }
         }
@@ -196,6 +202,7 @@ private fun HistoryPanelRow(
     onInsertOriginal: () -> Unit,
     onRetranscribe: () -> Unit,
 ) {
+    val inputFeedbackController = LocalInputFeedbackController.current
     // Both versions exist only when a prompt actually rewrote the dictation (issue #240).
     val hasOriginal = entry.originalText.isNotEmpty() && entry.originalText != entry.text
     // Compact text, large tap targets: the transcript uses the candidate-word text size and the meta line
@@ -211,8 +218,18 @@ private fun HistoryPanelRow(
         // A failed entry has no committed text yet — inserting is disabled until it's re-transcribed.
         clickAndSemanticsModifier = Modifier.combinedClickable(
             enabled = !entry.failed,
-            onClick = { onInsert() },
-            onLongClick = if (hasOriginal) onInsertOriginal else null,
+            onClick = {
+                inputFeedbackController.keyPress(TextKeyData.UNSPECIFIED)
+                onInsert()
+            },
+            onLongClick = if (hasOriginal) {
+                {
+                    inputFeedbackController.keyLongPress(TextKeyData.UNSPECIFIED)
+                    onInsertOriginal()
+                }
+            } else {
+                null
+            },
         ),
         verticalAlignment = Alignment.CenterVertically,
     ) {

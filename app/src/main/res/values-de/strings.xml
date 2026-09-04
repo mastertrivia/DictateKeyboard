@@ -323,7 +323,7 @@
     <string name="pref__input_feedback__any_feat_key_press__summary" comment="Preference summary">z.B. Tasten, Schaltflächen, Emoji Tabs</string>
     <string name="pref__input_feedback__any_feat_key_long_press__summary" comment="Preference summary">z.B. Popup Menü</string>
     <string name="pref__input_feedback__any_feat_key_repeated_action__summary" comment="Preference summary">z.B. Löschen Taste</string>
-    <string name="pref__input_feedback__any_feat_gesture_swipe__summary" comment="Preference summary">nicht implementiert</string>
+    <string name="pref__input_feedback__any_feat_gesture_swipe__summary" comment="Preference summary">z.B. Wischen zum Sprachwechsel, Wischen zum Schreiben</string>
     <string name="pref__input_feedback__any_feat_gesture_moving_swipe__summary" comment="Preference summary">z.B. Geste zum Bewegen des Cursors</string>
     <string name="settings__keyboard__title" comment="Title of Keyboard preferences screen">Tastatur</string>
     <string name="pref__keyboard__number_row__label" comment="Preference title">Zahlenreihe</string>
@@ -1538,7 +1538,6 @@
     <string name="dictate__providers_field_transcription_rewording_model">Transkriptions- &amp; Umformulierungsmodell</string>
     <string name="dictate__providers_single_call_title">Single-Call (multimodal)</string>
     <string name="dictate__providers_single_call_summary">Ein audiofähiges Modell transkribiert und formatiert in einer einzigen Anfrage.</string>
-    <string name="dictate__providers_single_call_pick_audio">Wähle ein audiofähiges Modell (mit 🎤 in der Modellliste markiert).</string>
     <string name="dictate__providers_rewording_single_call_note">Wird gerade nicht genutzt – dein Transkriptions-Anbieter übernimmt die Umformulierung in seinem Single-Call.</string>
     <string name="dictate__wear_title">Wear OS</string>
     <string name="dictate__wear_summary">Optionen fürs Diktieren von einer gekoppelten Uhr</string>
@@ -1941,6 +1940,13 @@
     <string name="sticker__section_rest">Alle Sticker</string>
     <string name="sticker__pin">Zu Favoriten hinzufügen</string>
     <string name="sticker__unpin">Aus Favoriten entfernen</string>
+    <string name="sticker__reorder">Position ändern</string>
+    <string name="sticker__reorder_hint">Mit den Pfeilen verschieben</string>
+    <string name="sticker__reorder_earlier">Nach vorne schieben</string>
+    <string name="sticker__reorder_later">Nach hinten schieben</string>
+    <string name="sticker__search">Sticker suchen</string>
+    <string name="sticker__search_placeholder">Nach Dateinamen suchen</string>
+    <string name="sticker__search_no_results">Kein Sticker mit diesem Namen</string>
     <string name="sticker__setup_needed">Wähle einen Ordner, um eigene Sticker zu verwenden</string>
     <string name="sticker__setup_needed_action">Einstellungen öffnen</string>
     <string name="sticker__folder_empty">Keine Bilder in diesem Ordner</string>
@@ -1990,6 +1996,9 @@
     <string name="sticker__pack_new">Pack anlegen</string>
     <string name="sticker__pack_name">Name des Packs</string>
     <string name="sticker__pack_rename">Umbenennen</string>
+    <string name="sticker__pack_reorder_hint">Zum Verschieben ein Pack gedrückt halten</string>
+    <string name="sticker__pack_icon_set">Als Pack-Symbol verwenden</string>
+    <string name="sticker__pack_icon_clear">Pack-Symbol entfernen</string>
     <string name="sticker__pack_delete">Pack löschen</string>
     <string name="sticker__pack_delete_confirm">Das Pack \"{name}\" und die {n} Sticker darin löschen?</string>
     <string name="sticker__pack_failed">Hat nicht geklappt — der Ordner ist womöglich schreibgeschützt</string>

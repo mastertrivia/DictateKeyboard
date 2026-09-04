@@ -406,7 +406,7 @@
     <string name="pref__input_feedback__any_feat_key_press__summary" comment="Preference summary">например кнопки, служебные клавиши или вкладки с эмодзи</string>
     <string name="pref__input_feedback__any_feat_key_long_press__summary" comment="Preference summary">например, всплывающее меню</string>
     <string name="pref__input_feedback__any_feat_key_repeated_action__summary" comment="Preference summary">например, кнопка «удалить»</string>
-    <string name="pref__input_feedback__any_feat_gesture_swipe__summary" comment="Preference summary">не реализовано</string>
+    <string name="pref__input_feedback__any_feat_gesture_swipe__summary" comment="Preference summary">например, смена языка жестом, набор скольжением</string>
     <string name="pref__input_feedback__any_feat_gesture_moving_swipe__summary" comment="Preference summary">например, жест перемещения курсора</string>
     <string name="settings__keyboard__title" comment="Title of Keyboard preferences screen">Клавиатура</string>
     <string name="pref__keyboard__number_row__label" comment="Preference title">Цифровой ряд</string>
@@ -1605,7 +1605,6 @@
     <string name="dictate__providers_field_transcription_rewording_model">Модель транскрипции и переформулирования</string>
     <string name="dictate__providers_single_call_title">Один мультимодальный запрос</string>
     <string name="dictate__providers_single_call_summary">Одна модель с поддержкой аудио расшифровывает и форматирует за один запрос.</string>
-    <string name="dictate__providers_single_call_pick_audio">Выберите модель с поддержкой аудио (отмечена 🎤 в списке моделей).</string>
     <string name="dictate__providers_rewording_single_call_note">Сейчас не используется — ваш провайдер транскрипции выполняет переформулирование в своём едином запросе.</string>
     <string name="dictate__wear_title">Wear OS</string>
     <string name="dictate__wear_summary">Параметры диктовки с сопряжённых часов</string>
@@ -2069,6 +2068,13 @@
     <string name="sticker__section_rest">Все стикеры</string>
     <string name="sticker__pin">В избранное</string>
     <string name="sticker__unpin">Убрать из избранного</string>
+    <string name="sticker__reorder">Изменить позицию</string>
+    <string name="sticker__reorder_hint">Перемещайте стрелками</string>
+    <string name="sticker__reorder_earlier">Переместить к началу</string>
+    <string name="sticker__reorder_later">Переместить к концу</string>
+    <string name="sticker__search">Поиск стикеров</string>
+    <string name="sticker__search_placeholder">Поиск по имени файла</string>
+    <string name="sticker__search_no_results">Нет стикера с таким именем</string>
     <string name="sticker__setup_needed">Выберите папку, чтобы использовать свои стикеры</string>
     <string name="sticker__setup_needed_action">Открыть настройки</string>
     <string name="sticker__folder_empty">В этой папке нет изображений</string>
@@ -2118,6 +2124,9 @@
     <string name="sticker__pack_new">Создать набор</string>
     <string name="sticker__pack_name">Название набора</string>
     <string name="sticker__pack_rename">Переименовать</string>
+    <string name="sticker__pack_reorder_hint">Удерживайте набор, чтобы переместить</string>
+    <string name="sticker__pack_icon_set">Сделать значком набора</string>
+    <string name="sticker__pack_icon_clear">Убрать значок набора</string>
     <string name="sticker__pack_delete">Удалить набор</string>
     <string name="sticker__pack_delete_confirm">Удалить набор «{name}» и {n} стикеров в нём?</string>
     <string name="sticker__pack_failed">Не получилось — возможно, папка защищена от записи</string>
