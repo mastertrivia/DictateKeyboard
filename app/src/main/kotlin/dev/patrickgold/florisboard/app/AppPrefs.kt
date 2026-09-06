@@ -107,6 +107,12 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
             key = "clipboard__sync_to_system",
             default = ClipboardSyncBehavior.NO_EVENTS,
         )
+        // Opt-in on purpose (issue #329): this quietly changes what the user pastes, and that is only
+        // ever acceptable because they asked for it.
+        val stripTrackingParams = boolean(
+            key = "clipboard__strip_tracking_params",
+            default = false,
+        )
         val suggestionEnabled = boolean(
             key = "clipboard__suggestion_enabled",
             default = true,
@@ -190,6 +196,13 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
             key = "correction__auto_space_punctuation",
             default = false,
         )
+        // The other half of the same idea (issue #329): auto-space puts a space *after* a punctuation
+        // mark, this removes one the user typed *before* it. Its own switch rather than a widening of
+        // auto-space, because this one rewrites what was already typed.
+        val tightenPunctuationSpacing = boolean(
+            key = "correction__tighten_punctuation_spacing",
+            default = false,
+        )
         val doubleSpacePeriod = boolean(
             key = "correction__double_space_period",
             default = true,
@@ -224,6 +237,15 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
         )
         val showKeyTouchBoundaries = boolean(
             key = "devtools__show_touch_boundaries",
+            default = false,
+        )
+        // Makes the floating button insert as if the accessibility input connection did not exist, i.e.
+        // the way it must on Android 12 and older, where that API is not there at all. Without this the
+        // whole node/placeholder/paste half of the insert path (issue #314) is unreachable on a modern
+        // phone — and an emulator cannot stand in for it, because the apps whose fields misreport their
+        // placeholder are exactly the ones not installed there.
+        val forceLegacyInsertion = boolean(
+            key = "devtools__force_legacy_insertion",
             default = false,
         )
         val showDragAndDropHelpers = boolean(
@@ -1356,6 +1378,13 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
             key = "localization__hindi_defaults_migrated",
             default = false,
         )
+        // One-time guard: French subtypes saved before the "french" punctuation rule existed still name
+        // "default", which would let punctuation tightening eat the space French wants before ? ! ; :
+        // (issue #329). See DictateLegacyMigrator.migrateFrenchPunctuationRuleIfNeeded.
+        val frenchPunctuationMigrated = boolean(
+            key = "localization__french_punctuation_migrated",
+            default = false,
+        )
     }
 
     val other = Other()
@@ -1473,6 +1502,24 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
         // word exists — never on an empty field, so opening the keyboard still shows the quick actions.
         val nextWordPrediction = boolean(
             key = "suggestion__next_word_prediction",
+            default = true,
+        )
+        // Build a personal vocabulary out of what is typed (issue #318): a word no dictionary knows is
+        // remembered, offered from the second sighting and added to the personal dictionary at the third.
+        //
+        // Off by default, and deliberately so. Every learned word is a word autocorrect eventually stops
+        // repairing, and a keyboard that starts keeping a record of what you write is a thing to be asked
+        // about rather than told. Nothing is learned in incognito, in password fields, or from anything
+        // that was not typed key by key — dictation and glide included.
+        val learnTypedWords = boolean(
+            key = "suggestion__learn_typed_words",
+            default = false,
+        )
+        // On by default (issue #329), unlike the learning above: this one keeps no record, changes
+        // nothing on its own, and only ever appears when somebody has literally typed a sum and then an
+        // equals sign. Tapping it is the only way anything reaches the field.
+        val mathSuggestions = boolean(
+            key = "suggestion__math_suggestions",
             default = true,
         )
         // Some apps set TYPE_TEXT_FLAG_NO_SUGGESTIONS on ordinary text fields — Instagram and a lot of

@@ -643,6 +643,8 @@
     <string name="pref__suggestion__display_mode__label" comment="Preference title">Suggestions display mode</string>
     <string name="pref__suggestion__block_possibly_offensive__label" comment="Preference title">Block possibly offensive words</string>
     <string name="pref__suggestion__block_possibly_offensive__summary" comment="Preference summary">Prevents possibly offensive words from being suggested while you type</string>
+    <string name="pref__suggestion__math_suggestions__label" comment="Preference title">Inline calculator</string>
+    <string name="pref__suggestion__math_suggestions__summary" comment="Preference summary">Type a sum and = to get the answer as a suggestion</string>
     <string name="pref__suggestion__api30_inline_suggestions_enabled__label" comment="Preference title">System autofill suggestions</string>
     <string name="pref__suggestion__api30_inline_suggestions_enabled__summary" comment="Preference summary">Show inline suggestions provided by autofill services</string>
     <string name="pref__suggestion__incognito_mode__label" comment="Label of Incognito mode preference in Typing">Incognito mode</string>
@@ -651,6 +653,8 @@
     <string name="pref__correction__auto_capitalization__summary" comment="Preference summary">Capitalize words based on the current input context</string>
     <string name="pref__correction__auto_space_punctuation__label" comment="Preference title">Auto-space after punctuation</string>
     <string name="pref__correction__auto_space_punctuation__summary" comment="Preference summary">Automatically insert a space after a punctuation</string>
+    <string name="pref__correction__tighten_punctuation_spacing__label" comment="Preference title">Tighten punctuation</string>
+    <string name="pref__correction__tighten_punctuation_spacing__summary" comment="Preference summary">Removes a space typed before . , ? !</string>
     <string name="pref__correction__remember_caps_lock_state__label" comment="Preference title">Remember caps lock state</string>
     <string name="pref__correction__remember_caps_lock_state__summary" comment="Preference summary">Caps lock will stay on when moving to another text field</string>
     <string name="pref__correction__double_space_period__label" comment="Preference title">Double-space period</string>
@@ -673,6 +677,25 @@
     <string name="pref__dictionary__enable_internal_user_dictionary__summary" comment="Preference summary">Suggest words stored in the internal user dictionary</string>
     <string name="pref__dictionary__manage_floris_user_dictionary__label" comment="Preference title">Manage internal user dictionary</string>
     <string name="pref__dictionary__manage_floris_user_dictionary__summary" comment="Preference summary">Add, view, and remove entries for the internal user dictionary</string>
+    <string name="pref__dictionary__learn_typed_words__label" comment="Preference title for automatic word learning">Learn words as you type</string>
+    <string name="pref__dictionary__learn_typed_words__summary" comment="Preference summary for automatic word learning">Remember names and terms no dictionary knows. Stays on this device.</string>
+    <string name="pref__dictionary__manage_learned_words__label" comment="Preference title">Learned words</string>
+    <string name="pref__dictionary__manage_learned_words__summary" comment="Preference summary">See what the keyboard has picked up, and remove anything it should forget</string>
+
+    <string name="settings__learned__title" comment="Title of the learned words screen">Learned words</string>
+    <string name="settings__learned__empty" comment="Shown when nothing has been learned yet">Nothing learned yet. Words you type that no dictionary knows will appear here.</string>
+    <string name="settings__learned__disabled" comment="Shown when the learning feature is switched off">Learning words as you type is switched off, so nothing new is being remembered.</string>
+    <string name="settings__learned__stage_remembered" comment="Ladder stage: seen once, no effect yet">Noticed — not suggested yet</string>
+    <string name="settings__learned__stage_suggested" comment="Ladder stage: appears in the suggestion strip">Suggested while you type</string>
+    <string name="settings__learned__stage_promoted" comment="Ladder stage: in the personal dictionary">In your dictionary — autocorrect leaves it alone</string>
+    <string name="settings__learned__sightings" comment="How often a word has been seen. The placeholder inserts a count.">Seen {count}×</string>
+    <string name="settings__learned__forget" comment="Button that removes one learned word">Forget</string>
+    <string name="settings__learned__forget_all" comment="Button that removes every learned word">Forget everything</string>
+    <string name="settings__learned__forget_all_confirm" comment="Confirmation question before deleting all learned words">Forget every learned word? Words already added to your dictionary stay there.</string>
+    <string name="settings__learned__add_now" comment="Button that promotes a learned word into the personal dictionary immediately">Add to dictionary</string>
+    <string name="settings__learned__how_it_works" comment="Explanation shown at the top of the learned words screen">A word is only remembered once it looks deliberate rather than mistyped. It is suggested from the second time you type it, and added to your dictionary at the third — from then on autocorrect leaves it alone.\n\nEverything stays on this device. Nothing is learned in incognito mode, in password fields, or from dictation — only from what you actually typed.</string>
+    <string name="suggestion__forgot_word" comment="Toast after forgetting a learned word. The placeholder inserts the word.">Forgot “{word}”</string>
+
     <string name="settings__udm__title_floris" comment="Title of the User Dictionary Manager activity for internal">Internal User Dictionary</string>
     <string name="settings__udm__title_system" comment="Title of the User Dictionary Manager activity for system">System User Dictionary</string>
     <string name="settings__udm__no_words_in_dictionary" comment="String to show if no words are present in the dictionary">This user dictionary does not contain any words.</string>
@@ -1065,6 +1088,7 @@
     <string name="backup_and_restore__back_up__files">Select what to back up</string>
     <string name="backup_and_restore__back_up__files_jetpref_datastore">Preferences</string>
     <string name="backup_and_restore__back_up__files_dictate_prompts">Saved rewording prompts</string>
+    <string name="backup_and_restore__back_up__files_personal_dictionary">Personal dictionary and learned words</string>
     <string name="backup_and_restore__back_up__files_ime_keyboard">Keyboard extensions</string>
     <string name="backup_and_restore__back_up__files_ime_spelling">Spelling extensions / dictionaries</string>
     <string name="backup_and_restore__back_up__files_ime_theme">Theme extensions</string>
@@ -1138,6 +1162,8 @@
     <string name="pref__clipboard__sync_from_system_clipboard__label">Sync from system clipboard</string>
     <string name="pref__clipboard__sync_to_system_clipboard__label">Sync to system clipboard</string>
     <string name="pref__clipboard__group_clipboard_suggestion__label">Clipboard suggestions</string>
+    <string name="pref__clipboard__strip_tracking_params__label" comment="Preference title">Remove tracking from links</string>
+    <string name="pref__clipboard__strip_tracking_params__summary" comment="Preference summary">Strips utm_, si, fbclid and the like when pasting</string>
     <string name="pref__clipboard__suggestion_enabled__label" comment="Preference title">Clipboard content suggestions</string>
     <string name="pref__clipboard__suggestion_enabled__summary" comment="Preference summary">Suggest previously copied clipboard content</string>
     <string name="pref__clipboard__num_history_grid_columns__label">Number of grid columns</string>
@@ -1174,6 +1200,8 @@
     <string name="devtools__show_inline_autofill_overlay__label">Show inline autofill overlay</string>
     <string name="devtools__show_inline_autofill_overlay__summary">Overlays the current inline autofill results for debugging</string>
     <string name="devtools__show_key_touch_boundaries__label" comment="Label of Show key touch boundaries in Devtools">Show key touch boundaries</string>
+    <string name="devtools__force_legacy_insertion__label" comment="Label of the debug switch that makes the floating button insert the pre-Android-13 way">Floating button: insert like Android 12</string>
+    <string name="devtools__force_legacy_insertion__summary" comment="Summary of that debug switch">Pretend the accessibility input connection does not exist, so inserts go through the node and the clipboard the way they must on Android 12 and older. Debug builds only.</string>
     <string name="devtools__show_key_touch_boundaries__summary" comment="Summary of Show key touch boundaries in Devtools">Outline the key touch boundaries in red</string>
     <string name="devtools__show_drag_and_drop_helpers__label" comment="Label of Show drag and drop helpers in Devtools">Show drag&amp;drop helpers</string>
     <string name="devtools__show_drag_and_drop_helpers__summary" comment="Summary of Show drag and drop helpers in Devtools">Render otherwise invisible helpers in drag&amp;drop screens for debugging</string>

@@ -93,6 +93,7 @@ object SettingsSearchIndex {
         SettingsSearchEntry(R.string.pref__clipboard__sync_to_system_clipboard__label, R.string.settings__clipboard__title, Routes.Settings.Clipboard, anchor = "pref__clipboard__sync_to_system_clipboard__label"),
         SettingsSearchEntry(R.string.pref__clipboard__group_clipboard_suggestion__label, R.string.settings__clipboard__title, Routes.Settings.Clipboard),
         SettingsSearchEntry(R.string.pref__clipboard__suggestion_enabled__label, R.string.settings__clipboard__title, Routes.Settings.Clipboard, anchor = "pref__clipboard__suggestion_enabled__label"),
+        SettingsSearchEntry(R.string.pref__clipboard__strip_tracking_params__label, R.string.settings__clipboard__title, Routes.Settings.Clipboard, anchor = "pref__clipboard__strip_tracking_params__label"),
         SettingsSearchEntry(R.string.pref__clipboard__suggestion_timeout__label, R.string.settings__clipboard__title, Routes.Settings.Clipboard, anchor = "pref__clipboard__suggestion_timeout__label"),
         SettingsSearchEntry(R.string.pref__clipboard__group_clipboard_history__label, R.string.settings__clipboard__title, Routes.Settings.Clipboard),
         SettingsSearchEntry(R.string.pref__clipboard__enable_clipboard_history__label, R.string.settings__clipboard__title, Routes.Settings.Clipboard, anchor = "pref__clipboard__enable_clipboard_history__label"),
@@ -202,6 +203,12 @@ object SettingsSearchIndex {
         SettingsSearchEntry(R.string.pref__dictionary__manage_system_user_dictionary__label, R.string.settings__dictionary__title, Routes.Settings.Dictionary, anchor = "pref__dictionary__manage_system_user_dictionary__label"),
         SettingsSearchEntry(R.string.pref__dictionary__enable_internal_user_dictionary__label, R.string.settings__dictionary__title, Routes.Settings.Dictionary, anchor = "pref__dictionary__enable_internal_user_dictionary__label"),
         SettingsSearchEntry(R.string.pref__dictionary__manage_floris_user_dictionary__label, R.string.settings__dictionary__title, Routes.Settings.Dictionary, anchor = "pref__dictionary__manage_floris_user_dictionary__label"),
+        // Word learning (issue #318). Added by hand rather than by rerunning the generator: it was run
+        // against this change and dropped eight existing hand-added rows, which is the documented
+        // behaviour — it only sees what it can parse, and everything else disappears on every pass.
+        SettingsSearchEntry(R.string.pref__dictionary__learn_typed_words__label, R.string.settings__dictionary__title, Routes.Settings.Dictionary, anchor = "pref__dictionary__learn_typed_words__label"),
+        SettingsSearchEntry(R.string.pref__dictionary__manage_learned_words__label, R.string.settings__dictionary__title, Routes.Settings.Dictionary, anchor = "pref__dictionary__manage_learned_words__label"),
+        SettingsSearchEntry(R.string.settings__learned__title, R.string.settings__learned__title, Routes.Settings.LearnedWords, parentRes = R.string.settings__dictionary__title),
         // Hand-added (issue #264): the contact import lives in the personal dictionary's ⋮ menu, which the
         // generator cannot see — searching for "contacts" would otherwise find nothing at all.
         SettingsSearchEntry(R.string.settings__udm__add_from_contacts, R.string.settings__dictionary__title, Routes.Settings.UserDictionary(UserDictionaryType.FLORIS)),
@@ -315,10 +322,12 @@ object SettingsSearchIndex {
         SettingsSearchEntry(R.string.pref__suggestion__next_word_prediction__label, R.string.settings__typing__title, Routes.Settings.Typing, anchor = "pref__suggestion__next_word_prediction__label"),
         SettingsSearchEntry(R.string.pref__suggestion__ignore_app_suggestion_block__label, R.string.settings__typing__title, Routes.Settings.Typing, anchor = "pref__suggestion__ignore_app_suggestion_block__label"),
         SettingsSearchEntry(R.string.pref__suggestion__api30_inline_suggestions_enabled__label, R.string.settings__typing__title, Routes.Settings.Typing, anchor = "pref__suggestion__api30_inline_suggestions_enabled__label"),
+        SettingsSearchEntry(R.string.pref__suggestion__math_suggestions__label, R.string.settings__typing__title, Routes.Settings.Typing, anchor = "pref__suggestion__math_suggestions__label"),
         SettingsSearchEntry(R.string.pref__suggestion__incognito_mode__label, R.string.settings__typing__title, Routes.Settings.Typing, anchor = "pref__suggestion__incognito_mode__label"),
         SettingsSearchEntry(R.string.pref__correction__title, R.string.settings__typing__title, Routes.Settings.Typing),
         SettingsSearchEntry(R.string.pref__correction__auto_capitalization__label, R.string.settings__typing__title, Routes.Settings.Typing, anchor = "pref__correction__auto_capitalization__label"),
         SettingsSearchEntry(R.string.pref__correction__auto_space_punctuation__label, R.string.settings__typing__title, Routes.Settings.Typing, anchor = "pref__correction__auto_space_punctuation__label"),
+        SettingsSearchEntry(R.string.pref__correction__tighten_punctuation_spacing__label, R.string.settings__typing__title, Routes.Settings.Typing, anchor = "pref__correction__tighten_punctuation_spacing__label"),
         SettingsSearchEntry(R.string.pref__correction__remember_caps_lock_state__label, R.string.settings__typing__title, Routes.Settings.Typing, anchor = "pref__correction__remember_caps_lock_state__label"),
         SettingsSearchEntry(R.string.pref__correction__double_space_period__label, R.string.settings__typing__title, Routes.Settings.Typing, anchor = "pref__correction__double_space_period__label"),
         SettingsSearchEntry(R.string.pref__spelling__title, R.string.settings__typing__title, Routes.Settings.Typing),
