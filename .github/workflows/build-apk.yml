@@ -392,8 +392,9 @@ jobs:
             "$APKSIGNER" verify --print-certs "$APK"
 
             APK_SHA=$("$APKSIGNER" verify --print-certs "$APK" \
-              | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' \
-              | tr 'A-F' 'a-f')
+              | sed -n 's/^.*[Cc]ertificate SHA-256 digest: \([0-9A-Fa-f:]*\).*$/\1/p' \
+              | head -1 \
+              | tr -d ' :' | tr 'A-F' 'a-f')
             [ -n "$APK_SHA" ] || { echo "::error::Could not read APK signer certificate"; exit 1; }
 
             KS_PASS=$(sed -n 's/^storePassword=//p' keystore.properties)
