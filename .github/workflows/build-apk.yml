@@ -262,6 +262,23 @@ jobs:
 
           if ls /tmp/ci-patches/*.patch >/dev/null 2>&1; then
             for p in /tmp/ci-patches/*.patch; do
+              # A fork-only patch may become unnecessary once upstream itself
+              # ships the equivalent change (so it would no longer apply to the
+              # tag). Detect that case explicitly and skip the patch instead of
+              # failing the build:
+              #   01-gradle-properties-heaps.patch -> upstream adopted CI-safe heaps
+              #   02-app-build-lint.patch          -> upstream fixed the lint check in app/lint.xml
+              base=$(basename "$p")
+              if [ "$base" = "01-gradle-properties-heaps.patch" ] \
+                 && grep -q '^kotlin.daemon.jvmargs=-Xmx' gradle.properties; then
+                echo "Skipping $base: this tag already uses CI-safe daemon heaps."
+                continue
+              fi
+              if [ "$base" = "02-app-build-lint.patch" ] \
+                 && grep -q 'InvalidFragmentVersionForActivityResult' app/lint.xml; then
+                echo "Skipping $base: this tag already handles the lint check in app/lint.xml."
+                continue
+              fi
               if ! git apply --3way --whitespace=nowarn "$p"; then
                 echo "::error::Fork-only CI patch $p no longer applies cleanly to upstream ${RELEASE_TAG}."
                 echo "The fork's CI tweaks (gradle.properties daemon heaps, :app lint disable) must be refreshed against this upstream release."
