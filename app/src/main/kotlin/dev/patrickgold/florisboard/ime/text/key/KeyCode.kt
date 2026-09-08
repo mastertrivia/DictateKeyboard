@@ -75,6 +75,7 @@ object KeyCode {
     const val SPLIT_LAYOUT =                -113
     const val MERGE_LAYOUT =                -114
     const val TOGGLE_RESIZE_MODE =          -115
+    const val TOGGLE_NUMBER_ROW =           -116
 
     const val UNDO =                        -131
     const val REDO =                        -132
@@ -132,6 +133,12 @@ object KeyCode {
     const val CURRENCY_SLOT_6 =             -806
 
     const val MULTIPLE_CODE_POINTS =        -902
+    /**
+     * A key whose label previews text that is already in the editor, so pressing it must write nothing
+     * (issue #315: the अ key wearing the pending consonant). Distinct from [NOOP], which draws a cross
+     * over the label to say "this key is dead".
+     */
+    const val PREVIEW_ONLY =                -903
     const val DRAG_MARKER =                 -991
     const val NOOP =                        -999
 

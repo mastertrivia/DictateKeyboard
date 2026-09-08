@@ -18,6 +18,8 @@
     <string name="prefs__media__emoji_history__title" comment="Preference group title">Historie emotikonů</string>
     <string name="prefs__media__emoji_history_enabled" comment="Preference title">Zapnout historii emotikonů</string>
     <string name="prefs__media__emoji_history_enabled__summary" comment="Preference summary">Uchovávat nedávno použité emotikony pro rychlý přístup</string>
+    <string name="prefs__media__emoji_row_enabled">Řádek emodži</string>
+    <string name="prefs__media__emoji_row_enabled__summary">Zobrazit nad klávesnicí řádek s připnutými a nedávno použitými emodži</string>
     <string name="prefs__media__emoji_history_pinned_update_strategy" comment="Preference title">Strategie aktualizace (připnuté)</string>
     <string name="prefs__media__emoji_history_recent_update_strategy" comment="Preference title">Strategie aktualizace (nedávné)</string>
     <string name="prefs__media__emoji_history_max_size">Maximální počet položek k uchování</string>
@@ -58,6 +60,10 @@
     <string name="quick_action__arrow_left__tooltip">Vykonat šipku vlevo</string>
     <string name="quick_action__arrow_right" comment="Please mind the limited available space for the quick action strings">Šipka vpravo</string>
     <string name="quick_action__arrow_right__tooltip">Vykonat šipku vpravo</string>
+    <string name="quick_action__move_start_of_page" comment="Please mind the limited available space for the quick action strings">Začátek textu</string>
+    <string name="quick_action__move_start_of_page__tooltip">Přejít na začátek textu</string>
+    <string name="quick_action__move_end_of_page" comment="Please mind the limited available space for the quick action strings">Konec textu</string>
+    <string name="quick_action__move_end_of_page__tooltip">Přejít na konec textu</string>
     <string name="quick_action__ime_hide_ui" comment="Please mind the limited available space for the quick action strings">Skrýt klávesnici</string>
     <string name="quick_action__ime_hide_ui__tooltip">Provést skrytí klávesnice</string>
     <string name="quick_action__clipboard_clear_primary_clip__tooltip">Vykonat vymazání primární položky schránky</string>
@@ -96,6 +102,8 @@
     <string name="quick_action__one_handed_mode__tooltip">Přepnout režim jedné ruky</string>
     <string name="quick_action__resize_mode" comment="Please mind the limited available space for the quick action strings">Změnit velikost</string>
     <string name="quick_action__resize_mode__tooltip">Přepnout režim změny velikosti</string>
+    <string name="quick_action__toggle_number_row" comment="Quick action that shows or hides the row of digit keys above the letters. Please mind the limited available space for the quick action strings">Číselná řada</string>
+    <string name="quick_action__toggle_number_row__tooltip">Zobrazit nebo skrýt číselnou řadu</string>
     <string name="quick_action__drag_marker" comment="This action is only used as a placeholder in the actions editor drag and drop screen and only visible in debug mode">Značka přes.</string>
     <string name="quick_action__drag_marker__tooltip" comment="This action is only used as a placeholder in the actions editor drag and drop screen and only visible in debug mode">Aktuální pozice značky přesouvání</string>
     <string name="quick_action__noop" comment="Noop=no operation; this action is only used as a placeholder in the actions editor drag and drop screen">Žádné</string>
@@ -124,6 +132,12 @@
     <string name="settings__search__clear_recent" comment="Button to clear the recent searches">Vymazat nedávná hledání</string>
     <string name="settings__search__popular" comment="Header above a small list of popular settings shortcuts">Oblíbené</string>
     <string name="settings__search__no_results" comment="Shown when a settings search returns nothing">Nebyla nalezena žádná nastavení</string>
+    <string name="settings__search__keywords__text_expansion" comment="NOT SHOWN ANYWHERE — extra search terms that lead to the typing-shortcut setting, which lets a short trigger expand into a saved block of text. Translate as the words people in your language would actually type when looking for that feature, separated by spaces. Do not translate word for word; add or drop terms as makes sense.">textová zkratka rozbalení textu úryvek makro automatický text šablona snippet text expansion</string>
+    <string name="settings__search__keywords__selection_metrics" comment="NOT SHOWN ANYWHERE — extra search terms that lead to the setting which shows how many words and characters are selected. Translate as the words people in your language would actually type when looking for it, separated by spaces. Do not translate word for word.">počet slov počítadlo slov znaky délka statistika</string>
+    <string name="settings__search__keywords__trim_on_copy" comment="NOT SHOWN ANYWHERE — extra search terms that lead to the setting which removes spaces and line breaks at the ends of copied text. Translate as the words people in your language would actually type when looking for it, separated by spaces. Do not translate word for word.">oříznutí mezery odstranit vyčistit kopírovat vyjmout</string>
+    <string name="settings__search__keywords__clear_cache">mezipaměť cache úložiště místo dočasné soubory uvolnit smazat vyčistit</string>
+    <string name="settings__search__keywords__emoji_row">emodži emoji řádek lišta nedávné použité nad klávesnicí rychlý</string>
+    <string name="settings__search__keywords__request_timeout">časový limit timeout pomalé čekání spojení sekundy</string>
     <string name="settings__localization__title" comment="Title of languages and Layout screen">Jazyky a rozložení</string>
     <string name="settings__localization__display_language_names_in__label" comment="Label of Display language names in preference">Zobrazovat názvy jazyků v</string>
     <string name="settings__localization__display_keyboard_labels_in_subtype_language" comment="Label of Display keyboard labels in subtype language preference">Zobrazit popisky kláves v jazyce podtypu</string>
@@ -444,6 +458,8 @@
     <string name="pref__smartbar__group_layout_specific__label" comment="Preference group title">Předvolby pro konkrétní rozložení</string>
     <string name="pref__smartbar__flip_toggles__label" comment="Preference title">Přehodit přepínací tlačítka</string>
     <string name="pref__smartbar__flip_toggles__summary" comment="Preference summary">Prohodí přepínače řádku akcí</string>
+    <string name="pref__smartbar__selection_metrics__label" comment="Preference title, keep short">Počítadlo výběru</string>
+    <string name="pref__smartbar__selection_metrics__summary" comment="Preference summary, keep short (one line)">Slova a znaky ve výběru</string>
     <string name="pref__smartbar__shared_actions_auto_expand_collapse__label" comment="Preference title">Automatické rozšíření/sbalení</string>
     <string name="pref__smartbar__shared_actions_auto_expand_collapse__summary" comment="Preference summary">Automaticky rozšíří/sbalí řádek sdílených akcí v závislosti na současném stavu</string>
     <string name="pref__smartbar__extended_actions_placement__label" comment="Preference title">Umístění akčního řádku</string>
@@ -463,8 +479,15 @@
     <string name="pref__correction__auto_space_punctuation__summary" comment="Preference summary">Automaticky vložit mezeru za interpunkcí</string>
     <string name="pref__correction__remember_caps_lock_state__label" comment="Preference title">Pamatovat stav CapsLocku</string>
     <string name="pref__correction__remember_caps_lock_state__summary" comment="Preference summary">Caps lock zůstane aktivní při přesunu do jiného textového pole</string>
-    <string name="pref__correction__double_space_period__label" comment="Preference title">Tečka dvojitou mezerou</string>
-    <string name="pref__correction__double_space_period__summary" comment="Preference summary">Dvojité poklepání na mezerník vloží tečku a mezeru</string>
+    <string name="pref__correction__double_space_period__label" comment="Preference title">Dvojí klepnutí na mezerník</string>
+    <string name="enum__double_space_action__punctuation" comment="Enum value label">Konec věty</string>
+    <string name="enum__double_space_action__punctuation__description" comment="Enum value description. The character in brackets is the Devanagari danda, the Hindi full stop, and must stay as it is.">Znak, kterým končí věta v psaném jazyce, a za ním mezera — obvykle tečka, v hindštině danda (।).</string>
+    <string name="enum__double_space_action__comma" comment="Enum value label">Čárka</string>
+    <string name="enum__double_space_action__comma__description" comment="Enum value description">Čárka následovaná mezerou.</string>
+    <string name="enum__double_space_action__newline" comment="Enum value label">Nový řádek</string>
+    <string name="enum__double_space_action__newline__description" comment="Enum value description">Zalomení řádku místo mezery.</string>
+    <string name="enum__double_space_action__slash" comment="Enum value label">Lomítko</string>
+    <string name="enum__double_space_action__slash__description" comment="Enum value description">Lomítko bez mezer, například pro zápis a/nebo.</string>
     <string name="pref__spelling__title" comment="Preference group title">Pravopis</string>
     <string name="pref__spelling__active_spellchecker__summary_disabled">Systémově zakázáno. V textových polích se nebudou objevovat červené pruhy u nesprávných slov. Klepněte pro změnu.</string>
     <string name="pref__spelling__active_spellchecker__summary_none">Není nastavena žádná služba kontroly pravopisu v textu. Klepnutím na tlačítko to změníte.</string>
@@ -548,6 +571,10 @@
     </string>
     <string name="pref__other__settings_language__label" comment="Label of Settings language preference in Other">Jazyk nastavení</string>
     <string name="pref__other__show_app_icon__label" comment="Label of Show app icon preference in Other">Zobrazit ikonu aplikace na domovské obrazovce</string>
+    <string name="pref__other__clear_cache__label">Vymazat mezipaměť</string>
+    <string name="pref__other__clear_cache__summary">Dočasné soubory: {size}</string>
+    <string name="pref__other__clear_cache__confirm">Vymazat</string>
+    <string name="pref__other__clear_cache__message">Smaže dočasné soubory, které aplikace dokáže vytvořit znovu: sdílený soubor, který se právě přepisuje, stažené GIFy a nálepky, dekódované obrázky. Historie diktování, nahrávky, nastavení ani slovníky se nemění. Právě probíhající nahrávání nebo přepis se může přerušit.</string>
     <string name="pref__other__show_app_icon__summary_atleast_q" comment="Summary of Show app icon preference in Other for Android 10+">Vždy povoleno v systému Android 10+ kvůli systémovým omezením</string>
     <!-- About UI strings -->
     <string name="about__title" comment="Title of About activity">O aplikaci</string>
@@ -648,6 +675,8 @@
     <string name="crash_multiple_notification__body" comment="Body of the notification for consecutive crashes">Vrácení zpět na předchozí klávesnici pro zastavení nekonečného crash loopu. Klepnutím zobrazíte podrobnosti o chybě</string>
     <!-- Clipboard strings -->
     <string name="clipboard__header_title">Schránka</string>
+    <string name="clipboard__search_placeholder" comment="Hint inside the clipboard search field">Hledat ve schránce</string>
+    <string name="clipboard__search_no_results" comment="Shown when no clip contains what was typed">Žádná položka to neobsahuje</string>
     <string name="clipboard__disabled__title">Historie schránky je momentálně zakázána</string>
     <string name="clipboard__disabled__message">Historie schránky {app_name} vám umoňuje rychle ukládat a přistupovat k textu a obrázkům které zkopírujete, s možností připínat položky, nastavovat automatická čištění a nastavit maximální limit položek.</string>
     <string name="clipboard__disabled__enable_button">Zapnout historii schránky</string>
@@ -680,6 +709,8 @@
     <string name="pref__clipboard__sync_to_system_clipboard__label">Synchronizovat do systémové schránky</string>
     <string name="pref__clipboard__group_clipboard_suggestion__label">Návrhy schránky</string>
     <string name="pref__clipboard__suggestion_enabled__label" comment="Preference title">Obsah návrhu schránky</string>
+    <string name="pref__clipboard__trim_on_copy__label" comment="Preference title, keep short">Oříznout při kopírování</string>
+    <string name="pref__clipboard__trim_on_copy__summary" comment="Preference summary, keep short (one line)">Odstraní mezery a zalomení řádků na koncích</string>
     <string name="pref__clipboard__suggestion_enabled__summary" comment="Preference summary">Navrhnout obsah dříve zkopírovaný do schránky</string>
     <string name="pref__clipboard__num_history_grid_columns__label">Počet sloupců mřížky</string>
     <string name="pref__clipboard__suggestion_timeout__label" comment="Preference title; Translators: This should form a sentence together with `pref__clipboard__suggestion_timeout__summary` and is the first part">Omezit návrhy ze schránky na</string>
@@ -1082,6 +1113,12 @@
         <item quantity="many">{v} znaků</item>
         <item quantity="other">{v} znaků</item>
     </plurals>
+    <plurals name="unit__words__written">
+        <item quantity="one">{v} slovo</item>
+        <item quantity="few">{v} slova</item>
+        <item quantity="many">{v} slov</item>
+        <item quantity="other">{v} slov</item>
+    </plurals>
     <plurals name="unit__candidates__written">
         <item quantity="one">{v} návrh</item>
         <item quantity="few">{v} návrhy</item>
@@ -1311,6 +1348,8 @@
     <string name="dictate__providers_test_success">Připojeno · {count} modelů</string>
     <string name="dictate__providers_test_failed">Připojení selhalo</string>
     <string name="dictate__providers_network_group">Síť</string>
+    <string name="dictate__request_timeout_title">Časový limit požadavku</string>
+    <string name="dictate__request_timeout_summary">{v} s · zvyšte u pomalého vlastního serveru</string>
     <string name="dictate__proxy_title">Proxy</string>
     <string name="dictate__proxy_summary_off">Vypnuto · přímé připojení</string>
     <string name="dictate__proxy_enabled_title">Použít proxy</string>
@@ -1522,9 +1561,15 @@
     <string name="dictate__import_title">Přepsat soubor</string>
     <string name="dictate__import_menu">Přepsat soubor</string>
     <string name="dictate__import_menu_summary">Vyberte zvukový nebo video soubor a přečtěte si, co se v něm říká</string>
-    <string name="dictate__import_status_preparing">Příprava…</string>
-    <string name="dictate__import_status_transcribing">Přepisuje se…</string>
-    <string name="dictate__import_status_part">Část %1$d z %2$d…</string>
+    <string name="dictate__import_step_copy">Přijímání souboru</string>
+    <string name="dictate__import_step_extract">Získávání zvuku z videa</string>
+    <string name="dictate__import_step_prepare">Příprava zvuku</string>
+    <string name="dictate__import_step_upload">Nahrávání</string>
+    <string name="dictate__import_step_transcribe">Přepis pomocí {provider}</string>
+    <string name="dictate__import_step_transcribe_local">Přepis v tomto zařízení</string>
+    <string name="dictate__import_step_finish">Dokončování</string>
+    <string name="dictate__import_step_percent">{v} %</string>
+    <string name="dictate__import_step_part">Část {current} z {total}</string>
     <string name="dictate__import_result_label">Přepis</string>
     <string name="dictate__import_prompt_button">Přepracovat</string>
     <string name="dictate__import_revert">Zpět</string>
@@ -1607,6 +1652,7 @@
     <string name="dictate__wear_standalone_summary">Odešlete svůj API klíč do hodinek, aby mohly diktovat i bez telefonu poblíž.</string>
     <string name="dictate__wear_standalone_title">Synchronizovat klíč do hodinek</string>
     <string name="emoji__search__hint">Hledat emoji</string>
+    <string name="emoji__row__open_panel">Otevřít všechna emodži</string>
     <string name="emoji__search__no_results">Žádné odpovídající emoji</string>
     <string name="pref__suggestion__api30_inline_suggestions_enabled__label">Návrhy automatického vyplňování systému</string>
     <string name="pref__suggestion__block_possibly_offensive__summary">Zabraňuje navrhování potenciálně urážlivých slov při psaní</string>
@@ -1711,6 +1757,10 @@
     <string name="dictate__action_save_audio">Uložit zvuk</string>
     <string name="dictate__audio_saved">Zvuk uložen do Downloads/Dictate: %s</string>
     <string name="dictate__audio_save_failed">Zvuk se nepodařilo uložit</string>
+    <string name="dictate__instant_recording_mode_off">Vypnuto</string>
+    <string name="dictate__instant_recording_mode_always">Při každém otevření klávesnice</string>
+    <string name="dictate__instant_recording_mode_after_switch">Jen po přepnutí na {app_name}</string>
+    <string name="dictate__instant_recording_in_numeric">Také v číselných polích</string>
     <string name="dictate__instant_recording_skip_numeric_title">Přeskočit číselná pole</string>
     <string name="dictate__instant_recording_skip_numeric_summary">Nespouštět automaticky u polí pro čísla, telefon nebo PIN</string>
     <string name="settings__localization__subtype_status_words">Návrhy</string>

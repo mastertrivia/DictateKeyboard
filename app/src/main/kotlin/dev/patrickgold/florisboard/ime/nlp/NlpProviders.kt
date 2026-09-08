@@ -231,6 +231,37 @@ interface SuggestionProvider : NlpProvider {
         }
     }
 
+    /**
+     * Whether [char] may be written into the word currently being composed without ending it.
+     *
+     * The counterpart to [determineLocalComposing], asked forwards by the input path at the moment a
+     * separator is pressed, where that one is asked backwards by the editor content. The two have to
+     * give the same answer — a keyboard whose halves disagree about where a word ends hands one half's
+     * work to the other (issue #311) — so a provider that overrides this must widen
+     * [determineLocalComposing] to match, and one that overrides neither keeps the behaviour it always
+     * had: every non-letter ends the word.
+     *
+     * Default false, so nothing changes for a provider that has no opinion. Only the Latin provider has
+     * one, and only for e-mail and web addresses (issue #318).
+     *
+     * @param composingWord the word as it stands before [char], not including it.
+     */
+    fun continuesWord(composingWord: String, char: Char): Boolean = false
+
+    /**
+     * The capitalised form of [word] when the language writes this one-word form with a capital
+     * wherever it stands, or null when it does not — the English pronoun "I" and nothing else so far
+     * (issue #333).
+     *
+     * Asked at a word boundary, for a word the dictionary itself cannot answer for: the case-folded
+     * index reports the lowercase spelling as a perfectly good word, which is true of "i" in every
+     * other language on the list. Polish writes "i" for *and* and Italian uses it as a plural article,
+     * so this has to be a per-language statement rather than a dictionary entry.
+     *
+     * Default null, so a provider without an opinion changes nothing.
+     */
+    fun standaloneCapitalization(word: String, subtype: Subtype): String? = null
+
     val forcesSuggestionOn
         get() = false
 

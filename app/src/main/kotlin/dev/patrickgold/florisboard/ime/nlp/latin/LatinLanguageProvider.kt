@@ -22,8 +22,10 @@ import dev.patrickgold.florisboard.subtypeManager
 import dev.patrickgold.florisboard.ime.core.Subtype
 import dev.patrickgold.florisboard.ime.dictionary.DictionaryManager
 import dev.patrickgold.florisboard.ime.editor.EditorContent
+import dev.patrickgold.florisboard.ime.editor.EditorRange
 import dev.patrickgold.florisboard.ime.dictionary.LearnedSnapshot
 import dev.patrickgold.florisboard.ime.dictionary.LearnedWordsStore
+import dev.patrickgold.florisboard.ime.nlp.BreakIteratorGroup
 import dev.patrickgold.florisboard.ime.nlp.LearnOutcome
 import dev.patrickgold.florisboard.ime.nlp.LearningProvider
 import dev.patrickgold.florisboard.ime.nlp.SpellingProvider
@@ -127,6 +129,35 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         // to teach and a word we merely noticed.
         private const val LEARNED_RANK_FREQ = 187
 
+        // The band the rank may move inside, once it stops being a single number (see [learnedRankFor]).
+        // The ceiling stays clear of USER_DICTIONARY_RANK_FREQ: however often a word is picked up by
+        // itself, a word the user typed into their dictionary on purpose still comes first.
+        private const val LEARNED_RANK_MIN = 178
+        private const val LEARNED_RANK_MAX = 205
+
+        // How steeply the rank climbs with usage. Logarithmic, so the first few repetitions of a new name
+        // are worth a lot and the difference between the fiftieth and the hundredth is worth nothing.
+        private const val LEARNED_RANK_GROWTH = 12.0
+
+        /**
+         * How frequent a word with a decayed [score] counts as (issue #318, round 3).
+         *
+         * A single band for everything the keyboard picked up was the honest first version — nothing
+         * downstream knew how often a word had been seen — but it means a name typed every day ranks
+         * exactly like one typed twice in March, and that is the difference the reporter put his finger
+         * on: usage is what makes a personal vocabulary feel personal rather than merely present.
+         *
+         * Anchored so that a word at exactly [WordLearningGate.SIGHTINGS_FOR_SUGGESTIONS] sightings keeps
+         * the rank it has always had — the day this shipped, nothing moved for anyone who had just
+         * started using it.
+         */
+        internal fun learnedRankFor(score: Double): Int {
+            if (score <= 0.0) return LEARNED_RANK_MIN
+            val sightings = score / WordLearningGate.SIGHTINGS_FOR_SUGGESTIONS
+            val rank = LEARNED_RANK_FREQ + LEARNED_RANK_GROWTH * ln(sightings)
+            return rank.toInt().coerceIn(LEARNED_RANK_MIN, LEARNED_RANK_MAX)
+        }
+
         // How many learned words one prefix may contribute. Small on purpose: these sit among the tail of
         // the dictionary walk, and a user with a large personal vocabulary should not find the strip made
         // entirely of their own rare words.
@@ -184,8 +215,37 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
          *
          * Digits, not "anything that isn't a letter": an apostrophe is part of *don't*, and correcting
          * *dont* to it is a fix worth making (issue #212).
+         *
+         * An address is refused for exactly the same reason, and it became urgent the moment [WordRun]
+         * let one stay in one piece (issue #318): while `mail@` is being composed it is one deletion away
+         * from `mail`, so the edit-distance corrector offers to throw the `@` away — and on the classic
+         * gate it does so silently, because nothing in the dictionary starts with `mail@`. That is
+         * `top10` → `top0` again with a separator instead of a digit. The web prefixes go with it, and
+         * the same refusal keeps [spell] from underlining every address in red.
          */
-        internal fun isDictionaryJudgeable(word: String): Boolean = word.none { it.isDigit() }
+        internal fun isDictionaryJudgeable(word: String): Boolean =
+            word.none { it.isDigit() || it in RUN_PUNCTUATION } && !WordRun.isWebPrefixed(word)
+
+        /** The characters that only ever hold an address together — never a word the dictionary knows. */
+        private const val RUN_PUNCTUATION = "@_+:/"
+
+        /**
+         * The form [word] must take in a language that always capitalises it, or null (issue #333).
+         *
+         * One entry, and the list is meant to stay short: this is for words a language capitalises
+         * *wherever they stand*, which is a much stronger claim than "the dictionary spells it this
+         * way". English "I" qualifies. A German noun does not — it is capitalised because of what it
+         * is, which the dictionary already records, and the noun path in [suggest] handles it.
+         *
+         * The language check is what makes the rule safe rather than merely useful. Polish writes `i`
+         * for *and* and Italian uses it as a plural article; both are among the commonest words in
+         * those languages, and both would be visibly wrecked by an unguarded rule.
+         */
+        internal fun standaloneCapitalizationIn(word: String, language: String): String? = when {
+            !language.equals("en", ignoreCase = true) -> null
+            word == "i" -> "I"
+            else -> null
+        }
 
         // Legacy ISO-639 codes that java.util.Locale still reports; map them to the modern code the
         // dictionary files use.
@@ -974,6 +1034,58 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         return SpellingResult.typo(suggestions.toTypedArray())
     }
 
+    // --- Where a word ends (issue #318, round 3) ------------------------------------------------------
+
+    override fun continuesWord(composingWord: String, char: Char): Boolean =
+        WordRun.continuesRun(composingWord, char)
+
+    // --- Words a language always capitalises (issue #333) ---------------------------------------------
+
+    /**
+     * English writes its first-person pronoun with a capital wherever it stands, and it is the only
+     * one-letter word in any of our languages that does.
+     *
+     * Not expressible in the dictionary, which is where every other capitalisation here comes from
+     * (see the noun block in [suggest]): `en.json` stores `i` in lowercase at frequency 254 and has no
+     * `I` entry at all — correctly, because a lone lowercase `i` is right in "i.e.", in a roman
+     * numeral and in an identifier. The dictionary describes the word; this describes the sentence it
+     * stands in, and the caller supplies that context by only asking at a space.
+     *
+     * Strictly English. Polish `i` means *and*, Italian `i` is a plural article; both are among the
+     * commonest words in those languages, and capitalising them would be a visible regression rather
+     * than a fix. The language is the active subtype's, which is also the limit of what this can know
+     * while multilingual typing (issue #190) has more than one language in play.
+     */
+    override fun standaloneCapitalization(word: String, subtype: Subtype): String? =
+        standaloneCapitalizationIn(word, subtype.primaryLocale.language)
+
+    /**
+     * The composing region, widened to keep an e-mail or web address in one piece (issue #318).
+     *
+     * The break iterator does the work it always did; [WordRun.runStart] then asks how far left the run
+     * at the cursor really reaches. Two cases, and the second is the one that is easy to miss: when the
+     * text ends on `@` or on a dot inside a domain, the iterator reports no word at all (`WORD_NONE`),
+     * which would clear the composing region mid-address and throw away the word the learner is waiting
+     * for. So a run found by the backward walk stands on its own, without the iterator's blessing.
+     */
+    override suspend fun determineLocalComposing(
+        subtype: Subtype,
+        textBeforeSelection: CharSequence,
+        breakIterators: BreakIteratorGroup,
+        localLastCommitPosition: Int,
+    ): EditorRange {
+        val base = super<SuggestionProvider>.determineLocalComposing(
+            subtype, textBeforeSelection, breakIterators, localLastCommitPosition,
+        )
+        val end = textBeforeSelection.length
+        val start = WordRun.runStart(textBeforeSelection, if (base.isValid) base.start else end)
+        return when {
+            base.isValid -> if (start < base.start) EditorRange(start, base.end) else base
+            start < end -> EditorRange(start, end)
+            else -> base
+        }
+    }
+
     override suspend fun suggest(
         subtype: Subtype,
         content: EditorContent,
@@ -1170,11 +1282,22 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
             maxCandidateCount
         }
 
+        // The learned vocabulary, read once: the strip needs it below, and the ordering of the personal
+        // words needs it right here.
+        val learnedSnapshot = learnedSnapshotFor(subtype)
+
         // The user's own words that extend what is being typed. They used to go into the strip right here,
         // ahead of everything the dictionary had to offer, so a single typed letter put a contact's surname
         // in front of the word everybody writes (issue #264). They are merged into the ranked walk below
         // instead, at USER_DICTIONARY_RANK_FREQ — which means they surface exactly when the prefix has
         // narrowed the common words away, and never before.
+        //
+        // They all share that one rank, so the order *among* them used to be whatever the database
+        // returned — which is how a name typed every day could sit behind one typed twice (issue #318,
+        // round 3). Sorting by the sighting count fixes that without moving the band: nothing changes
+        // relative to the dictionary, only the user's own words are put in the order they earned. A word
+        // typed into the dictionary by hand has no count and stays at the front, because teaching a word
+        // deliberately still outranks anything we merely noticed.
         val personal = runCatching {
             val dm = DictionaryManager.default()
             dm.loadUserDictionariesIfNecessary()
@@ -1183,6 +1306,10 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
             .map { it.text.toString() }
             .filter { index.fold(it).startsWith(index.fold(word)) }
             .distinctBy { it.lowercase() }
+            .sortedByDescending { text ->
+                val score = learnedSnapshot?.scoreOfKey(index.fold(text)) ?: 0.0
+                if (score > 0.0) score else Double.MAX_VALUE
+            }
 
         // What the user stored behind this exact word as a *shortcut* — an e-mail address behind "mail",
         // say. Deliberately exempt from the prefix filter above and offered first, because an expansion
@@ -1213,9 +1340,8 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         // is remembered and nothing more — and always marked, so the strip can say where they came from.
         // A promoted word arrives through [personal] above instead, but is still marked here: it is no
         // less the user's word for having graduated into the dictionary.
-        val learnedSnapshot = learnedSnapshotFor(subtype)
         val learned = learnedSnapshot
-            ?.startingWith(
+            ?.entriesStartingWith(
                 prefix = index.fold(word),
                 minScore = WordLearningGate.scoreFloorFor(WordLearningGate.SIGHTINGS_FOR_SUGGESTIONS),
                 limit = LEARNED_MAX,
@@ -1241,15 +1367,24 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
             }
         }
 
-        /** The same for the words picked up automatically, one rank band lower. */
+        /**
+         * The same for the words picked up automatically — but each at its own rank rather than at one
+         * shared band, so how often a word has been typed decides where it lands (issue #318, round 3).
+         * The list arrives sorted by score, so the ranks only fall and the first one that is too low ends
+         * the run.
+         */
         fun addLearnedDownTo(freq: Int) {
-            while (learnedTaken < learned.size && LEARNED_RANK_FREQ >= freq && out.size < completionCap) {
-                val text = cased(learned[learnedTaken++])
+            while (learnedTaken < learned.size && out.size < completionCap) {
+                val (stored, score) = learned[learnedTaken]
+                val rank = learnedRankFor(score)
+                if (rank < freq) break
+                learnedTaken++
+                val text = cased(stored)
                 out.putIfAbsent(
                     text.lowercase(),
                     WordSuggestionCandidate(
                         text = text,
-                        confidence = LEARNED_RANK_FREQ / 255.0,
+                        confidence = rank / 255.0,
                         sourceProvider = this,
                         isLearned = true,
                     ),
@@ -1421,18 +1556,42 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         trustedByUser: Boolean,
     ): LearnOutcome {
         val enabled = prefs.suggestion.learnTypedWords.get()
-        val trimmed = word.trim()
+        // A sentence that ends on an address hands over `jannis@example.com.` — the dot stays inside the
+        // run while it is being typed (issue #318) and has nothing to do with the address afterwards.
+        val trimmed = WordRun.trimTrailingPunctuation(word.trim())
         // Cheap refusals first — the common case by far is a word the dictionary already knows, and this
         // runs at every word boundary.
         if (!enabled || origin != WordOrigin.TYPED || isPrivateSession) return LearnOutcome.NOTHING
         if (!WordLearningGate.isLearnableForm(trimmed)) return LearnOutcome.NOTHING
         val lang = dictLangFor(subtype) ?: return LearnOutcome.NOTHING
-        val known = isKnownWord(trimmed, subtype) || isInUserDictionary(trimmed, subtype)
-        if (known) return LearnOutcome.NOTHING
-
         val index = lowerIndexFor(subtype)
         val folded = index.fold(trimmed)
-        val slip = if (trustedByUser) {
+        // A word the vocabulary already holds is normally none of our business — with one exception: the
+        // ones we put into the personal dictionary ourselves. Counting used to stop at promotion (and
+        // [isKnownWord] consults the personal dictionary, so it stopped here), which left a name typed
+        // every day indistinguishable from one typed three times in March — and the strip with nothing to
+        // order the user's own words by (issue #318, round 3). Those sightings are that record, so they
+        // keep accruing. The cheap in-memory test comes first: the personal-dictionary query behind
+        // [isInUserDictionary] must not run for every ordinary word.
+        val ourPromotedWord = if (!isKnownWord(trimmed, subtype)) {
+            false
+        } else {
+            val ours = (learnedSnapshotFor(subtype)?.scoreOfKey(folded) ?: 0.0) > 0.0 &&
+                isInUserDictionary(trimmed, subtype)
+            if (!ours) return LearnOutcome.NOTHING
+            true
+        }
+
+        // An address gets no slip reasoning, and saying so out loud beats letting it run: neither witness
+        // can see anything there. No dictionary word sits one edit from an eighteen-character string, and
+        // the beam has no candidate to offer, so the test would answer "not a slip" for a mis-typed
+        // address just as confidently as for a correct one. A gate that always says yes is not a gate —
+        // what actually protects the vocabulary here is the ladder: an address typed wrong once sits at
+        // one sighting, invisible to the strip, and decays away.
+        // A promoted word does not face the gate again either: it passed once, it is in the user's
+        // dictionary now, and re-judging it would let a stray beam reading silently drop the very
+        // sightings that are supposed to record how much it is used.
+        val slip = if (trustedByUser || ourPromotedWord || WordRun.isAddressLike(trimmed)) {
             false
         } else {
             val reading = tapPoints?.let { beamReadingOf(trimmed, subtype, index, it) }

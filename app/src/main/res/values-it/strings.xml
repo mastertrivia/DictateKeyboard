@@ -18,6 +18,8 @@
     <string name="prefs__media__emoji_history__title" comment="Preference group title">Emoji usate</string>
     <string name="prefs__media__emoji_history_enabled" comment="Preference title">Abilita storico Emoji</string>
     <string name="prefs__media__emoji_history_enabled__summary" comment="Preference summary">Conserva le emoji usate recentemente per un accesso rapido</string>
+    <string name="prefs__media__emoji_row_enabled">Riga di emoji</string>
+    <string name="prefs__media__emoji_row_enabled__summary">Mostra sopra la tastiera una riga con le emoji fissate e quelle usate di recente</string>
     <string name="prefs__media__emoji_history_pinned_update_strategy" comment="Preference title">Pianifica aggiornamento (selezionato)</string>
     <string name="prefs__media__emoji_history_recent_update_strategy" comment="Preference title">Pianifica aggiornamento (recente)</string>
     <string name="prefs__media__emoji_history_max_size">Numero massimo di elementi da tenere</string>
@@ -58,6 +60,10 @@
     <string name="quick_action__arrow_left__tooltip">Eseguire freccia sinistra</string>
     <string name="quick_action__arrow_right" comment="Please mind the limited available space for the quick action strings">Destra</string>
     <string name="quick_action__arrow_right__tooltip">Eseguire freccia destra</string>
+    <string name="quick_action__move_start_of_page" comment="Please mind the limited available space for the quick action strings">Inizio testo</string>
+    <string name="quick_action__move_start_of_page__tooltip">Vai all\'inizio del testo</string>
+    <string name="quick_action__move_end_of_page" comment="Please mind the limited available space for the quick action strings">Fine testo</string>
+    <string name="quick_action__move_end_of_page__tooltip">Vai alla fine del testo</string>
     <string name="quick_action__clipboard_clear_primary_clip" comment="Please mind the limited available space for the quick action strings">Pulire clip</string>
     <string name="quick_action__clipboard_clear_primary_clip__tooltip">Esegui sgombro degli appunti primari</string>
     <string name="quick_action__clipboard_copy" comment="Please mind the limited available space for the quick action strings">Copia</string>
@@ -90,6 +96,8 @@
     <string name="quick_action__voice_input__tooltip" comment="IME stands for Input Method Editor and is indirectly equivalent to 'keyboard'.">Apri fornitore d\'immissione di voce</string>
     <string name="quick_action__one_handed_mode" comment="Please mind the limited available space for the quick action strings">A una mano</string>
     <string name="quick_action__one_handed_mode__tooltip">Attiva o disattiva modalità a una mano</string>
+    <string name="quick_action__toggle_number_row" comment="Quick action that shows or hides the row of digit keys above the letters. Please mind the limited available space for the quick action strings">Riga numeri</string>
+    <string name="quick_action__toggle_number_row__tooltip">Mostra o nascondi la riga dei numeri</string>
     <string name="quick_action__drag_marker" comment="This action is only used as a placeholder in the actions editor drag and drop screen and only visible in debug mode">Trascina</string>
     <string name="quick_action__drag_marker__tooltip" comment="This action is only used as a placeholder in the actions editor drag and drop screen and only visible in debug mode">Posizione dell\'attuale marcatore di trascinamento</string>
     <string name="quick_action__noop" comment="Noop=no operation; this action is only used as a placeholder in the actions editor drag and drop screen">Nessuna</string>
@@ -118,6 +126,12 @@
     <string name="settings__search__clear_recent" comment="Button to clear the recent searches">Cancella ricerche recenti</string>
     <string name="settings__search__popular" comment="Header above a small list of popular settings shortcuts">Popolari</string>
     <string name="settings__search__no_results" comment="Shown when a settings search returns nothing">Nessuna impostazione trovata</string>
+    <string name="settings__search__keywords__text_expansion" comment="NOT SHOWN ANYWHERE — extra search terms that lead to the typing-shortcut setting, which lets a short trigger expand into a saved block of text. Translate as the words people in your language would actually type when looking for that feature, separated by spaces. Do not translate word for word; add or drop terms as makes sense.">espansione testo abbreviazione scorciatoia frammento macro testo automatico modello snippet text expansion</string>
+    <string name="settings__search__keywords__selection_metrics" comment="NOT SHOWN ANYWHERE — extra search terms that lead to the setting which shows how many words and characters are selected. Translate as the words people in your language would actually type when looking for it, separated by spaces. Do not translate word for word.">conta parole numero di parole caratteri lunghezza statistiche</string>
+    <string name="settings__search__keywords__trim_on_copy" comment="NOT SHOWN ANYWHERE — extra search terms that lead to the setting which removes spaces and line breaks at the ends of copied text. Translate as the words people in your language would actually type when looking for it, separated by spaces. Do not translate word for word.">rifilare spazi rimuovere pulire copiare tagliare</string>
+    <string name="settings__search__keywords__clear_cache">cache archiviazione spazio file temporanei liberare eliminare pulire</string>
+    <string name="settings__search__keywords__emoji_row">emoji riga barra recenti usate sopra tastiera rapido</string>
+    <string name="settings__search__keywords__request_timeout">timeout tempo scaduto lento attesa connessione secondi</string>
     <string name="settings__localization__title" comment="Title of languages and Layout screen">Lingue &amp; Layout</string>
     <string name="settings__localization__display_language_names_in__label" comment="Label of Display language names in preference">Visualizza i nomi delle lingue in</string>
     <string name="settings__localization__display_keyboard_labels_in_subtype_language" comment="Label of Display keyboard labels in subtype language preference">Visualizza le etichette della tastiera nella lingua secondaria</string>
@@ -349,6 +363,8 @@
     <string name="pref__smartbar__group_layout_specific__label" comment="Preference group title">Impostazioni specifiche della disposizione</string>
     <string name="pref__smartbar__flip_toggles__label" comment="Preference title">Inverti pulsanti di attivazione</string>
     <string name="pref__smartbar__flip_toggles__summary" comment="Preference summary">Inverte i pulsanti di attivazione nella riga di azione</string>
+    <string name="pref__smartbar__selection_metrics__label" comment="Preference title, keep short">Contatore selezione</string>
+    <string name="pref__smartbar__selection_metrics__summary" comment="Preference summary, keep short (one line)">Parole e caratteri selezionati</string>
     <string name="pref__smartbar__shared_actions_auto_expand_collapse__label" comment="Preference title">Espandi/riduci automaticamente</string>
     <string name="pref__smartbar__shared_actions_auto_expand_collapse__summary" comment="Preference summary">Espande/comprime automaticamente la riga di azione condivisa in base allo stato corrente</string>
     <string name="pref__smartbar__extended_actions_placement__label" comment="Preference title">Posizionamento riga d\'azione</string>
@@ -368,8 +384,15 @@
     <string name="pref__correction__auto_space_punctuation__summary" comment="Preference summary">Inserisci automaticamente uno spazio dopo un segno di punteggiatura</string>
     <string name="pref__correction__remember_caps_lock_state__label" comment="Preference title">Ricorda lo stato del maiuscolo</string>
     <string name="pref__correction__remember_caps_lock_state__summary" comment="Preference summary">Il maiuscolo rimarrà attivo quando ti sposti ad un altro campo di testo</string>
-    <string name="pref__correction__double_space_period__label" comment="Preference title">Doppio tocco barra spaziatrice</string>
-    <string name="pref__correction__double_space_period__summary" comment="Preference summary">Doppio tocco su barra spaziatrice per mettere il punto (.) seguito da uno spazio</string>
+    <string name="pref__correction__double_space_period__label" comment="Preference title">Doppio tocco sulla barra spaziatrice</string>
+    <string name="enum__double_space_action__punctuation" comment="Enum value label">Fine frase</string>
+    <string name="enum__double_space_action__punctuation__description" comment="Enum value description. The character in brackets is the Devanagari danda, the Hindi full stop, and must stay as it is.">Il carattere che chiude una frase nella lingua che stai scrivendo, seguito da uno spazio: quasi sempre un punto, il danda (।) in hindi.</string>
+    <string name="enum__double_space_action__comma" comment="Enum value label">Virgola</string>
+    <string name="enum__double_space_action__comma__description" comment="Enum value description">Una virgola seguita da uno spazio.</string>
+    <string name="enum__double_space_action__newline" comment="Enum value label">A capo</string>
+    <string name="enum__double_space_action__newline__description" comment="Enum value description">Un ritorno a capo al posto dello spazio.</string>
+    <string name="enum__double_space_action__slash" comment="Enum value label">Barra</string>
+    <string name="enum__double_space_action__slash__description" comment="Enum value description">Una barra senza spazi, per scrivere ad esempio e/o.</string>
     <string name="pref__spelling__title" comment="Preference group title">Ortografia</string>
     <string name="pref__spelling__active_spellchecker__summary_disabled">Disabilitato a livello di sistema. Nessuna sottolineatura rossa apparirà nei campi di testo per parole incorrette. Tocca qui per cambiare.</string>
     <string name="pref__spelling__active_spellchecker__summary_none">Nessun servizio di controllo ortografico del testo in linea impostato. Tocca per cambiare.</string>
@@ -449,6 +472,10 @@
     <string name="pref__other__settings_theme__light" comment="Possible value of Settings theme preference in Other">Chiaro</string>
     <string name="pref__other__settings_theme__dark" comment="Possible value of Settings theme preference in Other">Scuro</string>
     <string name="pref__other__settings_theme__amoled_dark" comment="Possible value of Settings theme preference in Other">AMOLED Scuro</string>
+    <string name="pref__other__clear_cache__label">Svuota la cache</string>
+    <string name="pref__other__clear_cache__summary">File temporanei: {size}</string>
+    <string name="pref__other__clear_cache__confirm">Svuota</string>
+    <string name="pref__other__clear_cache__message">Elimina i file temporanei che l\'app può ricreare: un file condiviso in corso di trascrizione, GIF e adesivi scaricati, immagini decodificate. La cronologia delle dettature, le registrazioni, le impostazioni e i dizionari non vengono toccati. Una registrazione o trascrizione in corso può interrompersi.</string>
     <!-- About UI strings -->
     <string name="about__title" comment="Title of About activity">Informazioni su</string>
     <string name="about__app_icon_content_description" comment="Content description of app icon in About">Icona dell\'app {app_name}</string>
@@ -533,6 +560,8 @@
     <string name="crash_multiple_notification__body" comment="Body of the notification for consecutive crashes">Ripiega alla tastiera precedente per porre fine ai crash ripetuti. Tocca per visualizzare i dettagli dell\'errore</string>
     <!-- Clipboard strings -->
     <string name="clipboard__header_title">Appunti</string>
+    <string name="clipboard__search_placeholder" comment="Hint inside the clipboard search field">Cerca negli appunti</string>
+    <string name="clipboard__search_no_results" comment="Shown when no clip contains what was typed">Nessun elemento contiene questo</string>
     <string name="clipboard__disabled__title">La cronologia della tastiera è disabilitata</string>
     <string name="clipboard__disabled__message">La cronologia degli appunti di {app_name} consente di salvare e accedere rapidamente a testo e immagini che copi, con la possibilità di fissare elementi, impostare la pulizia automatica e limitare il numero di elementi.</string>
     <string name="clipboard__disabled__enable_button">Attiva la cronologia degli appunti</string>
@@ -562,6 +591,8 @@
     <string name="pref__clipboard__use_internal_clipboard__summary">Usa gli appunti integrati invece degli appunti di sistema</string>
     <string name="pref__clipboard__sync_from_system_clipboard__label">Sincronizza dagli appunti di sistema</string>
     <string name="pref__clipboard__sync_to_system_clipboard__label">Sincronizza con gli appunti di sistema</string>
+    <string name="pref__clipboard__trim_on_copy__label" comment="Preference title, keep short">Rifila durante la copia</string>
+    <string name="pref__clipboard__trim_on_copy__summary" comment="Preference summary, keep short (one line)">Rimuove spazi e a capo alle estremità</string>
     <string name="pref__clipboard__group_clipboard_history__label">Cronologia appunti</string>
     <string name="pref__clipboard__enable_clipboard_history__label">Attiva la cronologia degli appunti</string>
     <string name="pref__clipboard__enable_clipboard_history__summary">Conserva gli elementi degli appunti per un accesso rapido</string>
@@ -853,6 +884,14 @@
         <item quantity="one">{v} secondo</item>
         <item quantity="other">{v} secondi</item>
     </plurals>
+    <plurals name="unit__characters__written">
+        <item quantity="one">{v} carattere</item>
+        <item quantity="other">{v} caratteri</item>
+    </plurals>
+    <plurals name="unit__words__written">
+        <item quantity="one">{v} parola</item>
+        <item quantity="other">{v} parole</item>
+    </plurals>
     <plurals name="unit__items__written">
         <item quantity="one">{v} elemento</item>
         <item quantity="other">{v} elementi</item>
@@ -1080,6 +1119,8 @@
     <string name="dictate__providers_test_success">Connesso · {count} modelli</string>
     <string name="dictate__providers_test_failed">Connessione non riuscita</string>
     <string name="dictate__providers_network_group">Rete</string>
+    <string name="dictate__request_timeout_title">Timeout delle richieste</string>
+    <string name="dictate__request_timeout_summary">{v} s · aumentalo se il tuo server è lento</string>
     <string name="dictate__proxy_title">Proxy</string>
     <string name="dictate__proxy_summary_off">Disattivato · connessione diretta</string>
     <string name="dictate__proxy_enabled_title">Usa un proxy</string>
@@ -1291,9 +1332,15 @@
     <string name="dictate__import_title">Trascrivi file</string>
     <string name="dictate__import_menu">Trascrivi un file</string>
     <string name="dictate__import_menu_summary">Scegli un file audio o video e leggi cosa dice</string>
-    <string name="dictate__import_status_preparing">Preparazione…</string>
-    <string name="dictate__import_status_transcribing">Trascrizione…</string>
-    <string name="dictate__import_status_part">Parte %1$d di %2$d…</string>
+    <string name="dictate__import_step_copy">Ricezione del file</string>
+    <string name="dictate__import_step_extract">Estrazione dell\'audio</string>
+    <string name="dictate__import_step_prepare">Preparazione dell\'audio</string>
+    <string name="dictate__import_step_upload">Caricamento</string>
+    <string name="dictate__import_step_transcribe">Trascrizione con {provider}</string>
+    <string name="dictate__import_step_transcribe_local">Trascrizione su questo dispositivo</string>
+    <string name="dictate__import_step_finish">Completamento</string>
+    <string name="dictate__import_step_percent">{v} %</string>
+    <string name="dictate__import_step_part">Parte {current} di {total}</string>
     <string name="dictate__import_result_label">Trascrizione</string>
     <string name="dictate__import_prompt_button">Rielabora</string>
     <string name="dictate__import_revert">Annulla</string>
@@ -1376,6 +1423,7 @@
     <string name="dictate__wear_standalone_summary">Invia la tua chiave API all\'orologio così può dettare senza il telefono vicino.</string>
     <string name="dictate__wear_standalone_title">Sincronizza chiave con l\'orologio</string>
     <string name="emoji__search__hint">Cerca emoji</string>
+    <string name="emoji__row__open_panel">Apri tutte le emoji</string>
     <string name="emoji__search__no_results">Nessun emoji corrispondente</string>
     <string name="pref__suggestion__api30_inline_suggestions_enabled__label">Suggerimenti di compilazione automatica del sistema</string>
     <string name="pref__suggestion__block_possibly_offensive__summary">Impedisce che parole potenzialmente offensive vengano suggerite mentre digiti</string>
@@ -1480,6 +1528,10 @@
     <string name="dictate__action_save_audio">Salva audio</string>
     <string name="dictate__audio_saved">Audio salvato in Downloads/Dictate: %s</string>
     <string name="dictate__audio_save_failed">Impossibile salvare l\'audio</string>
+    <string name="dictate__instant_recording_mode_off">Disattivato</string>
+    <string name="dictate__instant_recording_mode_always">Ogni volta che si apre la tastiera</string>
+    <string name="dictate__instant_recording_mode_after_switch">Solo dopo essere passati a {app_name}</string>
+    <string name="dictate__instant_recording_in_numeric">Anche nei campi numerici</string>
     <string name="dictate__instant_recording_skip_numeric_title">Salta i campi numerici</string>
     <string name="dictate__instant_recording_skip_numeric_summary">Non avviare automaticamente nei campi numerici, telefono o PIN</string>
     <string name="settings__localization__subtype_status_words">Suggerimenti</string>

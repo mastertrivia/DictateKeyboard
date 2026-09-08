@@ -47,6 +47,7 @@ import dev.patrickgold.florisboard.ime.core.Subtype
 import dev.patrickgold.florisboard.ime.input.CapitalizationBehavior
 import dev.patrickgold.florisboard.ime.input.HapticVibrationMode
 import dev.patrickgold.florisboard.ime.input.InputFeedbackActivationMode
+import dev.patrickgold.florisboard.ime.keyboard.DoubleSpaceAction
 import dev.patrickgold.florisboard.ime.keyboard.IncognitoMode
 import dev.patrickgold.florisboard.ime.keyboard.SpaceBarMode
 import dev.patrickgold.florisboard.ime.landscapeinput.LandscapeInputUiMode
@@ -112,6 +113,14 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
         val stripTrackingParams = boolean(
             key = "clipboard__strip_tracking_params",
             default = false,
+        )
+        // On by default, unlike the link cleaner above (issue #335). The difference is what is at stake
+        // when it is wrong: dropping a tracking parameter can break a link, while dropping the space the
+        // selection handle caught costs nothing anyone wanted to keep — and a selection made of nothing
+        // but whitespace is left alone, so the one case where the padding *is* the content still works.
+        val trimOnCopy = boolean(
+            key = "clipboard__trim_on_copy",
+            default = true,
         )
         val suggestionEnabled = boolean(
             key = "clipboard__suggestion_enabled",
@@ -206,6 +215,14 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
         val doubleSpacePeriod = boolean(
             key = "correction__double_space_period",
             default = true,
+        )
+        // What that second tap writes (issue #333). Kept apart from the switch above rather than folded
+        // into it as an "off" value, so nobody's existing on/off choice has to be migrated to keep
+        // meaning what it meant. The default asks the language rather than naming a character — Hindi
+        // ends a sentence with the danda (issue #315).
+        val doubleSpaceAction = enum(
+            key = "correction__double_space_action",
+            default = DoubleSpaceAction.PUNCTUATION,
         )
         val rememberCapsLockState = boolean(
             key = "correction__remember_caps_lock_state",
@@ -343,6 +360,23 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
             key = "dictate__trust_user_certificates",
             default = false,
         )
+        /**
+         * Seconds a request may go without a byte before it counts as failed (issue #337).
+         *
+         * One number for both halves of the wait — the gap between bytes and the budget for the whole
+         * call — because they are the same question to the person waiting, and telling the two apart
+         * takes knowing how OkHttp works. Two minutes is right for a cloud provider; the reason this is
+         * adjustable at all is the self-hosted end of the range, where a model on a slow machine can
+         * think for longer than that before it answers. Uploads are not capped by this: while bytes are
+         * moving, every one of them starts the clock again.
+         *
+         * The file import ignores anything lower than its own, more generous limits — a screen with a
+         * cancel button on it is not the place to give up early.
+         */
+        val requestTimeout = int(
+            key = "dictate__request_timeout",
+            default = 120,
+        )
 
         // --- DEPRECATED flat credential prefs (migration source only) ----------------------------
         // Kept solely so DictateProviderMigrator can copy them into the keyring once. Do not read these
@@ -432,11 +466,25 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
             default = false,
         )
         // Hold-to-record instead of tap-to-start/tap-to-stop (issue #235): press and hold the mic, speak,
-        // release to send — slide left to discard, slide up to latch. Off by default because it replaces
-        // the mic's long-press shortcuts (file transcription, send-with-local-model) with the hold
-        // itself. Long-form segmented ignores it: a ten-minute dictation cannot be held down.
+        // release to send — slide left to discard, slide up to latch. Long-form segmented ignores it: a
+        // ten-minute dictation cannot be held down.
+        //
+        // ON by default since 2026-09-06. It shipped off because it takes the mic's *idle* long-press,
+        // which is how you pick a file to transcribe (#88) — but that has its own way in since #301: share
+        // the file to Dictate, or use the import row in the Dictate settings. Holding to speak is what
+        // almost everyone reaches for; transcribing a file is the rarer errand and no longer depends on
+        // this gesture. The send-button hold for the on-device model (#228) is not affected, since that
+        // one is only reachable while a recording is already running.
         val pushToTalk = boolean(
             key = "dictate__push_to_talk",
+            default = true,
+        )
+        // Guard for the one-time switch of existing users onto hold-to-record (the new default above).
+        // Fires once, so a keyboard already in use ends up behaving like a fresh install rather than
+        // keeping a default nobody chose; the setting is one tap away in Dictate › Recording for anyone
+        // who wants the old behaviour. See DictateLegacyMigrator.migratePushToTalkDefaultIfNeeded.
+        val pushToTalkDefaultMigrated = boolean(
+            key = "dictate__push_to_talk_default_migrated",
             default = false,
         )
         // Minutes the on-device model may sit idle before it is unloaded from RAM to free memory (models
@@ -466,6 +514,20 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
             key = "dictate__instant_recording_skip_numeric",
             default = true,
         )
+
+        /**
+         * Narrows instant recording to the one moment the user clearly meant it: having just switched
+         * *to* Dictate from another keyboard (issue #224). With this off it fires on every field the
+         * keyboard opens on, which as a default keyboard is most taps into most fields.
+         *
+         * Stored beside [instantRecording] rather than folded into one enum so that nobody's existing
+         * setting has to be migrated; the settings screen presents the two as a single three-way choice.
+         */
+        val instantRecordingAfterSwitchOnly = boolean(
+            key = "dictate__instant_recording_after_switch_only",
+            default = false,
+        )
+
         // Floating dictation button (issue #88): the in-app master toggle. The bubble only shows when
         // this is on AND the DictateAccessibilityService is enabled in the system accessibility settings
         // (the latter is the actual permission; this lets the user hide the bubble without digging into
@@ -949,6 +1011,17 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
             key = "emoji__history_recent_max_size",
             default = 90,
         )
+
+        /**
+         * The row of recently used emojis between the Smartbar and the keyboard (issue #340).
+         *
+         * Off by default on purpose: it makes the keyboard one row taller, and growing everyone's
+         * keyboard unasked on an update is the kind of surprise that gets reported as a bug.
+         */
+        val rowEnabled = boolean(
+            key = "emoji__row_enabled",
+            default = false,
+        )
         val suggestionEnabled = boolean(
             key = "emoji__suggestion_enabled",
             default = true,
@@ -1385,6 +1458,10 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
             key = "localization__french_punctuation_migrated",
             default = false,
         )
+        val devanagariPunctuationMigrated = boolean(
+            key = "localization__devanagari_punctuation_migrated",
+            default = false,
+        )
     }
 
     val other = Other()
@@ -1455,6 +1532,12 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
         val extendedActionsPlacement = enum(
             key = "smartbar__extended_actions_placement",
             default = ExtendedActionsPlacement.ABOVE_CANDIDATES,
+        )
+        // Word and character count of the selection, in the suggestion strip (issue #335). Off by
+        // default: the strip is the suggestions' place, and this borrows it for a moment.
+        val selectionMetrics = boolean(
+            key = "smartbar__selection_metrics",
+            default = false,
         )
     }
 

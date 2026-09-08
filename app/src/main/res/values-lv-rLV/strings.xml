@@ -18,6 +18,8 @@
     <string name="prefs__media__emoji_history__title" comment="Preference group title">Emocijzīmju vēsture</string>
     <string name="prefs__media__emoji_history_enabled" comment="Preference title">Iespējot emocijzīmju vēsturi</string>
     <string name="prefs__media__emoji_history_enabled__summary" comment="Preference summary">Paturēt nesen izmantotās emocijzīmes ātrai piekļuvei</string>
+    <string name="prefs__media__emoji_row_enabled">Emocijzīmju rinda</string>
+    <string name="prefs__media__emoji_row_enabled__summary">Rādīt virs tastatūras rindu ar piespraustajām un nesen izmantotajām emocijzīmēm</string>
     <string name="prefs__media__emoji_history_pinned_update_strategy" comment="Preference title">Atjaunināšanas stratēģija (Piesprausta)</string>
     <string name="prefs__media__emoji_history_recent_update_strategy" comment="Preference title">Atjaunināšanas stratēģija (Nesena)</string>
     <string name="prefs__media__emoji_history_max_size">Lielākais paturamo vienumu skaits</string>
@@ -58,6 +60,10 @@
     <string name="quick_action__arrow_left__tooltip">Izpildīt bultu pa kreisi</string>
     <string name="quick_action__arrow_right" comment="Please mind the limited available space for the quick action strings">Pa labi</string>
     <string name="quick_action__arrow_right__tooltip">Izpildīt bultu pa labi</string>
+    <string name="quick_action__move_start_of_page" comment="Please mind the limited available space for the quick action strings">Teksta sākums</string>
+    <string name="quick_action__move_start_of_page__tooltip">Pāriet uz teksta sākumu</string>
+    <string name="quick_action__move_end_of_page" comment="Please mind the limited available space for the quick action strings">Teksta beigas</string>
+    <string name="quick_action__move_end_of_page__tooltip">Pāriet uz teksta beigām</string>
     <string name="quick_action__ime_hide_ui" comment="Please mind the limited available space for the quick action strings">Paslēpt tastatūru</string>
     <string name="quick_action__ime_hide_ui__tooltip">Veikt tastatūras paslēpšanu</string>
     <string name="quick_action__clipboard_clear_primary_clip__tooltip">Izpildīt galvenā starliktuves vienuma notīrīšanu</string>
@@ -91,6 +97,8 @@
     <string name="quick_action__floating_window_mode" comment="Please mind the limited available space for the quick action strings">Peldošs</string>
     <string name="quick_action__one_handed_mode" comment="Please mind the limited available space for the quick action strings">Vienrocīgs</string>
     <string name="quick_action__one_handed_mode__tooltip">Pārslēgt vienrocīgo ievadi</string>
+    <string name="quick_action__toggle_number_row" comment="Quick action that shows or hides the row of digit keys above the letters. Please mind the limited available space for the quick action strings">Ciparu rinda</string>
+    <string name="quick_action__toggle_number_row__tooltip">Rādīt vai paslēpt ciparu rindu</string>
     <string name="quick_action__drag_marker__tooltip" comment="This action is only used as a placeholder in the actions editor drag and drop screen and only visible in debug mode">Pašreizējā rādītāja vilkšanas atrašanās vieta</string>
     <string name="quick_action__noop" comment="Noop=no operation; this action is only used as a placeholder in the actions editor drag and drop screen">Nekas</string>
     <string name="quick_action__noop__tooltip" comment="Noop=no operation; this action is only used as a placeholder in the actions editor drag and drop screen">Nav darbības</string>
@@ -118,6 +126,12 @@
     <string name="settings__search__clear_recent" comment="Button to clear the recent searches">Notīrīt nesenos meklējumus</string>
     <string name="settings__search__popular" comment="Header above a small list of popular settings shortcuts">Populāri</string>
     <string name="settings__search__no_results" comment="Shown when a settings search returns nothing">Nav atrasts neviens iestatījums</string>
+    <string name="settings__search__keywords__text_expansion" comment="NOT SHOWN ANYWHERE — extra search terms that lead to the typing-shortcut setting, which lets a short trigger expand into a saved block of text. Translate as the words people in your language would actually type when looking for that feature, separated by spaces. Do not translate word for word; add or drop terms as makes sense.">teksta izvēršana saīsinājums fragments makro automātiskais teksts veidne snippet text expansion</string>
+    <string name="settings__search__keywords__selection_metrics" comment="NOT SHOWN ANYWHERE — extra search terms that lead to the setting which shows how many words and characters are selected. Translate as the words people in your language would actually type when looking for it, separated by spaces. Do not translate word for word.">vārdu skaits rakstzīmju skaits garums statistika</string>
+    <string name="settings__search__keywords__trim_on_copy" comment="NOT SHOWN ANYWHERE — extra search terms that lead to the setting which removes spaces and line breaks at the ends of copied text. Translate as the words people in your language would actually type when looking for it, separated by spaces. Do not translate word for word.">apgriezt atstarpes noņemt tīrīt kopēt izgriezt</string>
+    <string name="settings__search__keywords__clear_cache">kešatmiņa krātuve vieta pagaidu faili atbrīvot dzēst tīrīt</string>
+    <string name="settings__search__keywords__emoji_row">emocijzīmes rinda josla nesen izmantotās virs tastatūras ātri</string>
+    <string name="settings__search__keywords__request_timeout">noildze taimauts lēns gaidīšana savienojums sekundes</string>
     <string name="settings__localization__title" comment="Title of languages and Layout screen">Valodas un izkārtojumi</string>
     <string name="settings__localization__display_language_names_in__label" comment="Label of Display language names in preference">Attēlot valodu nosaukumu</string>
     <string name="settings__localization__display_keyboard_labels_in_subtype_language" comment="Label of Display keyboard labels in subtype language preference">Attēlot tastatūras iezīmes apakšveida valodā</string>
@@ -396,6 +410,8 @@
     <string name="pref__smartbar__group_layout_specific__label" comment="Preference group title">Izkārtojuma iespējas</string>
     <string name="pref__smartbar__flip_toggles__label" comment="Preference title">Apvērst pārslēgšanas pogas</string>
     <string name="pref__smartbar__flip_toggles__summary" comment="Preference summary">Apvērš darbību rindas slēdžus</string>
+    <string name="pref__smartbar__selection_metrics__label" comment="Preference title, keep short">Atlases skaitītājs</string>
+    <string name="pref__smartbar__selection_metrics__summary" comment="Preference summary, keep short (one line)">Atlasītie vārdi un rakstzīmes</string>
     <string name="pref__smartbar__shared_actions_auto_expand_collapse__label" comment="Preference title">Pašizpildoša izvēršanās/sakļaušanās</string>
     <string name="pref__smartbar__shared_actions_auto_expand_collapse__summary" comment="Preference summary">Pašizpildoši izvērš/sakļauj kopīgo darbību rindu atbilstoši pašreizējam stāvoklim</string>
     <string name="pref__smartbar__extended_actions_placement__label" comment="Preference title">Darbību rindas novietojums</string>
@@ -415,8 +431,15 @@
     <string name="pref__correction__auto_space_punctuation__summary" comment="Preference summary">Automātiski ievietot atstarpi pēc pieturzīmes</string>
     <string name="pref__correction__remember_caps_lock_state__label" comment="Preference title">Atcerēties burtslēga stāvokli</string>
     <string name="pref__correction__remember_caps_lock_state__summary" comment="Preference summary">Burtslēgs paliks ieslēgts pēc pārvietošanās uz citu ievades lauku</string>
-    <string name="pref__correction__double_space_period__label" comment="Preference title">Divkāršas atstarpes punkts</string>
-    <string name="pref__correction__double_space_period__summary" comment="Preference summary">Divreiz piesitot atstarpes taustiņam, tiks ievietots punkts un atstarpe</string>
+    <string name="pref__correction__double_space_period__label" comment="Preference title">Dubultpieskāriens atstarpes taustiņam</string>
+    <string name="enum__double_space_action__punctuation" comment="Enum value label">Teikuma beigas</string>
+    <string name="enum__double_space_action__punctuation__description" comment="Enum value description. The character in brackets is the Devanagari danda, the Hindi full stop, and must stay as it is.">Rakstzīme, ar kuru rakstāmajā valodā beidzas teikums, un aiz tās atstarpe — parasti punkts, hindi valodā danda (।).</string>
+    <string name="enum__double_space_action__comma" comment="Enum value label">Komats</string>
+    <string name="enum__double_space_action__comma__description" comment="Enum value description">Komats un aiz tā atstarpe.</string>
+    <string name="enum__double_space_action__newline" comment="Enum value label">Jauna rinda</string>
+    <string name="enum__double_space_action__newline__description" comment="Enum value description">Rindas pārtraukums atstarpes vietā.</string>
+    <string name="enum__double_space_action__slash" comment="Enum value label">Slīpsvītra</string>
+    <string name="enum__double_space_action__slash__description" comment="Enum value description">Slīpsvītra bez atstarpēm, piemēram, rakstot un/vai.</string>
     <string name="pref__spelling__title" comment="Preference group title">Pareizrakstība</string>
     <string name="pref__spelling__active_spellchecker__summary_disabled">Atspējots sistēmā. Nepareizi vārdi netiks pasvītroti ar sarkanu līniju. Piesist, lai mainītu.</string>
     <string name="pref__spelling__active_spellchecker__summary_none">Nav norādīta iekļauta teksta lauka pareizrakstības pārbaudīšanas pakalpe. Piesist, lai mainītu.</string>
@@ -500,6 +523,10 @@
     </string>
     <string name="pref__other__settings_language__label" comment="Label of Settings language preference in Other">Iestatījumu valoda</string>
     <string name="pref__other__show_app_icon__label" comment="Label of Show app icon preference in Other">Rādīt lietotnes ikonu palaidējā</string>
+    <string name="pref__other__clear_cache__label">Notīrīt kešatmiņu</string>
+    <string name="pref__other__clear_cache__summary">Pagaidu faili: {size}</string>
+    <string name="pref__other__clear_cache__confirm">Notīrīt</string>
+    <string name="pref__other__clear_cache__message">Dzēš pagaidu failus, kurus lietotne var izveidot no jauna: kopīgotu failu, kas tiek transkribēts, lejupielādētus GIF un uzlīmes, atkodētus attēlus. Diktēšanas vēsture, ieraksti, iestatījumi un vārdnīcas netiek aiztiktas. Šobrīd notiekošs ieraksts vai transkripcija var tikt pārtraukta.</string>
     <string name="pref__other__show_app_icon__summary_atleast_q" comment="Summary of Show app icon preference in Other for Android 10+">Vienmēr iespējots Android 10+ sistēmas ierobežojumu dēļ</string>
     <!-- About UI strings -->
     <string name="about__title" comment="Title of About activity">Par</string>
@@ -600,6 +627,8 @@
     <string name="crash_multiple_notification__body" comment="Body of the notification for consecutive crashes">Notiek atkāpšanāš uz iepriekšējo tastatūru, lai apturētu nebeidzamu avārijas cilpu. Piesist, lai apskatītu kļūdu izklāstu</string>
     <!-- Clipboard strings -->
     <string name="clipboard__header_title">Starpliktuve</string>
+    <string name="clipboard__search_placeholder" comment="Hint inside the clipboard search field">Meklēt starpliktuvē</string>
+    <string name="clipboard__search_no_results" comment="Shown when no clip contains what was typed">Neviens ieraksts to nesatur</string>
     <string name="clipboard__disabled__title">Starpliktuves vēsture pašreiz ir atspējota</string>
     <string name="clipboard__disabled__message">{app_name} starpliktuves vēsture ļauj ātri saglabāt un piekļūt saturam un attēliem, kas tiek kopēti, ar iespēju piespraust vienumus, uzstādīt pašattīrīšanos un uzstādīt lielāko pieļaujamo vienumu ierobežojumu.</string>
     <string name="clipboard__disabled__enable_button">Iespējot starpliktuves vēsturi</string>
@@ -632,6 +661,8 @@
     <string name="pref__clipboard__sync_to_system_clipboard__label">Sinhronizēt uz sistēmas starpliktuvi</string>
     <string name="pref__clipboard__group_clipboard_suggestion__label">Starpliktuves ieteikumi</string>
     <string name="pref__clipboard__suggestion_enabled__label" comment="Preference title">Starpliktuves satura ieteikumi</string>
+    <string name="pref__clipboard__trim_on_copy__label" comment="Preference title, keep short">Apgriezt kopējot</string>
+    <string name="pref__clipboard__trim_on_copy__summary" comment="Preference summary, keep short (one line)">Noņem atstarpes un rindu pārtraukumus galos</string>
     <string name="pref__clipboard__suggestion_enabled__summary" comment="Preference summary">Ieteikt iepriekš starpliktuvē ievietotu saturu</string>
     <string name="pref__clipboard__num_history_grid_columns__label">Režģa sleju skaits</string>
     <string name="pref__clipboard__suggestion_timeout__label" comment="Preference title; Translators: This should form a sentence together with `pref__clipboard__suggestion_timeout__summary` and is the first part">Ierobežot starpliktuves ieteikumus līdz</string>
@@ -1012,6 +1043,11 @@
         <item quantity="one">{v} rakstzīme</item>
         <item quantity="other">{v} rakstzīmes</item>
     </plurals>
+    <plurals name="unit__words__written">
+        <item quantity="zero">{v} vārdu</item>
+        <item quantity="one">{v} vārds</item>
+        <item quantity="other">{v} vārdi</item>
+    </plurals>
     <plurals name="unit__candidates__written">
         <item quantity="zero">{v} izvēles iespēju</item>
         <item quantity="one">{v} izvēles iespēja</item>
@@ -1240,6 +1276,8 @@
     <string name="dictate__providers_test_success">Savienots · {count} modeļi</string>
     <string name="dictate__providers_test_failed">Savienojums neizdevās</string>
     <string name="dictate__providers_network_group">Tīkls</string>
+    <string name="dictate__request_timeout_title">Pieprasījuma noildze</string>
+    <string name="dictate__request_timeout_summary">{v} s · palieliniet lēnam savam serverim</string>
     <string name="dictate__proxy_title">Starpniekserveris</string>
     <string name="dictate__proxy_summary_off">Izslēgts · tiešs savienojums</string>
     <string name="dictate__proxy_enabled_title">Izmantot starpniekserveri</string>
@@ -1451,9 +1489,15 @@
     <string name="dictate__import_title">Transkribēt failu</string>
     <string name="dictate__import_menu">Transkribēt failu</string>
     <string name="dictate__import_menu_summary">Izvēlies audio vai video failu un izlasi, kas tajā teikts</string>
-    <string name="dictate__import_status_preparing">Sagatavo…</string>
-    <string name="dictate__import_status_transcribing">Transkribē…</string>
-    <string name="dictate__import_status_part">%1$d. daļa no %2$d…</string>
+    <string name="dictate__import_step_copy">Faila saņemšana</string>
+    <string name="dictate__import_step_extract">Audio izgūšana</string>
+    <string name="dictate__import_step_prepare">Audio sagatavošana</string>
+    <string name="dictate__import_step_upload">Augšupielāde</string>
+    <string name="dictate__import_step_transcribe">Transkripcija ar {provider}</string>
+    <string name="dictate__import_step_transcribe_local">Transkripcija šajā ierīcē</string>
+    <string name="dictate__import_step_finish">Pabeigšana</string>
+    <string name="dictate__import_step_percent">{v} %</string>
+    <string name="dictate__import_step_part">{current}. daļa no {total}</string>
     <string name="dictate__import_result_label">Transkripts</string>
     <string name="dictate__import_prompt_button">Pārstrādāt</string>
     <string name="dictate__import_revert">Atsaukt</string>
@@ -1536,6 +1580,7 @@
     <string name="dictate__wear_standalone_summary">Nosūtiet API atslēgu pulkstenim, lai tas var diktēt bez tālruņa tuvumā.</string>
     <string name="dictate__wear_standalone_title">Sinhronizēt atslēgu ar pulksteni</string>
     <string name="emoji__search__hint">Meklēt emocijzīmes</string>
+    <string name="emoji__row__open_panel">Atvērt visas emocijzīmes</string>
     <string name="emoji__search__no_results">Nav atbilstošu emocijzīmju</string>
     <string name="pref__suggestion__api30_inline_suggestions_enabled__label">Sistēmas automātiskās aizpildes ieteikumi</string>
     <string name="pref__suggestion__block_possibly_offensive__summary">Neļauj rakstīšanas laikā ieteikt iespējami aizskarošus vārdus</string>
@@ -1640,6 +1685,10 @@
     <string name="dictate__action_save_audio">Saglabāt audio</string>
     <string name="dictate__audio_saved">Audio saglabāts mapē Downloads/Dictate: %s</string>
     <string name="dictate__audio_save_failed">Neizdevās saglabāt audio</string>
+    <string name="dictate__instant_recording_mode_off">Izslēgts</string>
+    <string name="dictate__instant_recording_mode_always">Katru reizi, kad atveras tastatūra</string>
+    <string name="dictate__instant_recording_mode_after_switch">Tikai pēc pārslēgšanās uz {app_name}</string>
+    <string name="dictate__instant_recording_in_numeric">Arī skaitļu laukos</string>
     <string name="dictate__instant_recording_skip_numeric_title">Izlaist skaitļu laukus</string>
     <string name="dictate__instant_recording_skip_numeric_summary">Nesākt automātiski skaitļu, tālruņa vai PIN laukos</string>
     <string name="settings__localization__subtype_status_words">Ieteikumi</string>

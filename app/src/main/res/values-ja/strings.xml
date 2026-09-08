@@ -18,6 +18,8 @@
     <string name="prefs__media__emoji_history__title" comment="Preference group title">絵文字履歴</string>
     <string name="prefs__media__emoji_history_enabled" comment="Preference title">絵文字履歴を有効化</string>
     <string name="prefs__media__emoji_history_enabled__summary" comment="Preference summary">最近使用した絵文字を保存して素早くアクセスできるようにします</string>
+    <string name="prefs__media__emoji_row_enabled">絵文字の行</string>
+    <string name="prefs__media__emoji_row_enabled__summary">ピン留めした絵文字と最近使った絵文字をキーボードの上に一列で表示します</string>
     <string name="prefs__media__emoji_history_pinned_update_strategy" comment="Preference title">更新方法（ピン留め）</string>
     <string name="prefs__media__emoji_history_recent_update_strategy" comment="Preference title">更新方法（最近使用）</string>
     <string name="prefs__media__emoji_history_max_size">保持できる最大アイテム数</string>
@@ -58,6 +60,10 @@
     <string name="quick_action__arrow_left__tooltip">左矢印を実行</string>
     <string name="quick_action__arrow_right" comment="Please mind the limited available space for the quick action strings">右矢印</string>
     <string name="quick_action__arrow_right__tooltip">右矢印を実行</string>
+    <string name="quick_action__move_start_of_page" comment="Please mind the limited available space for the quick action strings">先頭へ</string>
+    <string name="quick_action__move_start_of_page__tooltip">テキストの先頭へ移動</string>
+    <string name="quick_action__move_end_of_page" comment="Please mind the limited available space for the quick action strings">末尾へ</string>
+    <string name="quick_action__move_end_of_page__tooltip">テキストの末尾へ移動</string>
     <string name="quick_action__clipboard_clear_primary_clip" comment="Please mind the limited available space for the quick action strings">メインクリップ消去</string>
     <string name="quick_action__clipboard_clear_primary_clip__tooltip">メインクリップボードを空にする</string>
     <string name="quick_action__clipboard_copy" comment="Please mind the limited available space for the quick action strings">コピー</string>
@@ -90,6 +96,8 @@
     <string name="quick_action__voice_input__tooltip" comment="IME stands for Input Method Editor and is indirectly equivalent to 'keyboard'.">音声入力プロバイダを開く</string>
     <string name="quick_action__one_handed_mode" comment="Please mind the limited available space for the quick action strings">片手モード</string>
     <string name="quick_action__one_handed_mode__tooltip">片手モードの切り替え</string>
+    <string name="quick_action__toggle_number_row" comment="Quick action that shows or hides the row of digit keys above the letters. Please mind the limited available space for the quick action strings">数字キー行</string>
+    <string name="quick_action__toggle_number_row__tooltip">数字キーの行を表示/非表示</string>
     <string name="quick_action__drag_marker" comment="This action is only used as a placeholder in the actions editor drag and drop screen and only visible in debug mode">ドラッグマーカー</string>
     <string name="quick_action__drag_marker__tooltip" comment="This action is only used as a placeholder in the actions editor drag and drop screen and only visible in debug mode">Current drag marker position</string>
     <string name="quick_action__noop" comment="Noop=no operation; this action is only used as a placeholder in the actions editor drag and drop screen">操作なし</string>
@@ -118,6 +126,12 @@
     <string name="settings__search__clear_recent" comment="Button to clear the recent searches">最近の検索を消去</string>
     <string name="settings__search__popular" comment="Header above a small list of popular settings shortcuts">人気</string>
     <string name="settings__search__no_results" comment="Shown when a settings search returns nothing">設定が見つかりません</string>
+    <string name="settings__search__keywords__text_expansion" comment="NOT SHOWN ANYWHERE — extra search terms that lead to the typing-shortcut setting, which lets a short trigger expand into a saved block of text. Translate as the words people in your language would actually type when looking for that feature, separated by spaces. Do not translate word for word; add or drop terms as makes sense.">定型文 テキスト展開 短縮 スニペット マクロ 単語登録 snippet text expansion</string>
+    <string name="settings__search__keywords__selection_metrics" comment="NOT SHOWN ANYWHERE — extra search terms that lead to the setting which shows how many words and characters are selected. Translate as the words people in your language would actually type when looking for it, separated by spaces. Do not translate word for word.">文字数 単語数 カウント 統計</string>
+    <string name="settings__search__keywords__trim_on_copy" comment="NOT SHOWN ANYWHERE — extra search terms that lead to the setting which removes spaces and line breaks at the ends of copied text. Translate as the words people in your language would actually type when looking for it, separated by spaces. Do not translate word for word.">トリミング 空白 削除 コピー 切り取り</string>
+    <string name="settings__search__keywords__clear_cache">キャッシュ ストレージ 空き容量 一時ファイル 削除 クリア 掃除</string>
+    <string name="settings__search__keywords__emoji_row">絵文字 行 バー 最近 使った キーボード 上 クイック</string>
+    <string name="settings__search__keywords__request_timeout">タイムアウト 時間切れ 遅い 待機 接続 秒</string>
     <string name="settings__localization__title" comment="Title of languages and Layout screen">言語と入力</string>
     <string name="settings__localization__display_language_names_in__label" comment="Label of Display language names in preference">言語名の表示形式</string>
     <string name="settings__localization__display_keyboard_labels_in_subtype_language" comment="Label of Display keyboard labels in subtype language preference">サブタイプの言語でキーボードラベルを表示</string>
@@ -416,6 +430,8 @@
     <string name="pref__smartbar__group_layout_specific__label" comment="Preference group title">レイアウト固有のオプション</string>
     <string name="pref__smartbar__flip_toggles__label" comment="Preference title">トグルボタンを反転</string>
     <string name="pref__smartbar__flip_toggles__summary" comment="Preference summary">アクション行のトグルを反転します</string>
+    <string name="pref__smartbar__selection_metrics__label" comment="Preference title, keep short">選択範囲のカウント</string>
+    <string name="pref__smartbar__selection_metrics__summary" comment="Preference summary, keep short (one line)">選択中の単語数と文字数</string>
     <string name="pref__smartbar__shared_actions_auto_expand_collapse__label" comment="Preference title">自動展開/折りたたみ</string>
     <string name="pref__smartbar__shared_actions_auto_expand_collapse__summary" comment="Preference summary">現在の状態に基づいて共有アクション行を自動的に展開/折りたたみます</string>
     <string name="pref__smartbar__extended_actions_placement__label" comment="Preference title">アクション行の配置</string>
@@ -435,8 +451,15 @@
     <string name="pref__correction__auto_space_punctuation__summary" comment="Preference summary">句読点の後に自動的にスペースを挿入します</string>
     <string name="pref__correction__remember_caps_lock_state__label" comment="Preference title">CapsLockの状態を記憶</string>
     <string name="pref__correction__remember_caps_lock_state__summary" comment="Preference summary">別のテキストフィールドに移動してもCapsLockはオンのまま</string>
-    <string name="pref__correction__double_space_period__label" comment="Preference title">ダブルスペースでピリオド入力</string>
-    <string name="pref__correction__double_space_period__summary" comment="Preference summary">スペースバーを2回タップするとピリオドとスペースを挿入</string>
+    <string name="pref__correction__double_space_period__label" comment="Preference title">スペースキーのダブルタップ</string>
+    <string name="enum__double_space_action__punctuation" comment="Enum value label">文の終わり</string>
+    <string name="enum__double_space_action__punctuation__description" comment="Enum value description. The character in brackets is the Devanagari danda, the Hindi full stop, and must stay as it is.">入力中の言語で文を終える文字とスペース。多くは句点、ヒンディー語ではダンダ（।）。</string>
+    <string name="enum__double_space_action__comma" comment="Enum value label">読点</string>
+    <string name="enum__double_space_action__comma__description" comment="Enum value description">読点とスペース。</string>
+    <string name="enum__double_space_action__newline" comment="Enum value label">改行</string>
+    <string name="enum__double_space_action__newline__description" comment="Enum value description">スペースの代わりに改行。</string>
+    <string name="enum__double_space_action__slash" comment="Enum value label">スラッシュ</string>
+    <string name="enum__double_space_action__slash__description" comment="Enum value description">スペースなしのスラッシュ。and/or のような表記に。</string>
     <string name="pref__spelling__title" comment="Preference group title">スペル</string>
     <string name="pref__spelling__active_spellchecker__summary_disabled">システム全体で無効。誤った単語のテキストフィールドに赤い線は表示されません。タップして変更。</string>
     <string name="pref__spelling__active_spellchecker__summary_none">インラインテキストスペルチェッカーサービスが設定されていません。タップして変更。</string>
@@ -519,6 +542,10 @@
     <string name="pref__other__settings_accent_color__label" comment="Label of accent color preference in Other"> 設定アクセントカラー </string>
     <string name="pref__other__settings_language__label" comment="Label of Settings language preference in Other">設定言語</string>
     <string name="pref__other__show_app_icon__label" comment="Label of Show app icon preference in Other">ランチャーにアプリアイコンを表示</string>
+    <string name="pref__other__clear_cache__label">キャッシュを削除</string>
+    <string name="pref__other__clear_cache__summary">一時ファイル: {size}</string>
+    <string name="pref__other__clear_cache__confirm">削除</string>
+    <string name="pref__other__clear_cache__message">アプリが作り直せる一時ファイルを削除します。文字起こし中の共有ファイル、ダウンロードした GIF やステッカー、展開した画像などです。音声入力の履歴、録音、設定、辞書はそのまま残ります。実行中の録音や文字起こしは中断されることがあります。</string>
     <string name="pref__other__show_app_icon__summary_atleast_q" comment="Summary of Show app icon preference in Other for Android 10+">システムの制限により、Android 10以降では常に有効です</string>
     <!-- About UI strings -->
     <string name="about__title" comment="Title of About activity">アプリについて</string>
@@ -611,6 +638,8 @@
     <string name="crash_multiple_notification__body" comment="Body of the notification for consecutive crashes">無限クラッシュループを停止するため、以前のキーボードにフォールバックしています。タップしてエラー詳細を表示</string>
     <!-- Clipboard strings -->
     <string name="clipboard__header_title">クリップボード</string>
+    <string name="clipboard__search_placeholder" comment="Hint inside the clipboard search field">クリップボードを検索</string>
+    <string name="clipboard__search_no_results" comment="Shown when no clip contains what was typed">その語を含む項目はありません</string>
     <string name="clipboard__disabled__title">クリップボード履歴は現在無効です</string>
     <string name="clipboard__disabled__message">{app_name}のクリップボード履歴を使用すると、コピーしたテキストや画像を素早く保存してアクセスできます。また、アイテムをピン留めしたり、自動クリーンアップを設定したり、アイテム数の上限を設定したりできます。</string>
     <string name="clipboard__disabled__enable_button">クリップボード履歴を有効にする</string>
@@ -641,6 +670,8 @@
     <string name="pref__clipboard__sync_to_system_clipboard__label">システムクリップボードへ同期</string>
     <string name="pref__clipboard__group_clipboard_suggestion__label">クリップボードの候補</string>
     <string name="pref__clipboard__suggestion_enabled__label" comment="Preference title">クリップボードコンテンツ候補</string>
+    <string name="pref__clipboard__trim_on_copy__label" comment="Preference title, keep short">コピー時にトリミング</string>
+    <string name="pref__clipboard__trim_on_copy__summary" comment="Preference summary, keep short (one line)">前後の空白と改行を取り除きます</string>
     <string name="pref__clipboard__suggestion_enabled__summary" comment="Preference summary">以前にコピーしたクリップボードコンテンツを提案します</string>
     <string name="pref__clipboard__suggestion_timeout__label" comment="Preference title; Translators: This should form a sentence together with `pref__clipboard__suggestion_timeout__summary` and is the first part">クリップボード候補を制限する</string>
     <string name="pref__clipboard__suggestion_timeout__summary" comment="Preference summary; Translators: This should form a sentence together with `pref__clipboard__suggestion_timeout__label` and is the second part">過去{v}秒以内にコピーされたアイテム</string>
@@ -1003,6 +1034,9 @@
     <plurals name="unit__characters__written">
         <item quantity="other">{v}文字</item>
     </plurals>
+    <plurals name="unit__words__written">
+        <item quantity="other">{v}単語</item>
+    </plurals>
     <plurals name="unit__candidates__written">
         <item quantity="other">{v}候補</item>
     </plurals>
@@ -1229,6 +1263,8 @@
     <string name="dictate__providers_test_success">接続済み · {count}モデル</string>
     <string name="dictate__providers_test_failed">接続に失敗しました</string>
     <string name="dictate__providers_network_group">ネットワーク</string>
+    <string name="dictate__request_timeout_title">リクエストのタイムアウト</string>
+    <string name="dictate__request_timeout_summary">{v} 秒 · 自分のサーバーが遅い場合は長くしてください</string>
     <string name="dictate__proxy_title">プロキシ</string>
     <string name="dictate__proxy_summary_off">オフ · 直接接続</string>
     <string name="dictate__proxy_enabled_title">プロキシを使用</string>
@@ -1440,9 +1476,15 @@
     <string name="dictate__import_title">ファイルを文字起こし</string>
     <string name="dictate__import_menu">ファイルを文字起こし</string>
     <string name="dictate__import_menu_summary">音声または動画ファイルを選んで、内容を読みましょう</string>
-    <string name="dictate__import_status_preparing">準備中…</string>
-    <string name="dictate__import_status_transcribing">文字起こし中…</string>
-    <string name="dictate__import_status_part">%2$d 件中 %1$d 件目…</string>
+    <string name="dictate__import_step_copy">ファイルの受け取り</string>
+    <string name="dictate__import_step_extract">音声の取り出し</string>
+    <string name="dictate__import_step_prepare">音声の準備</string>
+    <string name="dictate__import_step_upload">アップロード</string>
+    <string name="dictate__import_step_transcribe">{provider} で文字起こし</string>
+    <string name="dictate__import_step_transcribe_local">この端末で文字起こし</string>
+    <string name="dictate__import_step_finish">仕上げ</string>
+    <string name="dictate__import_step_percent">{v}%</string>
+    <string name="dictate__import_step_part">{total} 件中 {current} 件目</string>
     <string name="dictate__import_result_label">文字起こし</string>
     <string name="dictate__import_prompt_button">書き直す</string>
     <string name="dictate__import_revert">元に戻す</string>
@@ -1525,6 +1567,7 @@
     <string name="dictate__wear_standalone_summary">API キーを時計に送れば、近くにスマートフォンがなくても音声入力できます。</string>
     <string name="dictate__wear_standalone_title">キーを時計に同期</string>
     <string name="emoji__search__hint">絵文字を検索</string>
+    <string name="emoji__row__open_panel">すべての絵文字を開く</string>
     <string name="emoji__search__no_results">一致する絵文字がありません</string>
     <string name="pref__suggestion__api30_inline_suggestions_enabled__label">システムの自動入力候補</string>
     <string name="pref__suggestion__block_possibly_offensive__summary">入力中に不適切と思われる単語が候補に表示されないようにします</string>
@@ -1629,6 +1672,10 @@
     <string name="dictate__action_save_audio">音声を保存</string>
     <string name="dictate__audio_saved">音声を Downloads/Dictate に保存しました: %s</string>
     <string name="dictate__audio_save_failed">音声を保存できませんでした</string>
+    <string name="dictate__instant_recording_mode_off">オフ</string>
+    <string name="dictate__instant_recording_mode_always">キーボードを開くたびに</string>
+    <string name="dictate__instant_recording_mode_after_switch">{app_name} に切り替えたときだけ</string>
+    <string name="dictate__instant_recording_in_numeric">数字入力欄でも有効にする</string>
     <string name="dictate__instant_recording_skip_numeric_title">数字入力欄をスキップ</string>
     <string name="dictate__instant_recording_skip_numeric_summary">数字・電話・PIN入力欄では自動開始しない</string>
     <string name="settings__localization__subtype_status_words">予測変換</string>

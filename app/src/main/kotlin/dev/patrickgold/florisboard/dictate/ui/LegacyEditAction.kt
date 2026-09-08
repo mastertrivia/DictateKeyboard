@@ -25,6 +25,8 @@ import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Numbers
 import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material.icons.filled.SelectAll
+import androidx.compose.material.icons.filled.VerticalAlignBottom
+import androidx.compose.material.icons.filled.VerticalAlignTop
 import androidx.compose.material.icons.automirrored.outlined.Assignment
 import androidx.compose.material.icons.outlined.Gif
 import org.florisboard.lib.compose.icons.Sticker
@@ -53,7 +55,12 @@ enum class LegacyEditAction {
     STICKER,
     CLIPBOARD,
     SWITCH,
-    BACKSPACE;
+    BACKSPACE,
+    // Jump to the very start or end of the field (issue #335). They matter more here than on the
+    // keyboard: this layout has no arrow keys at all, only the space bar's swipe, which walks the
+    // cursor one character at a time.
+    HOME,
+    END;
 
     val icon: ImageVector
         get() = when (this) {
@@ -73,6 +80,8 @@ enum class LegacyEditAction {
             CLIPBOARD -> Icons.AutoMirrored.Outlined.Assignment
             SWITCH -> Icons.Default.KeyboardHide
             BACKSPACE -> Icons.Default.Backspace
+            HOME -> Icons.Default.VerticalAlignTop
+            END -> Icons.Default.VerticalAlignBottom
         }
 
     @get:StringRes
@@ -95,6 +104,9 @@ enum class LegacyEditAction {
             SWITCH -> R.string.dictate__legacy_action_switch
             // Reuses the existing backspace content-description string (already localised everywhere).
             BACKSPACE -> R.string.dictate__legacy_backspace
+            // Same buttons as in the Smartbar, so they carry the same names rather than a second set.
+            HOME -> R.string.quick_action__move_start_of_page
+            END -> R.string.quick_action__move_end_of_page
         }
 
     companion object {

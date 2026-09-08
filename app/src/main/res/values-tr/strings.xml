@@ -18,6 +18,8 @@
     <string name="prefs__media__emoji_history__title" comment="Preference group title">Emoji geçmişi</string>
     <string name="prefs__media__emoji_history_enabled" comment="Preference title">Emoji geçmişini etkinleştir</string>
     <string name="prefs__media__emoji_history_enabled__summary" comment="Preference summary">Hızlı erişim için son kullanılan emojileri sakla</string>
+    <string name="prefs__media__emoji_row_enabled">Emoji satırı</string>
+    <string name="prefs__media__emoji_row_enabled__summary">Klavyenin üstünde sabitlenmiş ve son kullanılan emojilerden oluşan bir satır göster</string>
     <string name="prefs__media__emoji_history_pinned_update_strategy" comment="Preference title">Güncelleme stratejisi (Sabitlenmiş)</string>
     <string name="prefs__media__emoji_history_recent_update_strategy" comment="Preference title">Güncelleme stratejisi (Son Kullanılan)</string>
     <string name="prefs__media__emoji_history_max_size">Saklanacak maksimum öge sayısı</string>
@@ -58,6 +60,10 @@
     <string name="quick_action__arrow_left__tooltip">Sol ok eylemini gerçekleştir</string>
     <string name="quick_action__arrow_right" comment="Please mind the limited available space for the quick action strings">Sağ ok</string>
     <string name="quick_action__arrow_right__tooltip">Sağ ok eylemini gerçekleştir</string>
+    <string name="quick_action__move_start_of_page" comment="Please mind the limited available space for the quick action strings">Metnin başı</string>
+    <string name="quick_action__move_start_of_page__tooltip">Metnin başına git</string>
+    <string name="quick_action__move_end_of_page" comment="Please mind the limited available space for the quick action strings">Metnin sonu</string>
+    <string name="quick_action__move_end_of_page__tooltip">Metnin sonuna git</string>
     <string name="quick_action__ime_hide_ui" comment="Please mind the limited available space for the quick action strings">Klavyeyi gizle</string>
     <string name="quick_action__clipboard_clear_primary_clip" comment="Please mind the limited available space for the quick action strings">Panoyu sil</string>
     <string name="quick_action__clipboard_clear_primary_clip__tooltip">Birincil pano temizleme eylemini gerçekleştir</string>
@@ -93,6 +99,8 @@
     <string name="quick_action__floating_window_mode" comment="Please mind the limited available space for the quick action strings">Yüzen</string>
     <string name="quick_action__one_handed_mode" comment="Please mind the limited available space for the quick action strings">Tek el modu</string>
     <string name="quick_action__one_handed_mode__tooltip">Tek el modunu aç/kapat</string>
+    <string name="quick_action__toggle_number_row" comment="Quick action that shows or hides the row of digit keys above the letters. Please mind the limited available space for the quick action strings">Sayı satırı</string>
+    <string name="quick_action__toggle_number_row__tooltip">Sayı satırını göster veya gizle</string>
     <string name="quick_action__resize_mode" comment="Please mind the limited available space for the quick action strings">Yeniden Boyutlandırma</string>
     <string name="quick_action__drag_marker" comment="This action is only used as a placeholder in the actions editor drag and drop screen and only visible in debug mode">İmleci oynat</string>
     <string name="quick_action__drag_marker__tooltip" comment="This action is only used as a placeholder in the actions editor drag and drop screen and only visible in debug mode">Mevcut sürükleme işareti konumu</string>
@@ -122,6 +130,12 @@
     <string name="settings__search__clear_recent" comment="Button to clear the recent searches">Son aramaları temizle</string>
     <string name="settings__search__popular" comment="Header above a small list of popular settings shortcuts">Popüler</string>
     <string name="settings__search__no_results" comment="Shown when a settings search returns nothing">Ayar bulunamadı</string>
+    <string name="settings__search__keywords__text_expansion" comment="NOT SHOWN ANYWHERE — extra search terms that lead to the typing-shortcut setting, which lets a short trigger expand into a saved block of text. Translate as the words people in your language would actually type when looking for that feature, separated by spaces. Do not translate word for word; add or drop terms as makes sense.">metin genişletme kısaltma kısayol parçacık makro otomatik metin şablon snippet text expansion</string>
+    <string name="settings__search__keywords__selection_metrics" comment="NOT SHOWN ANYWHERE — extra search terms that lead to the setting which shows how many words and characters are selected. Translate as the words people in your language would actually type when looking for it, separated by spaces. Do not translate word for word.">kelime sayısı karakter sayısı uzunluk istatistik</string>
+    <string name="settings__search__keywords__trim_on_copy" comment="NOT SHOWN ANYWHERE — extra search terms that lead to the setting which removes spaces and line breaks at the ends of copied text. Translate as the words people in your language would actually type when looking for it, separated by spaces. Do not translate word for word.">kırpma boşluk silme temizleme kopyalama kesme</string>
+    <string name="settings__search__keywords__clear_cache">önbellek depolama alan geçici dosyalar boşaltma silme temizleme</string>
+    <string name="settings__search__keywords__emoji_row">emoji satır şerit son kullanılan klavye üstünde hızlı</string>
+    <string name="settings__search__keywords__request_timeout">zaman aşımı yavaş bekleme bağlantı saniye</string>
     <string name="settings__localization__title" comment="Title of languages and Layout screen">Diller &amp; Düzenler</string>
     <string name="settings__localization__display_language_names_in__label" comment="Label of Display language names in preference">Dil adlarını şu dilde göster</string>
     <string name="settings__localization__display_keyboard_labels_in_subtype_language" comment="Label of Display keyboard labels in subtype language preference">Klavye etiketlerini alt tür dilinde göster</string>
@@ -435,6 +449,8 @@
     <string name="pref__smartbar__group_layout_specific__label" comment="Preference group title">Düzene özgü seçenekler</string>
     <string name="pref__smartbar__flip_toggles__label" comment="Preference title">Geçiş düğmelerini çevir</string>
     <string name="pref__smartbar__flip_toggles__summary" comment="Preference summary">Eylem satırı geçişlerini çevirir</string>
+    <string name="pref__smartbar__selection_metrics__label" comment="Preference title, keep short">Seçim sayacı</string>
+    <string name="pref__smartbar__selection_metrics__summary" comment="Preference summary, keep short (one line)">Seçilen kelime ve karakter sayısı</string>
     <string name="pref__smartbar__shared_actions_auto_expand_collapse__label" comment="Preference title">Otomatik genişlet/daralt</string>
     <string name="pref__smartbar__shared_actions_auto_expand_collapse__summary" comment="Preference summary">Paylaşılan eylem satırını mevcut duruma göre otomatik genişletir/daraltır</string>
     <string name="pref__smartbar__extended_actions_placement__label" comment="Preference title">Eylem satırı yerleşimi</string>
@@ -454,8 +470,15 @@
     <string name="pref__correction__auto_space_punctuation__summary" comment="Preference summary">Bir noktalama işaretinden sonra otomatik olarak boşluk ekler</string>
     <string name="pref__correction__remember_caps_lock_state__label" comment="Preference title">Caps lock durumunu hatırla</string>
     <string name="pref__correction__remember_caps_lock_state__summary" comment="Preference summary">Başka bir metin alanına geçerken caps lock açık kalır</string>
-    <string name="pref__correction__double_space_period__label" comment="Preference title">Çift boşlukla nokta</string>
-    <string name="pref__correction__double_space_period__summary" comment="Preference summary">Ara çubuğuna iki kez dokunmak, bir nokta ve ardından bir boşluk ekler</string>
+    <string name="pref__correction__double_space_period__label" comment="Preference title">Boşluk çubuğuna çift dokunma</string>
+    <string name="enum__double_space_action__punctuation" comment="Enum value label">Cümle sonu</string>
+    <string name="enum__double_space_action__punctuation__description" comment="Enum value description. The character in brackets is the Devanagari danda, the Hindi full stop, and must stay as it is.">Yazdığınız dilde cümleyi bitiren karakter ve ardından bir boşluk — çoğunlukla nokta, Hintçede danda (।).</string>
+    <string name="enum__double_space_action__comma" comment="Enum value label">Virgül</string>
+    <string name="enum__double_space_action__comma__description" comment="Enum value description">Virgül ve ardından bir boşluk.</string>
+    <string name="enum__double_space_action__newline" comment="Enum value label">Yeni satır</string>
+    <string name="enum__double_space_action__newline__description" comment="Enum value description">Boşluk yerine satır sonu.</string>
+    <string name="enum__double_space_action__slash" comment="Enum value label">Eğik çizgi</string>
+    <string name="enum__double_space_action__slash__description" comment="Enum value description">Boşluksuz eğik çizgi, ve/veya gibi yazımlar için.</string>
     <string name="pref__spelling__title" comment="Preference group title">Yazım Denetimi</string>
     <string name="pref__spelling__active_spellchecker__summary_disabled">Sistem genelinde devre dışı. Metin alanlarında yanlış kelimeler için kırmızı çizgiler görünmeyecek. Değiştirmek için dokunun.</string>
     <string name="pref__spelling__active_spellchecker__summary_none">Satır içi metin yazım denetimi hizmeti ayarlanmamış. Değiştirmek için dokunun.</string>
@@ -539,6 +562,10 @@
     </string>
     <string name="pref__other__settings_language__label" comment="Label of Settings language preference in Other">Ayarlar dili</string>
     <string name="pref__other__show_app_icon__label" comment="Label of Show app icon preference in Other">Uygulama simgesini başlatıcıda göster</string>
+    <string name="pref__other__clear_cache__label">Önbelleği temizle</string>
+    <string name="pref__other__clear_cache__summary">Geçici dosyalar: {size}</string>
+    <string name="pref__other__clear_cache__confirm">Temizle</string>
+    <string name="pref__other__clear_cache__message">Uygulamanın yeniden oluşturabileceği geçici dosyaları siler: yazıya dökülmekte olan paylaşılmış bir dosya, indirilen GIF\'ler ve çıkartmalar, çözümlenmiş görseller. Dikte geçmişiniz, kayıtlarınız, ayarlarınız ve sözlükleriniz etkilenmez. Şu anda süren bir kayıt veya yazıya dökme kesilebilir.</string>
     <string name="pref__other__show_app_icon__summary_atleast_q" comment="Summary of Show app icon preference in Other for Android 10+">Sistem kısıtlamaları nedeniyle Android 10+ üzerinde her zaman etkindir</string>
     <!-- About UI strings -->
     <string name="about__title" comment="Title of About activity">Hakkında</string>
@@ -636,6 +663,8 @@
     <string name="crash_multiple_notification__body" comment="Body of the notification for consecutive crashes">Sonsuz çökme döngüsünü durdurmak için önceki klavyeye geri dönülüyor. Hata ayrıntılarını görüntülemek için dokunun</string>
     <!-- Clipboard strings -->
     <string name="clipboard__header_title">Pano</string>
+    <string name="clipboard__search_placeholder" comment="Hint inside the clipboard search field">Panoda ara</string>
+    <string name="clipboard__search_no_results" comment="Shown when no clip contains what was typed">Bunu içeren bir öge yok</string>
     <string name="clipboard__disabled__title">Pano geçmişi şu anda devre dışı</string>
     <string name="clipboard__disabled__message">{app_name}\'in pano geçmişi, kopyaladığınız metinleri ve resimleri hızlıca saklamanıza ve erişmenize olanak tanır, ögeleri sabitleme, otomatik temizlemeyi yapılandırma ve maksimum öge sınırı belirleme yeteneği sunar.</string>
     <string name="clipboard__disabled__enable_button">Pano geçmişini etkinleştir</string>
@@ -668,6 +697,8 @@
     <string name="pref__clipboard__sync_to_system_clipboard__label">Sistem panosuna senkronize et</string>
     <string name="pref__clipboard__group_clipboard_suggestion__label">Pano önerileri</string>
     <string name="pref__clipboard__suggestion_enabled__label" comment="Preference title">Pano içeriği önerileri</string>
+    <string name="pref__clipboard__trim_on_copy__label" comment="Preference title, keep short">Kopyalarken kırp</string>
+    <string name="pref__clipboard__trim_on_copy__summary" comment="Preference summary, keep short (one line)">Baştaki ve sondaki boşlukları ve satır sonlarını siler</string>
     <string name="pref__clipboard__suggestion_enabled__summary" comment="Preference summary">Daha önce kopyalanan pano içeriğini öner</string>
     <string name="pref__clipboard__num_history_grid_columns__label">Izgara sütun sayısı</string>
     <string name="pref__clipboard__suggestion_timeout__label" comment="Preference title; Translators: This should form a sentence together with `pref__clipboard__suggestion_timeout__summary` and is the first part">Pano önerilerini şununla sınırla</string>
@@ -1048,6 +1079,10 @@
         <item quantity="one">{v} karakter</item>
         <item quantity="other">{v} karakter</item>
     </plurals>
+    <plurals name="unit__words__written">
+        <item quantity="one">{v} kelime</item>
+        <item quantity="other">{v} kelime</item>
+    </plurals>
     <plurals name="unit__candidates__written">
         <item quantity="one">{v} aday</item>
         <item quantity="other">{v} aday</item>
@@ -1275,6 +1310,8 @@
     <string name="dictate__providers_test_success">Bağlandı · {count} model</string>
     <string name="dictate__providers_test_failed">Bağlantı başarısız oldu</string>
     <string name="dictate__providers_network_group">Ağ</string>
+    <string name="dictate__request_timeout_title">İstek zaman aşımı</string>
+    <string name="dictate__request_timeout_summary">{v} sn · yavaş kendi sunucunuz için artırın</string>
     <string name="dictate__proxy_title">Proxy</string>
     <string name="dictate__proxy_summary_off">Kapalı · doğrudan bağlantı</string>
     <string name="dictate__proxy_enabled_title">Proxy kullan</string>
@@ -1486,9 +1523,15 @@
     <string name="dictate__import_title">Dosyayı yazıya dök</string>
     <string name="dictate__import_menu">Bir dosyayı yazıya dök</string>
     <string name="dictate__import_menu_summary">Bir ses veya video dosyası seçin ve ne söylendiğini okuyun</string>
-    <string name="dictate__import_status_preparing">Hazırlanıyor…</string>
-    <string name="dictate__import_status_transcribing">Yazıya dökülüyor…</string>
-    <string name="dictate__import_status_part">Bölüm %1$d / %2$d…</string>
+    <string name="dictate__import_step_copy">Dosya alınıyor</string>
+    <string name="dictate__import_step_extract">Ses çıkarılıyor</string>
+    <string name="dictate__import_step_prepare">Ses hazırlanıyor</string>
+    <string name="dictate__import_step_upload">Yükleniyor</string>
+    <string name="dictate__import_step_transcribe">{provider} ile yazıya dökülüyor</string>
+    <string name="dictate__import_step_transcribe_local">Bu cihazda yazıya dökülüyor</string>
+    <string name="dictate__import_step_finish">Tamamlanıyor</string>
+    <string name="dictate__import_step_percent">%{v}</string>
+    <string name="dictate__import_step_part">Bölüm {current} / {total}</string>
     <string name="dictate__import_result_label">Metin</string>
     <string name="dictate__import_prompt_button">Yeniden düzenle</string>
     <string name="dictate__import_revert">Geri al</string>
@@ -1571,6 +1614,7 @@
     <string name="dictate__wear_standalone_summary">API anahtarını saate gönder; telefon yokken de dikte edebilsin.</string>
     <string name="dictate__wear_standalone_title">Anahtarı saatle senkronize et</string>
     <string name="emoji__search__hint">Emoji ara</string>
+    <string name="emoji__row__open_panel">Tüm emojileri aç</string>
     <string name="emoji__search__no_results">Eşleşen emoji yok</string>
     <string name="pref__suggestion__api30_inline_suggestions_enabled__label">Sistem otomatik doldurma önerileri</string>
     <string name="pref__suggestion__block_possibly_offensive__summary">Yazarken muhtemelen rahatsız edici kelimelerin önerilmesini engeller</string>
@@ -1675,6 +1719,10 @@
     <string name="dictate__action_save_audio">Sesi kaydet</string>
     <string name="dictate__audio_saved">Ses Downloads/Dictate klasörüne kaydedildi: %s</string>
     <string name="dictate__audio_save_failed">Ses kaydedilemedi</string>
+    <string name="dictate__instant_recording_mode_off">Kapalı</string>
+    <string name="dictate__instant_recording_mode_always">Klavye her açıldığında</string>
+    <string name="dictate__instant_recording_mode_after_switch">Yalnızca {app_name} klavyesine geçtikten sonra</string>
+    <string name="dictate__instant_recording_in_numeric">Sayı alanlarında da</string>
     <string name="dictate__instant_recording_skip_numeric_title">Sayı alanlarını atla</string>
     <string name="dictate__instant_recording_skip_numeric_summary">Sayı, telefon veya PIN alanlarında otomatik başlatma</string>
     <string name="settings__localization__subtype_status_words">Öneriler</string>

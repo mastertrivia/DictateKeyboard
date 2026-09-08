@@ -18,6 +18,7 @@ package dev.patrickgold.florisboard.ime.keyboard
 
 import android.content.Context
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Numbers
 import androidx.compose.material.icons.outlined.Gif
 import androidx.compose.material.icons.automirrored.filled.ArrowRightAlt
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
@@ -43,6 +44,8 @@ import androidx.compose.material.icons.filled.KeyboardHide
 import androidx.compose.material.icons.filled.KeyboardVoice
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.material.icons.filled.VerticalAlignBottom
+import androidx.compose.material.icons.filled.VerticalAlignTop
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.History
@@ -90,8 +93,11 @@ interface ComputingEvaluator {
     /**
      * The Devanagari consonant waiting for a vowel sign, or [DevanagariBase.NONE] (issue #315). Turns the
      * vowel row of an Indic layout into a matra row while a consonant is pending.
+     *
+     * A string rather than a code point, because a nukta belongs to the base: after क़ the keys have to
+     * preview क़ा, not का.
      */
-    val devanagariBase: Int
+    val devanagariBase: String
         get() = DevanagariBase.NONE
 
     fun context(): Context?
@@ -216,6 +222,15 @@ fun ComputingEvaluator.computeImageVector(data: KeyData): ImageVector? {
         KeyCode.ARROW_DOWN -> {
             Icons.Default.KeyboardArrowDown
         }
+        // Jump to the very start or end of the field (issue #335). Vertical icons on purpose: the jump
+        // is vertical too — it leaves the line — and unlike the horizontal pair these carry no
+        // handedness, so they read the same in a right-to-left script.
+        KeyCode.MOVE_START_OF_PAGE -> {
+            Icons.Default.VerticalAlignTop
+        }
+        KeyCode.MOVE_END_OF_PAGE -> {
+            Icons.Default.VerticalAlignBottom
+        }
         KeyCode.CLIPBOARD_COPY -> {
             Icons.Default.ContentCopy
         }
@@ -235,6 +250,12 @@ fun ComputingEvaluator.computeImageVector(data: KeyData): ImageVector? {
         KeyCode.COMPACT_LAYOUT_TO_RIGHT,
         KeyCode.TOGGLE_COMPACT_LAYOUT -> {
             context()?.vectorResource(id = R.drawable.ic_accessibility_one_handed)
+        }
+        // One icon for both states on purpose (issue #333), the way the one-handed toggle does it: the
+        // digit row sits directly under this button, so whether it is there is the plainest feedback
+        // available and an icon that also flips would only say it twice.
+        KeyCode.TOGGLE_NUMBER_ROW -> {
+            Icons.Default.Numbers
         }
         KeyCode.TOGGLE_FLOATING_WINDOW -> {
             val enabledIcon = context()?.vectorResource(id = R.drawable.ic_floating_keyboard)

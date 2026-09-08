@@ -22,6 +22,10 @@ import dev.patrickgold.florisboard.app.settings.dictionary.UserDictionaryType
  * that shows it, with [sectionRes] (the screen) and optional [parentRes] forming the breadcrumb.
  * When [anchor] is set the destination row is tagged with Modifier.settingsSearchAnchor and the
  * result scrolls to + highlights it; otherwise it lands on the screen.
+ *
+ * [keywordsRes] is for the handful of settings whose own name is not what anyone searches for. It is
+ * matched like the title but never displayed, so the result row still reads as the setting's real
+ * name. Set it only by hand — the generator cannot guess synonyms.
  */
 data class SettingsSearchEntry(
     @StringRes val titleRes: Int,
@@ -29,6 +33,7 @@ data class SettingsSearchEntry(
     val route: Any,
     @StringRes val parentRes: Int? = null,
     val anchor: String? = null,
+    @StringRes val keywordsRes: Int? = null,
 )
 
 object SettingsSearchIndex {
@@ -82,6 +87,10 @@ object SettingsSearchIndex {
         SettingsSearchEntry(R.string.pref__other__settings_language__label, R.string.settings__other__title, Routes.Settings.Other, anchor = "pref__other__settings_language__label"),
         SettingsSearchEntry(R.string.pref__other__show_app_icon__label, R.string.settings__other__title, Routes.Settings.Other, anchor = "pref__other__show_app_icon__label"),
         SettingsSearchEntry(R.string.physical_keyboard__title, R.string.settings__other__title, Routes.Settings.Other, anchor = "physical_keyboard__title"),
+        SettingsSearchEntry(R.string.pref__other__clear_cache__label, R.string.settings__other__title, Routes.Settings.Other, anchor = "pref__other__clear_cache__label",
+            keywordsRes = R.string.settings__search__keywords__clear_cache),
+        SettingsSearchEntry(R.string.dictate__request_timeout_title, R.string.dictate__providers_title, Routes.Settings.DictateProviders, parentRes = R.string.dictate__title, anchor = "dictate__request_timeout_title",
+            keywordsRes = R.string.settings__search__keywords__request_timeout),
         SettingsSearchEntry(R.string.devtools__title, R.string.settings__other__title, Routes.Settings.Other, anchor = "devtools__title"),
         SettingsSearchEntry(R.string.backup_and_restore__title, R.string.settings__other__title, Routes.Settings.Other),
         SettingsSearchEntry(R.string.backup_and_restore__back_up__title, R.string.settings__other__title, Routes.Settings.Other, anchor = "backup_and_restore__back_up__title"),
@@ -94,6 +103,8 @@ object SettingsSearchIndex {
         SettingsSearchEntry(R.string.pref__clipboard__group_clipboard_suggestion__label, R.string.settings__clipboard__title, Routes.Settings.Clipboard),
         SettingsSearchEntry(R.string.pref__clipboard__suggestion_enabled__label, R.string.settings__clipboard__title, Routes.Settings.Clipboard, anchor = "pref__clipboard__suggestion_enabled__label"),
         SettingsSearchEntry(R.string.pref__clipboard__strip_tracking_params__label, R.string.settings__clipboard__title, Routes.Settings.Clipboard, anchor = "pref__clipboard__strip_tracking_params__label"),
+        SettingsSearchEntry(R.string.pref__clipboard__trim_on_copy__label, R.string.settings__clipboard__title, Routes.Settings.Clipboard, anchor = "pref__clipboard__trim_on_copy__label",
+            keywordsRes = R.string.settings__search__keywords__trim_on_copy),
         SettingsSearchEntry(R.string.pref__clipboard__suggestion_timeout__label, R.string.settings__clipboard__title, Routes.Settings.Clipboard, anchor = "pref__clipboard__suggestion_timeout__label"),
         SettingsSearchEntry(R.string.pref__clipboard__group_clipboard_history__label, R.string.settings__clipboard__title, Routes.Settings.Clipboard),
         SettingsSearchEntry(R.string.pref__clipboard__enable_clipboard_history__label, R.string.settings__clipboard__title, Routes.Settings.Clipboard, anchor = "pref__clipboard__enable_clipboard_history__label"),
@@ -153,7 +164,11 @@ object SettingsSearchIndex {
         SettingsSearchEntry(R.string.dictate__manage_prompts_title, R.string.dictate__rewording_title, Routes.Settings.DictateRewording, parentRes = R.string.dictate__title, anchor = "dictate__manage_prompts_title"),
         // Hand-added (issue #283): the typing shortcut lives inside the prompt editor dialog, which the
         // generator cannot see — and it is exactly what someone looking for text expansion searches for.
-        SettingsSearchEntry(R.string.dictate__prompt_trigger_title, R.string.dictate__prompts_title, Routes.Settings.DictatePrompts(), parentRes = R.string.dictate__title),
+        // The keywords are hand-added too (issue #333). The feature was complete and still went unfound,
+        // because it is filed under "Prompts" and named "Typing shortcut": nobody looking for a text
+        // expander types either of those words.
+        SettingsSearchEntry(R.string.dictate__prompt_trigger_title, R.string.dictate__prompts_title, Routes.Settings.DictatePrompts(), parentRes = R.string.dictate__title,
+            keywordsRes = R.string.settings__search__keywords__text_expansion),
         SettingsSearchEntry(R.string.dictate__auto_formatting_title, R.string.dictate__rewording_title, Routes.Settings.DictateRewording, parentRes = R.string.dictate__title, anchor = "dictate__auto_formatting_title"),
         SettingsSearchEntry(R.string.dictate__reasoning_effort_title, R.string.dictate__rewording_title, Routes.Settings.DictateRewording, parentRes = R.string.dictate__title, anchor = "dictate__reasoning_effort_title"),
         SettingsSearchEntry(R.string.dictate__system_prompt_title, R.string.dictate__rewording_title, Routes.Settings.DictateRewording, parentRes = R.string.dictate__title),
@@ -186,7 +201,6 @@ object SettingsSearchIndex {
         SettingsSearchEntry(R.string.dictate__trim_silent_gaps_title, R.string.dictate__recording_group, Routes.Settings.DictateRecording, parentRes = R.string.dictate__title, anchor = "dictate__trim_silent_gaps_title"),
         SettingsSearchEntry(R.string.dictate__speed_up_title, R.string.dictate__recording_group, Routes.Settings.DictateRecording, parentRes = R.string.dictate__title, anchor = "dictate__speed_up_title"),
         SettingsSearchEntry(R.string.dictate__instant_recording_title, R.string.dictate__recording_group, Routes.Settings.DictateRecording, parentRes = R.string.dictate__title, anchor = "dictate__instant_recording_title"),
-        SettingsSearchEntry(R.string.dictate__instant_recording_skip_numeric_title, R.string.dictate__recording_group, Routes.Settings.DictateRecording, parentRes = R.string.dictate__title, anchor = "dictate__instant_recording_skip_numeric_title"),
         SettingsSearchEntry(R.string.dictate__auto_enter_title, R.string.dictate__output_group, Routes.Settings.DictateOutput, parentRes = R.string.dictate__title, anchor = "dictate__auto_enter_title"),
         SettingsSearchEntry(R.string.dictate__instant_output_title, R.string.dictate__output_group, Routes.Settings.DictateOutput, parentRes = R.string.dictate__title, anchor = "dictate__instant_output_title"),
         SettingsSearchEntry(R.string.dictate__output_speed_title, R.string.dictate__output_group, Routes.Settings.DictateOutput, parentRes = R.string.dictate__title, anchor = "dictate__output_speed_title"),
@@ -280,6 +294,7 @@ object SettingsSearchIndex {
         SettingsSearchEntry(R.string.prefs__media__sticker__title, R.string.settings__media__title, Routes.Settings.Media),
         SettingsSearchEntry(R.string.prefs__media__emoji_history__title, R.string.settings__media__title, Routes.Settings.Media),
         SettingsSearchEntry(R.string.prefs__media__emoji_history_enabled, R.string.settings__media__title, Routes.Settings.Media, anchor = "prefs__media__emoji_history_enabled"),
+        SettingsSearchEntry(R.string.prefs__media__emoji_row_enabled, R.string.settings__media__title, Routes.Settings.Media, anchor = "prefs__media__emoji_row_enabled", keywordsRes = R.string.settings__search__keywords__emoji_row),
         SettingsSearchEntry(R.string.prefs__media__emoji_history_pinned_update_strategy, R.string.settings__media__title, Routes.Settings.Media, anchor = "prefs__media__emoji_history_pinned_update_strategy"),
         SettingsSearchEntry(R.string.prefs__media__emoji_history_recent_update_strategy, R.string.settings__media__title, Routes.Settings.Media, anchor = "prefs__media__emoji_history_recent_update_strategy"),
         SettingsSearchEntry(R.string.prefs__media__emoji_history_max_size, R.string.settings__media__title, Routes.Settings.Media, anchor = "prefs__media__emoji_history_max_size"),
@@ -308,6 +323,8 @@ object SettingsSearchIndex {
         SettingsSearchEntry(R.string.pref__smartbar__layout__label, R.string.settings__smartbar__title, Routes.Settings.Smartbar, anchor = "pref__smartbar__layout__label"),
         SettingsSearchEntry(R.string.pref__smartbar__group_layout_specific__label, R.string.settings__smartbar__title, Routes.Settings.Smartbar),
         SettingsSearchEntry(R.string.pref__suggestion__display_mode__label, R.string.settings__smartbar__title, Routes.Settings.Smartbar, anchor = "pref__suggestion__display_mode__label"),
+        SettingsSearchEntry(R.string.pref__smartbar__selection_metrics__label, R.string.settings__smartbar__title, Routes.Settings.Smartbar, anchor = "pref__smartbar__selection_metrics__label",
+            keywordsRes = R.string.settings__search__keywords__selection_metrics),
         SettingsSearchEntry(R.string.pref__smartbar__flip_toggles__label, R.string.settings__smartbar__title, Routes.Settings.Smartbar, anchor = "pref__smartbar__flip_toggles__label"),
         SettingsSearchEntry(R.string.pref__smartbar__shared_actions_auto_expand_collapse__label, R.string.settings__smartbar__title, Routes.Settings.Smartbar, anchor = "pref__smartbar__shared_actions_auto_expand_collapse__label"),
         SettingsSearchEntry(R.string.pref__smartbar__extended_actions_placement__label, R.string.settings__smartbar__title, Routes.Settings.Smartbar, anchor = "pref__smartbar__extended_actions_placement__label"),

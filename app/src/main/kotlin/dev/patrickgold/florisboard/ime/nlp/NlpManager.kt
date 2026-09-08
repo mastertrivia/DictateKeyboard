@@ -33,6 +33,8 @@ import dev.patrickgold.florisboard.ime.dictionary.DictionaryManager
 import dev.patrickgold.florisboard.ime.dictionary.LearnedWordsStore
 import dev.patrickgold.florisboard.ime.dictionary.UserDictionaryEntry
 import dev.patrickgold.florisboard.ime.media.emoji.EmojiSuggestionProvider
+import dev.patrickgold.florisboard.ime.media.emoji.EmojiSuggestionType
+import dev.patrickgold.florisboard.ime.media.emoji.emojiQuerySource
 import dev.patrickgold.florisboard.ime.nlp.han.HanShapeBasedLanguageProvider
 import dev.patrickgold.florisboard.ime.nlp.latin.LatinLanguageProvider
 import dev.patrickgold.florisboard.ime.nlp.math.Calculator
@@ -93,6 +95,13 @@ class NlpManager(context: Context) {
     private val glideTypingManager = context.glideTypingManager()
 
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+
+    /**
+     * Whether a selection was already running the last time the Smartbar's expanded state was decided, so
+     * the start of one can be told apart from a change to one (issue #335).
+     */
+    private var wasSelectionActive = false
+
     private val clipboardSuggestionProvider = ClipboardSuggestionProvider(context)
     private val emojiSuggestionProvider = EmojiSuggestionProvider(context)
     private val providers = guardedByLock {
@@ -219,6 +228,32 @@ class NlpManager(context: Context) {
         )
     }
 
+    /**
+     * [SuggestionProvider.continuesWord] for the active subtype: may [char] be written into
+     * [composingWord] without ending it (issue #318)?
+     *
+     * Asked by the input path, which is neither a coroutine nor allowed to be slow, hence the
+     * `runBlocking` — the same trade [providerForcesSuggestionOn] makes, and a cheaper one, because this
+     * is only reached when a separator is pressed rather than on every keystroke. Uncached on purpose: a
+     * stale boolean is harmless, a stale provider instance is not.
+     */
+    fun continuesWord(composingWord: String, char: Char): Boolean {
+        if (composingWord.isEmpty()) return false
+        val subtype = subtypeManager.activeSubtype
+        return runBlocking { getSuggestionProvider(subtype) }.continuesWord(composingWord, char)
+    }
+
+    /**
+     * The capitalised form the active language insists on for [word], or null — see
+     * [SuggestionProvider.standaloneCapitalization]. Reached once per word boundary, on the same terms
+     * as [continuesWord].
+     */
+    fun standaloneCapitalization(word: String): String? {
+        if (word.isEmpty()) return null
+        val subtype = subtypeManager.activeSubtype
+        return runBlocking { getSuggestionProvider(subtype) }.standaloneCapitalization(word, subtype)
+    }
+
     fun providerForcesSuggestionOn(subtype: Subtype): Boolean {
         // Using a cache because I have no idea how fast the runBlocking is
         return providersForceSuggestionOn.getOrPut(subtype.nlpProviders.suggestion) {
@@ -270,6 +305,12 @@ class NlpManager(context: Context) {
                 }
                 else -> emptyList()
             }
+            // A colon query is a *search* for an emoji, and a search takes the whole strip — that is
+            // what the mode is for. A plainly typed word is not a search (issue #338): there the emoji
+            // joins the words rather than replacing them. Read from the input rather than from the
+            // trigger setting, because the colon search stays available in both modes.
+            val emojiSearch = emojiQuerySource(content.composingText, content.currentWordText)
+                .startsWith(EmojiSuggestionType.LEADING_COLON.prefix)
             val suggestions = when {
                 // The switch that says "Display suggestions" was read nowhere below this line (issue
                 // #297): [isSuggestionOn] let emoji suggestions keep the gate open, and since turning
@@ -278,7 +319,7 @@ class NlpManager(context: Context) {
                 !wordSuggestionsWanted() -> {
                     emptyList()
                 }
-                emojiSuggestions.isNotEmpty() && prefs.emoji.suggestionType.get().prefix.isNotEmpty() -> {
+                emojiSuggestions.isNotEmpty() && emojiSearch -> {
                     emptyList()
                 }
                 else -> {
@@ -294,9 +335,13 @@ class NlpManager(context: Context) {
             }
             internalSuggestionsGuard.withLock {
                 if (internalSuggestions.first < reqTime) {
-                    internalSuggestions = reqTime to buildList {
-                        addAll(emojiSuggestions)
-                        addAll(suggestions)
+                    // Words first, emoji after — a flat list, because where they end up on screen is
+                    // the strip's business, not this one's: [CandidatesRow] gives an emoji a narrow
+                    // cell of its own so it costs no word its place (#338).
+                    internalSuggestions = reqTime to when {
+                        emojiSuggestions.isEmpty() -> suggestions
+                        emojiSearch -> emojiSuggestions + suggestions
+                        else -> suggestions + emojiSuggestions
                     }
                 }
             }
@@ -566,6 +611,25 @@ class NlpManager(context: Context) {
                    // menu is visible to prevent annoying UI changes
         }*/
         val isSelection = editorInstance.activeContent.selection.isSelectionMode
+        val selectionJustStarted = isSelection && !wasSelectionActive
+        wasSelectionActive = isSelection
+        // With the selection counter switched on (issue #335), a selection is the one moment the strip has
+        // something of its own to say, so it must not also be the moment the actions take the row.
+        //
+        // Collapsed once, when the selection starts, and then left alone for as long as it lasts. That is
+        // the whole point: this method runs again on every change to the selection, and deciding the state
+        // afresh each time would flicker between the count and the buttons while dragging a handle — and
+        // would undo a deliberate tap on the chevron a moment after it was made. Not touching it means
+        // changing the selection only changes the numbers, and asking for the actions keeps them.
+        if (isSelection && prefs.smartbar.selectionMetrics.get()) {
+            if (selectionJustStarted && prefs.smartbar.sharedActionsExpanded.get()) {
+                scope.launch {
+                    prefs.smartbar.sharedActionsExpandWithAnimation.set(false)
+                    prefs.smartbar.sharedActionsExpanded.set(false)
+                }
+            }
+            return
+        }
         val isExpanded = list1.isNullOrEmpty() && list2.isNullOrEmpty() || isSelection
         // Only write when the expanded state actually changes. This runs on every keystroke (via
         // assembleCandidates); the state usually stays the same while typing a word, so the guard avoids

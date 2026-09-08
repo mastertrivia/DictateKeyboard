@@ -90,8 +90,6 @@ import org.florisboard.lib.android.systemService
 import org.florisboard.lib.kotlin.collectIn
 import org.florisboard.lib.kotlin.collectLatestIn
 
-private val DoubleSpacePeriodMatcher = """([^.!?‽\s]\s)""".toRegex()
-
 /** How much of an expanded snippet must still stand before the cursor for the backspace undo (issue #283). */
 private const val TAIL_MATCH_LENGTH = 120
 
@@ -159,6 +157,16 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
      * already in memory, so the results can narrow on every keystroke and there is nothing to submit.
      */
     val stickerSearchQuery = MutableStateFlow<String?>(null)
+
+    /**
+     * The live query of the clipboard search (issue #333), or `null` when no search is running.
+     *
+     * Same shape as the sticker one, and for the same reason: the clips are already in memory, so the
+     * list narrows on every keystroke and there is nothing to submit. The clipboard panel replaces the
+     * keyboard, which is why searching it has to look like this at all — the query needs keys to type
+     * it with, so the search takes the Smartbar's slot and hands the layout below back to the user.
+     */
+    val clipboardSearchQuery = MutableStateFlow<String?>(null)
 
     private val activeEvaluatorGuard = Mutex(locked = false)
     private var activeEvaluatorVersion = AtomicInteger(0)
@@ -489,6 +497,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
         emojiSearchQuery.value?.let { emojiSearchQuery.value = joined(it); return true }
         gifSearchQuery.value?.let { gifSearchQuery.value = joined(it); return true }
         stickerSearchQuery.value?.let { stickerSearchQuery.value = joined(it); return true }
+        clipboardSearchQuery.value?.let { clipboardSearchQuery.value = joined(it); return true }
         return false
     }
 
@@ -962,6 +971,43 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
     }
 
     /**
+     * The word that just ended together with the capital form its language insists on, or null when
+     * there is nothing to do (issue #333).
+     *
+     * Split from [applyStandaloneCapitalization] because the two have to happen on either side of
+     * [endOfWord]: the word is only readable while it is still composing, and rewriting it is only
+     * safe once the correction path has declined it.
+     */
+    private fun pendingStandaloneCapitalization(): Pair<String, String>? {
+        if (!prefs.correction.autoCapitalization.get()) return null
+        if (activeState.keyVariation == KeyVariation.PASSWORD) return null
+        val content = editorInstance.activeContent
+        if (content.selection.isSelectionMode) return null
+        val word = content.composingText
+        if (word.isEmpty()) return null
+        val capitalized = nlpManager.standaloneCapitalization(word) ?: return null
+        return word to capitalized
+    }
+
+    /**
+     * Writes the capital form over the word it belongs to, and arms the same one-keystroke undo every
+     * other silent correction gets (issue #295): a backspace right after puts the typed spelling back,
+     * which is the escape hatch for the rare place where the lowercase form was meant.
+     *
+     * Only reached from [handleSpace]. A word ended by a full stop is deliberately left alone — "i.e."
+     * would otherwise become "I.e." with no way to notice in time, and the pronoun is followed by a
+     * space almost every time it is written, because a verb follows it.
+     */
+    private fun applyStandaloneCapitalization(pending: Pair<String, String>?) {
+        val (word, capitalized) = pending ?: return
+        // The editor has to still end in the word that was read before the boundary; if anything moved
+        // in between, the safe thing is to leave the text exactly as the user left it.
+        if (!editorInstance.activeContent.textBeforeSelection.endsWith(word)) return
+        editorInstance.replaceTextBeforeCursor(word.length, capitalized)
+        pendingAutoCorrection = AutoCorrection(inserted = capitalized, replaced = word)
+    }
+
+    /**
      * Handles a [KeyCode.SPACE] event. Also handles the auto-correction of two space taps if
      * enabled by the user.
      */
@@ -969,7 +1015,13 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
         // Before the auto-commit candidate: otherwise autocorrect replaces the shortcut with a "better"
         // word and there is nothing left to recognise (issue #283).
         if (expandSnippet(KeyCode.SPACE.toChar().toString())) return
+        // Read while the word is still composing; applied below, once the correction path has had its
+        // say and declined (issue #333).
+        val standaloneCapitalization = pendingStandaloneCapitalization()
         val candidate = endOfWord()
+        if (candidate == null) {
+            applyStandaloneCapitalization(standaloneCapitalization)
+        }
         if (prefs.keyboard.spaceBarSwitchesToCharacters.get()) {
             when (activeState.keyboardMode) {
                 KeyboardMode.NUMERIC_ADVANCED,
@@ -982,10 +1034,15 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
         }
         if (prefs.correction.doubleSpacePeriod.get()) {
             if (inputEventDispatcher.isConsecutiveUp(data)) {
+                // Both halves from the active language's punctuation rule (issue #333): the set that
+                // says a sentence is already finished, and the character that finishes one.
+                val terminators = nlpManager.getActivePunctuationRule().symbolsTerminatingSentence
                 val text = editorInstance.run { activeContent.getTextBeforeCursor(2) }
-                if (text.length == 2 && DoubleSpacePeriodMatcher.matches(text)) {
+                if (DoubleSpace.triggersOn(text, terminators)) {
                     editorInstance.deleteBackwards(OperationUnit.CHARACTERS)
-                    editorInstance.commitText(". ")
+                    editorInstance.commitText(
+                        DoubleSpace.replacementFor(prefs.correction.doubleSpaceAction.get(), terminators),
+                    )
                     return
                 }
             }
@@ -994,6 +1051,27 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
         if (!subtypeManager.activeSubtype.primaryLocale.supportsAutoSpace &&
                 candidate != null) { /* Do nothing */ } else {
             editorInstance.commitText(KeyCode.SPACE.toChar().toString())
+        }
+    }
+
+    /**
+     * Handles a [KeyCode.TOGGLE_NUMBER_ROW] event: folds the digit row away or brings it back
+     * (issue #333).
+     *
+     * Writes to whichever level currently decides, because that is the only version of this button
+     * that always does something. The row is a global preference that a subtype may overrule in either
+     * direction (issue #315, see LayoutManager) — so with an overruling subtype active, flipping the
+     * global setting would leave the keyboard looking exactly as it did, and the button would appear
+     * broken. Clearing the subtype's choice instead would work, but silently throws away a decision the
+     * user made per language; changing that same decision does not.
+     */
+    private suspend fun handleToggleNumberRow() {
+        val subtype = subtypeManager.activeSubtype
+        val override = subtype.numberRow
+        if (override != null) {
+            subtypeManager.modifySubtypeWithSameId(subtype.copy(numberRow = !override))
+        } else {
+            prefs.keyboard.numberRow.set(!prefs.keyboard.numberRow.get())
         }
     }
 
@@ -1158,6 +1236,29 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
         stickerSearchQuery.value = ""
     }
 
+    /** Empties the clipboard query without leaving the search — the ✕ inside the search bar. */
+    fun clearClipboardSearch() {
+        if (clipboardSearchQuery.value == null) return
+        clipboardSearchQuery.value = ""
+    }
+
+    /** Starts a clipboard search: shows the text keyboard so the user can type what to look for. */
+    fun activateClipboardSearch() {
+        clipboardSearchQuery.value = ""
+        activeState.imeUiMode = ImeUiMode.TEXT
+    }
+
+    /**
+     * Closes the clipboard search. [returnToPanel] separates backing out — which belongs back in the
+     * panel the search was opened from — from having just pasted a clip, after which the keyboard is
+     * where the user wants to be, because what follows a paste is usually more writing.
+     */
+    fun closeClipboardSearch(returnToPanel: Boolean = true) {
+        if (clipboardSearchQuery.value == null) return
+        clipboardSearchQuery.value = null
+        if (returnToPanel) activeState.imeUiMode = ImeUiMode.CLIPBOARD
+    }
+
     /** Starts a sticker search: shows the text keyboard so the user can type a file name. */
     fun activateStickerSearch() {
         stickerSearchQuery.value = ""
@@ -1246,6 +1347,11 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
             data = data,
             onEnter = { /* swallow: the results are already filtered */ },
             onExit = { closeStickerSearch() },
+        ) || handleSearchKey(
+            query = clipboardSearchQuery,
+            data = data,
+            onEnter = { /* swallow: the results are already filtered */ },
+            onExit = { closeClipboardSearch() },
         )
         if (consumedBySearch) {
             return@batchEdit
@@ -1325,6 +1431,11 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
             // Repurposed for the transcription history panel (issue #140): opens the browsable list of
             // recent dictations to quickly re-insert or re-transcribe, superseding the one-shot reinsert.
             KeyCode.DICTATE_REINSERT -> { activeState.imeUiMode = ImeUiMode.HISTORY }
+            // Keys that are there to be looked at, not pressed: the अ key wearing the pending consonant
+            // (issue #315). The consonant is already in the text, so writing anything would double it —
+            // and without this branch the fallthrough below would try to encode a negative code point.
+            KeyCode.PREVIEW_ONLY,
+            KeyCode.NOOP -> { /* nothing to do */ }
             KeyCode.KANA_SWITCHER -> handleKanaSwitch()
             KeyCode.KANA_HIRA -> handleKanaHira()
             KeyCode.KANA_KATA -> handleKanaKata()
@@ -1350,6 +1461,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
                 activeState.isActionsEditorVisible = !activeState.isActionsEditorVisible
             }
             KeyCode.TOGGLE_INCOGNITO_MODE -> scope.launch { handleToggleIncognitoMode() }
+            KeyCode.TOGGLE_NUMBER_ROW -> scope.launch { handleToggleNumberRow() }
             KeyCode.UNDO -> editorInstance.performUndo()
             KeyCode.VIEW_CHARACTERS -> activeState.keyboardMode = KeyboardMode.CHARACTERS
             KeyCode.VIEW_NUMERIC -> activeState.keyboardMode = KeyboardMode.NUMERIC
@@ -1403,16 +1515,41 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
                                 // follows every committed candidate put a space after it. Nothing about
                                 // the digit was wrong; the word simply was not over.
                                 //
-                                // The tap evidence still goes: no tap is recorded for a digit, so a trace
-                                // that no longer matches the word cannot decode it anyway (issue #242).
+                                // A digit used to throw the whole trace away, on the reasoning that a
+                                // trace which no longer matches the word cannot decode it anyway. That
+                                // was true when the trace was one thing; since issue #318 split the
+                                // *characters* from the *coordinates* it is only half true, and the half
+                                // it got wrong is the one that decides whether a word may be learned.
+                                // Dropping the record meant `wasFullyTyped("prateek99")` answered no, so
+                                // no word carrying a digit could ever be learned — which is exactly what
+                                // round 3 set out to allow. Recorded as deliberately chosen: on a layout
+                                // without a number row the digit comes off the symbol layer, where a
+                                // coordinate means nothing in the letter geometry the decoder reasons
+                                // about (issues #242, #311, #318).
                                 UCharacter.isDigit(codePoint) -> {
-                                    TouchTrace.reset()
+                                    TouchTrace.markPendingExact()
+                                    TouchTrace.commit(text)
                                     editorInstance.commitChar(text)
                                 }
                                 // A punctuation mark ends the word too, so it can expand a snippet
                                 // trigger (issue #283) — and then it has already written itself.
                                 else -> {
-                                    if (!expandSnippet(text)) {
+                                    val composing = editorInstance.activeContent.composingText
+                                    if (text.length == 1 && nlpManager.continuesWord(composing, text[0])) {
+                                        // Not every separator separates. An e-mail or web address runs
+                                        // through its `@`, its dots and its slashes, and the provider is
+                                        // asked rather than told so that this decision and the composing
+                                        // region are the same decision (issue #318).
+                                        //
+                                        // Recorded as deliberately chosen rather than as a tap: the `@`
+                                        // key sits on the symbol layer, where a coordinate means nothing
+                                        // in the letter geometry the decoder reasons about. The character
+                                        // still has to be recorded, because the trace is what proves the
+                                        // whole run was typed and not dictated (issues #242, #318).
+                                        TouchTrace.markPendingExact()
+                                        TouchTrace.commit(text)
+                                        editorInstance.commitChar(text)
+                                    } else if (!expandSnippet(text)) {
                                         // Punctuation ends the word: correct it or learn it, then drop
                                         // the tap evidence (issues #242, #318).
                                         endOfWord()
@@ -1573,7 +1710,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
         override val isGifSearchActive: Boolean
             get() = gifSearchQuery.value != null
 
-        override val devanagariBase: Int
+        override val devanagariBase: String
             get() = pendingDevanagariBase.value
 
         override fun context(): Context = appContext

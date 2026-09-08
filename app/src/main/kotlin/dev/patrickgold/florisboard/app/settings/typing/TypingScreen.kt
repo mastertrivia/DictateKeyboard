@@ -40,6 +40,7 @@ import dev.patrickgold.florisboard.app.settings.search.settingsSearchAnchor
 import dev.patrickgold.florisboard.app.LocalNavController
 import dev.patrickgold.florisboard.app.Routes
 import dev.patrickgold.florisboard.app.enumDisplayEntriesOf
+import dev.patrickgold.florisboard.ime.keyboard.DoubleSpaceAction
 import dev.patrickgold.florisboard.ime.keyboard.IncognitoMode
 import dev.patrickgold.florisboard.ime.nlp.SpellingLanguageMode
 import dev.patrickgold.florisboard.ime.nlp.latin.AutoCorrectStrength
@@ -181,11 +182,16 @@ fun TypingScreen() = FlorisScreen {
                 title = stringRes(R.string.pref__correction__remember_caps_lock_state__label),
                 summary = stringRes(R.string.pref__correction__remember_caps_lock_state__summary),
             )
-            SwitchPreference(
-                prefs.correction.doubleSpacePeriod,
+            // Switch and choice in one row, the way the hinted number row and the feedback modes do it:
+            // whether the shortcut runs and what it writes are one question, and splitting them left a
+            // second row standing around saying nothing whenever the first was off (issue #333).
+            ListPreference(
+                listPref = prefs.correction.doubleSpaceAction,
+                switchPref = prefs.correction.doubleSpacePeriod,
                 modifier = Modifier.settingsSearchAnchor("pref__correction__double_space_period__label"),
                 title = stringRes(R.string.pref__correction__double_space_period__label),
-                summary = stringRes(R.string.pref__correction__double_space_period__summary),
+                summarySwitchDisabled = stringRes(R.string.state__disabled),
+                entries = enumDisplayEntriesOf(DoubleSpaceAction::class),
             )
         }
 

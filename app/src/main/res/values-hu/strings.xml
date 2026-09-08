@@ -18,6 +18,8 @@
     <string name="prefs__media__emoji_history__title" comment="Preference group title">Emodzsik előzményei</string>
     <string name="prefs__media__emoji_history_enabled" comment="Preference title">Emodzsik előzményeinek engedélyezése</string>
     <string name="prefs__media__emoji_history_enabled__summary" comment="Preference summary">A legutóbb használt emodzsik megtartása a könnyű elérés érdekében</string>
+    <string name="prefs__media__emoji_row_enabled">Emodzsisor</string>
+    <string name="prefs__media__emoji_row_enabled__summary">Egy sor megjelenítése a billentyűzet felett a kitűzött és a nemrég használt emodzsikkal</string>
     <string name="prefs__media__emoji_history_pinned_update_strategy" comment="Preference title">Frissítési stratégia (kitűzött)</string>
     <string name="prefs__media__emoji_history_recent_update_strategy" comment="Preference title">Frissítési stratégia (legutóbbi)</string>
     <string name="prefs__media__emoji_history_max_size">Maximálisan megtartandó elem</string>
@@ -58,6 +60,10 @@
     <string name="quick_action__arrow_left__tooltip">Balra nyíl végrehajtása</string>
     <string name="quick_action__arrow_right" comment="Please mind the limited available space for the quick action strings">Jobbra nyíl</string>
     <string name="quick_action__arrow_right__tooltip">Jobbra nyíl végrehajtása</string>
+    <string name="quick_action__move_start_of_page" comment="Please mind the limited available space for the quick action strings">Szöveg eleje</string>
+    <string name="quick_action__move_start_of_page__tooltip">Ugrás a szöveg elejére</string>
+    <string name="quick_action__move_end_of_page" comment="Please mind the limited available space for the quick action strings">Szöveg vége</string>
+    <string name="quick_action__move_end_of_page__tooltip">Ugrás a szöveg végére</string>
     <string name="quick_action__ime_hide_ui" comment="Please mind the limited available space for the quick action strings">Billentyűzet elrejtése</string>
     <string name="quick_action__ime_hide_ui__tooltip">Billentyűzet elrejtésének végrehajtása</string>
     <string name="quick_action__clipboard_clear_primary_clip" comment="Please mind the limited available space for the quick action strings">Vágólapürítő</string>
@@ -97,6 +103,8 @@
     <string name="quick_action__one_handed_mode__tooltip">Egykezes mód be/ki</string>
     <string name="quick_action__resize_mode" comment="Please mind the limited available space for the quick action strings">Átméretezés</string>
     <string name="quick_action__resize_mode__tooltip">Átméretezési mód be/ki</string>
+    <string name="quick_action__toggle_number_row" comment="Quick action that shows or hides the row of digit keys above the letters. Please mind the limited available space for the quick action strings">Számsor</string>
+    <string name="quick_action__toggle_number_row__tooltip">Számsor megjelenítése vagy elrejtése</string>
     <string name="quick_action__drag_marker" comment="This action is only used as a placeholder in the actions editor drag and drop screen and only visible in debug mode">Húzásjelölő</string>
     <string name="quick_action__drag_marker__tooltip" comment="This action is only used as a placeholder in the actions editor drag and drop screen and only visible in debug mode">Jelenlegi húzásjelölő pozíciója</string>
     <string name="quick_action__noop" comment="Noop=no operation; this action is only used as a placeholder in the actions editor drag and drop screen">Semmi</string>
@@ -125,6 +133,12 @@
     <string name="settings__search__clear_recent" comment="Button to clear the recent searches">Legutóbbi keresések törlése</string>
     <string name="settings__search__popular" comment="Header above a small list of popular settings shortcuts">Népszerű</string>
     <string name="settings__search__no_results" comment="Shown when a settings search returns nothing">Nincs találat a beállítások között</string>
+    <string name="settings__search__keywords__text_expansion" comment="NOT SHOWN ANYWHERE — extra search terms that lead to the typing-shortcut setting, which lets a short trigger expand into a saved block of text. Translate as the words people in your language would actually type when looking for that feature, separated by spaces. Do not translate word for word; add or drop terms as makes sense.">szövegkiegészítés rövidítés szövegrészlet makró automatikus szöveg sablon snippet text expansion</string>
+    <string name="settings__search__keywords__selection_metrics" comment="NOT SHOWN ANYWHERE — extra search terms that lead to the setting which shows how many words and characters are selected. Translate as the words people in your language would actually type when looking for it, separated by spaces. Do not translate word for word.">szavak száma karakterszám hossz statisztika</string>
+    <string name="settings__search__keywords__trim_on_copy" comment="NOT SHOWN ANYWHERE — extra search terms that lead to the setting which removes spaces and line breaks at the ends of copied text. Translate as the words people in your language would actually type when looking for it, separated by spaces. Do not translate word for word.">vágás szóköz eltávolítás tisztítás másolás kivágás</string>
+    <string name="settings__search__keywords__clear_cache">gyorsítótár tárhely hely ideiglenes fájlok felszabadítás törlés takarítás</string>
+    <string name="settings__search__keywords__emoji_row">emodzsi emoji sor sáv nemrég használt billentyűzet felett gyors</string>
+    <string name="settings__search__keywords__request_timeout">időkorlát időtúllépés lassú várakozás kapcsolat másodperc</string>
     <string name="settings__localization__title" comment="Title of languages and Layout screen">Nyelvek és elrendezések</string>
     <string name="settings__localization__display_language_names_in__label" comment="Label of Display language names in preference">Nyelvek neveinek megjelenítése ebben</string>
     <string name="settings__localization__display_keyboard_labels_in_subtype_language" comment="Label of Display keyboard labels in subtype language preference">Billentyűzetcímkék megjelenítése altípusok nyelvén</string>
@@ -443,6 +457,8 @@
     <string name="pref__smartbar__group_layout_specific__label" comment="Preference group title">Elrendezés specifikus beállítások</string>
     <string name="pref__smartbar__flip_toggles__label" comment="Preference title">Kapcsolók váltása</string>
     <string name="pref__smartbar__flip_toggles__summary" comment="Preference summary">Műveleti kapcsolók váltása</string>
+    <string name="pref__smartbar__selection_metrics__label" comment="Preference title, keep short">Kijelölés számlálója</string>
+    <string name="pref__smartbar__selection_metrics__summary" comment="Preference summary, keep short (one line)">A kijelölés szavai és karakterei</string>
     <string name="pref__smartbar__shared_actions_auto_expand_collapse__label" comment="Preference title">Automatikus kinyitás/összecsukás</string>
     <string name="pref__smartbar__shared_actions_auto_expand_collapse__summary" comment="Preference summary">A megosztott műveleti sor automata kinyitása/összecsukása a pillanatnyi állapot alapján</string>
     <string name="pref__smartbar__extended_actions_placement__label" comment="Preference title">Műveleti sor helye</string>
@@ -462,8 +478,15 @@
     <string name="pref__correction__auto_space_punctuation__summary" comment="Preference summary">Szóköz automatikus beillesztése írásjel után</string>
     <string name="pref__correction__remember_caps_lock_state__label" comment="Preference title">Caps lock állapot megjegyzése</string>
     <string name="pref__correction__remember_caps_lock_state__summary" comment="Preference summary">Caps lock marad, ha egy másik szövegmezőbe ugrik</string>
-    <string name="pref__correction__double_space_period__label" comment="Preference title">Dupla szóköz: pont</string>
-    <string name="pref__correction__double_space_period__summary" comment="Preference summary">Ha kétszer megérinti a szóközt, beszúr egy pontot, amelyet egy szóköz követ</string>
+    <string name="pref__correction__double_space_period__label" comment="Preference title">Dupla érintés a szóközre</string>
+    <string name="enum__double_space_action__punctuation" comment="Enum value label">Mondatvég</string>
+    <string name="enum__double_space_action__punctuation__description" comment="Enum value description. The character in brackets is the Devanagari danda, the Hindi full stop, and must stay as it is.">Az a karakter, amellyel a gépelt nyelvben véget ér a mondat, majd egy szóköz — többnyire pont, hindiül a danda (।).</string>
+    <string name="enum__double_space_action__comma" comment="Enum value label">Vessző</string>
+    <string name="enum__double_space_action__comma__description" comment="Enum value description">Vessző, utána szóköz.</string>
+    <string name="enum__double_space_action__newline" comment="Enum value label">Új sor</string>
+    <string name="enum__double_space_action__newline__description" comment="Enum value description">Sortörés a szóköz helyett.</string>
+    <string name="enum__double_space_action__slash" comment="Enum value label">Perjel</string>
+    <string name="enum__double_space_action__slash__description" comment="Enum value description">Perjel szóköz nélkül, például az és/vagy írásához.</string>
     <string name="pref__spelling__title" comment="Preference group title">Helyesírás</string>
     <string name="pref__spelling__active_spellchecker__summary_disabled">Rendszerszintű kikapcsolás. Nem fognak piros vonalak megjelenni a szövegmezőkben a hibás szavak alatt. Érintse meg a változtatáshoz.</string>
     <string name="pref__spelling__active_spellchecker__summary_none">Nincs kiválasztva helyesírás ellenőrző szolgáltatás. Érintse meg a változtatáshoz.</string>
@@ -547,6 +570,10 @@
     </string>
     <string name="pref__other__settings_language__label" comment="Label of Settings language preference in Other">Beállítások nyelve</string>
     <string name="pref__other__show_app_icon__label" comment="Label of Show app icon preference in Other">Alkalmazás ikonjának megjelenítése az indítóban</string>
+    <string name="pref__other__clear_cache__label">Gyorsítótár ürítése</string>
+    <string name="pref__other__clear_cache__summary">Ideiglenes fájlok: {size}</string>
+    <string name="pref__other__clear_cache__confirm">Ürítés</string>
+    <string name="pref__other__clear_cache__message">Törli azokat az ideiglenes fájlokat, amelyeket az alkalmazás újra létre tud hozni: az éppen átírt megosztott fájlt, a letöltött GIF-eket és matricákat, a kibontott képeket. A diktálási előzmények, a felvételek, a beállítások és a szótárak érintetlenek maradnak. Egy éppen futó felvétel vagy átírás megszakadhat.</string>
     <string name="pref__other__show_app_icon__summary_atleast_q" comment="Summary of Show app icon preference in Other for Android 10+">A rendszer korlátozásai miatt Android 10+ rendszereken mindig engedélyezve van</string>
     <!-- About UI strings -->
     <string name="about__title" comment="Title of About activity">Névjegy</string>
@@ -648,6 +675,8 @@
     <string name="crash_multiple_notification__body" comment="Body of the notification for consecutive crashes">Visszalépés az előző billentyűzetre, a végtelen összeomlás megakadályozásához. Érintse meg a hiba részleteinek megtekintéséhez</string>
     <!-- Clipboard strings -->
     <string name="clipboard__header_title">Vágólap</string>
+    <string name="clipboard__search_placeholder" comment="Hint inside the clipboard search field">Keresés a vágólapon</string>
+    <string name="clipboard__search_no_results" comment="Shown when no clip contains what was typed">Egyik elem sem tartalmazza ezt</string>
     <string name="clipboard__disabled__title">A vágólapelőzmények jelenleg ki vannak kapcsolva</string>
     <string name="clipboard__disabled__message">A {app_name} vágólapelőzményei lehetővé teszik, gyorsan eltároljon és elérjen szövegeket és képeket másolásra, az elemek kitűzésének, az automatikus törlésnek és a maximum elemszám beállításának lehetőségével.</string>
     <string name="clipboard__disabled__enable_button">Vágólapelőzmények engedélyezése</string>
@@ -680,6 +709,8 @@
     <string name="pref__clipboard__sync_to_system_clipboard__label">Szinkronizálás a rendszervágólapra</string>
     <string name="pref__clipboard__group_clipboard_suggestion__label">Vágólapjavaslatok</string>
     <string name="pref__clipboard__suggestion_enabled__label" comment="Preference title">Vágólaptartalom-javaslatok</string>
+    <string name="pref__clipboard__trim_on_copy__label" comment="Preference title, keep short">Vágás másoláskor</string>
+    <string name="pref__clipboard__trim_on_copy__summary" comment="Preference summary, keep short (one line)">Eltávolítja a széleken lévő szóközöket és sortöréseket</string>
     <string name="pref__clipboard__suggestion_enabled__summary" comment="Preference summary">Javasolja a vágólap korábban másolt tartalmát</string>
     <string name="pref__clipboard__num_history_grid_columns__label">Rácsoszlopok száma</string>
     <string name="pref__clipboard__suggestion_timeout__label" comment="Preference title; Translators: This should form a sentence together with `pref__clipboard__suggestion_timeout__summary` and is the first part">Korlátozza a vágólapjavaslatokat a következőkre:</string>
@@ -1068,6 +1099,10 @@
         <item quantity="one">{v} karakter</item>
         <item quantity="other">{v} karakter</item>
     </plurals>
+    <plurals name="unit__words__written">
+        <item quantity="one">{v} szó</item>
+        <item quantity="other">{v} szó</item>
+    </plurals>
     <plurals name="unit__candidates__written">
         <item quantity="one">{v} jelölt</item>
         <item quantity="other">{v} jelölt</item>
@@ -1295,6 +1330,8 @@
     <string name="dictate__providers_test_success">Csatlakozva · {count} modell</string>
     <string name="dictate__providers_test_failed">A kapcsolat sikertelen</string>
     <string name="dictate__providers_network_group">Hálózat</string>
+    <string name="dictate__request_timeout_title">Kérés időkorlátja</string>
+    <string name="dictate__request_timeout_summary">{v} s · saját lassú kiszolgálóhoz növeld</string>
     <string name="dictate__proxy_title">Proxy</string>
     <string name="dictate__proxy_summary_off">Ki · közvetlen kapcsolat</string>
     <string name="dictate__proxy_enabled_title">Proxy használata</string>
@@ -1506,9 +1543,15 @@
     <string name="dictate__import_title">Fájl átírása</string>
     <string name="dictate__import_menu">Fájl átírása</string>
     <string name="dictate__import_menu_summary">Válassz egy hang- vagy videofájlt, és olvasd el, mi hangzik el benne</string>
-    <string name="dictate__import_status_preparing">Előkészítés…</string>
-    <string name="dictate__import_status_transcribing">Átírás…</string>
-    <string name="dictate__import_status_part">%2$d/%1$d. rész…</string>
+    <string name="dictate__import_step_copy">Fájl fogadása</string>
+    <string name="dictate__import_step_extract">Hang kinyerése a videóból</string>
+    <string name="dictate__import_step_prepare">Hang előkészítése</string>
+    <string name="dictate__import_step_upload">Feltöltés</string>
+    <string name="dictate__import_step_transcribe">Átírás ezzel: {provider}</string>
+    <string name="dictate__import_step_transcribe_local">Átírás ezen az eszközön</string>
+    <string name="dictate__import_step_finish">Befejezés</string>
+    <string name="dictate__import_step_percent">{v}%</string>
+    <string name="dictate__import_step_part">{current}/{total}. rész</string>
     <string name="dictate__import_result_label">Átirat</string>
     <string name="dictate__import_prompt_button">Átdolgozás</string>
     <string name="dictate__import_revert">Visszavonás</string>
@@ -1591,6 +1634,7 @@
     <string name="dictate__wear_standalone_summary">Küldd el az API-kulcsod az órának, hogy telefon nélkül is diktálhasson.</string>
     <string name="dictate__wear_standalone_title">Kulcs szinkronizálása az órára</string>
     <string name="emoji__search__hint">Emoji keresése</string>
+    <string name="emoji__row__open_panel">Összes emodzsi megnyitása</string>
     <string name="emoji__search__no_results">Nincs találat az emojikra</string>
     <string name="pref__suggestion__api30_inline_suggestions_enabled__label">Rendszer automatikus kitöltési javaslatai</string>
     <string name="pref__suggestion__block_possibly_offensive__summary">Megakadályozza, hogy esetlegesen sértő szavak jelenjenek meg a gépelés közbeni javaslatokban</string>
@@ -1695,6 +1739,10 @@
     <string name="dictate__action_save_audio">Hang mentése</string>
     <string name="dictate__audio_saved">Hang mentve ide: Downloads/Dictate: %s</string>
     <string name="dictate__audio_save_failed">Nem sikerült menteni a hangot</string>
+    <string name="dictate__instant_recording_mode_off">Ki</string>
+    <string name="dictate__instant_recording_mode_always">A billentyűzet minden megnyitásakor</string>
+    <string name="dictate__instant_recording_mode_after_switch">Csak a {app_name} billentyűzetre váltás után</string>
+    <string name="dictate__instant_recording_in_numeric">Számmezőkben is</string>
     <string name="dictate__instant_recording_skip_numeric_title">Számmezők kihagyása</string>
     <string name="dictate__instant_recording_skip_numeric_summary">Ne induljon automatikusan szám-, telefon- vagy PIN-mezőknél</string>
     <string name="settings__localization__subtype_status_words">Javaslatok</string>

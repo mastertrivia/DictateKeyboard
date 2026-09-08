@@ -18,6 +18,8 @@
     <string name="prefs__media__emoji_history__title" comment="Preference group title">Riwayat emoji</string>
     <string name="prefs__media__emoji_history_enabled" comment="Preference title">Aktifkan riwayat emoji</string>
     <string name="prefs__media__emoji_history_enabled__summary" comment="Preference summary">Simpan emoji yang baru saja digunakan agar mudah diakses dengan cepat</string>
+    <string name="prefs__media__emoji_row_enabled">Baris emoji</string>
+    <string name="prefs__media__emoji_row_enabled__summary">Tampilkan baris emoji yang disematkan dan baru digunakan di atas papan ketik</string>
     <string name="prefs__media__emoji_history_pinned_update_strategy" comment="Preference title">Perbarui strategi (disematkan)</string>
     <string name="prefs__media__emoji_history_recent_update_strategy" comment="Preference title">Strategi pembaruan (terbaru)</string>
     <string name="prefs__media__emoji_history_max_size">Jumlah maksimum item yang dapat disimpan</string>
@@ -58,6 +60,10 @@
     <string name="quick_action__arrow_left__tooltip">Lakukan panah kiri</string>
     <string name="quick_action__arrow_right" comment="Please mind the limited available space for the quick action strings">Panah kanan</string>
     <string name="quick_action__arrow_right__tooltip">Lakukan panah kanan</string>
+    <string name="quick_action__move_start_of_page" comment="Please mind the limited available space for the quick action strings">Awal teks</string>
+    <string name="quick_action__move_start_of_page__tooltip">Lompat ke awal teks</string>
+    <string name="quick_action__move_end_of_page" comment="Please mind the limited available space for the quick action strings">Akhir teks</string>
+    <string name="quick_action__move_end_of_page__tooltip">Lompat ke akhir teks</string>
     <string name="quick_action__ime_hide_ui" comment="Please mind the limited available space for the quick action strings">Sembunyikan papan ketik</string>
     <string name="quick_action__ime_hide_ui__tooltip">Sembunyikan papan ketik</string>
     <string name="quick_action__clipboard_clear_primary_clip" comment="Please mind the limited available space for the quick action strings">Hapus klip</string>
@@ -92,6 +98,8 @@
     <string name="quick_action__voice_input__tooltip" comment="IME stands for Input Method Editor and is indirectly equivalent to 'keyboard'.">Buka penyedia masukan suara</string>
     <string name="quick_action__one_handed_mode" comment="Please mind the limited available space for the quick action strings">Satu tangan</string>
     <string name="quick_action__one_handed_mode__tooltip">Alih mode satu tangan</string>
+    <string name="quick_action__toggle_number_row" comment="Quick action that shows or hides the row of digit keys above the letters. Please mind the limited available space for the quick action strings">Baris angka</string>
+    <string name="quick_action__toggle_number_row__tooltip">Tampilkan atau sembunyikan baris angka</string>
     <string name="quick_action__drag_marker" comment="This action is only used as a placeholder in the actions editor drag and drop screen and only visible in debug mode">Tarik marker</string>
     <string name="quick_action__drag_marker__tooltip" comment="This action is only used as a placeholder in the actions editor drag and drop screen and only visible in debug mode">Posisi penanda tarikan saat ini</string>
     <string name="quick_action__noop" comment="Noop=no operation; this action is only used as a placeholder in the actions editor drag and drop screen">Tidak ada</string>
@@ -121,6 +129,12 @@ Klik di sini untuk menyelesaikan masalah ini.</string>
     <string name="settings__search__clear_recent" comment="Button to clear the recent searches">Hapus pencarian terkini</string>
     <string name="settings__search__popular" comment="Header above a small list of popular settings shortcuts">Populer</string>
     <string name="settings__search__no_results" comment="Shown when a settings search returns nothing">Tidak ada pengaturan yang ditemukan</string>
+    <string name="settings__search__keywords__text_expansion" comment="NOT SHOWN ANYWHERE — extra search terms that lead to the typing-shortcut setting, which lets a short trigger expand into a saved block of text. Translate as the words people in your language would actually type when looking for that feature, separated by spaces. Do not translate word for word; add or drop terms as makes sense.">ekspansi teks singkatan pintasan cuplikan makro teks otomatis templat snippet text expansion</string>
+    <string name="settings__search__keywords__selection_metrics" comment="NOT SHOWN ANYWHERE — extra search terms that lead to the setting which shows how many words and characters are selected. Translate as the words people in your language would actually type when looking for it, separated by spaces. Do not translate word for word.">hitung kata jumlah kata karakter panjang statistik</string>
+    <string name="settings__search__keywords__trim_on_copy" comment="NOT SHOWN ANYWHERE — extra search terms that lead to the setting which removes spaces and line breaks at the ends of copied text. Translate as the words people in your language would actually type when looking for it, separated by spaces. Do not translate word for word.">pangkas spasi hapus bersihkan salin potong</string>
+    <string name="settings__search__keywords__clear_cache">cache penyimpanan ruang berkas sementara mengosongkan hapus bersihkan</string>
+    <string name="settings__search__keywords__emoji_row">emoji baris deret terbaru digunakan di atas papan ketik cepat</string>
+    <string name="settings__search__keywords__request_timeout">batas waktu timeout lambat menunggu koneksi detik</string>
     <string name="settings__localization__title" comment="Title of languages and Layout screen">Tata letak Bahasa &amp;</string>
     <string name="settings__localization__display_language_names_in__label" comment="Label of Display language names in preference">Tampilkan nama-nama bahasa di</string>
     <string name="settings__localization__display_keyboard_labels_in_subtype_language" comment="Label of Display keyboard labels in subtype language preference">Tampilkan label keyboard dalam bahasa subtipe</string>
@@ -430,6 +444,8 @@ Klik di sini untuk menyelesaikan masalah ini.</string>
     <string name="pref__smartbar__group_layout_specific__label" comment="Preference group title">Opsi spesifik tata letak</string>
     <string name="pref__smartbar__flip_toggles__label" comment="Preference title">Balikkan tombol alih</string>
     <string name="pref__smartbar__flip_toggles__summary" comment="Preference summary">Membalikkan alih baris tindakan</string>
+    <string name="pref__smartbar__selection_metrics__label" comment="Preference title, keep short">Penghitung seleksi</string>
+    <string name="pref__smartbar__selection_metrics__summary" comment="Preference summary, keep short (one line)">Kata dan karakter yang dipilih</string>
     <string name="pref__smartbar__shared_actions_auto_expand_collapse__label" comment="Preference title">Otomatis buka/tutup</string>
     <string name="pref__smartbar__shared_actions_auto_expand_collapse__summary" comment="Preference summary">Membuka/menutup baris tindakan utama secara otomatis berdasarkan keadaan saat ini</string>
     <string name="pref__smartbar__extended_actions_placement__label" comment="Preference title">Penempatan baris tindakan</string>
@@ -449,8 +465,15 @@ Klik di sini untuk menyelesaikan masalah ini.</string>
     <string name="pref__correction__auto_space_punctuation__summary" comment="Preference summary">Tambahkan spasi secara otomatis setelah tanda baca</string>
     <string name="pref__correction__remember_caps_lock_state__label" comment="Preference title">Ingat keadaan caps lock</string>
     <string name="pref__correction__remember_caps_lock_state__summary" comment="Preference summary">Kunci huruf kapital akan tetap aktif saat pindah ke bidang teks lain</string>
-    <string name="pref__correction__double_space_period__label" comment="Preference title">Titik spasi ganda</string>
-    <string name="pref__correction__double_space_period__summary" comment="Preference summary">Mengetuk batang spasi dua kali memasukkan titik yang diikuti oleh sebuah spasi</string>
+    <string name="pref__correction__double_space_period__label" comment="Preference title">Ketuk dua kali bilah spasi</string>
+    <string name="enum__double_space_action__punctuation" comment="Enum value label">Akhir kalimat</string>
+    <string name="enum__double_space_action__punctuation__description" comment="Enum value description. The character in brackets is the Devanagari danda, the Hindi full stop, and must stay as it is.">Karakter yang mengakhiri kalimat dalam bahasa yang Anda tulis, diikuti spasi — biasanya titik, danda (।) dalam bahasa Hindi.</string>
+    <string name="enum__double_space_action__comma" comment="Enum value label">Koma</string>
+    <string name="enum__double_space_action__comma__description" comment="Enum value description">Koma diikuti spasi.</string>
+    <string name="enum__double_space_action__newline" comment="Enum value label">Baris baru</string>
+    <string name="enum__double_space_action__newline__description" comment="Enum value description">Ganti baris menggantikan spasi.</string>
+    <string name="enum__double_space_action__slash" comment="Enum value label">Garis miring</string>
+    <string name="enum__double_space_action__slash__description" comment="Enum value description">Garis miring tanpa spasi, untuk menulis hal seperti dan/atau.</string>
     <string name="pref__spelling__title" comment="Preference group title">Ejaan</string>
     <string name="pref__spelling__active_spellchecker__summary_disabled">Dinonaktifkan di sistem. Tidak ada lagi garis merah di kolom teks atau kata-kata yang tidak benar. Ketuk untuk mengubahnya.</string>
     <string name="pref__spelling__active_spellchecker__summary_none">Tidak ada pemeriksa ejaan teks inline yang diatur. Ketuk untuk mengubahnya.</string>
@@ -534,6 +557,10 @@ Klik di sini untuk menyelesaikan masalah ini.</string>
     </string>
     <string name="pref__other__settings_language__label" comment="Label of Settings language preference in Other">Pengaturan Bahasa</string>
     <string name="pref__other__show_app_icon__label" comment="Label of Show app icon preference in Other">Tampilkan ikon aplikasi pada peluncur</string>
+    <string name="pref__other__clear_cache__label">Bersihkan cache</string>
+    <string name="pref__other__clear_cache__summary">Berkas sementara: {size}</string>
+    <string name="pref__other__clear_cache__confirm">Bersihkan</string>
+    <string name="pref__other__clear_cache__message">Menghapus berkas sementara yang dapat dibuat ulang oleh aplikasi: berkas bagikan yang sedang ditranskripsikan, GIF dan stiker yang diunduh, gambar yang didekode. Riwayat dikte, rekaman, pengaturan, dan kamus tidak tersentuh. Rekaman atau transkripsi yang sedang berjalan bisa terhenti.</string>
     <string name="pref__other__show_app_icon__summary_atleast_q" comment="Summary of Show app icon preference in Other for Android 10+">Selalu diaktifkan di Android 10+ karena pembatasan sistem</string>
     <!-- About UI strings -->
     <string name="about__title" comment="Title of About activity">Tentang</string>
@@ -632,6 +659,8 @@ Klik di sini untuk menyelesaikan masalah ini.</string>
     <string name="crash_multiple_notification__body" comment="Body of the notification for consecutive crashes">Mengembalikan ke papan ketik sebelumnya untuk menghentikan pengulangan kesalahan tidak terbatas. Ketuk untuk melihat detail kesalahan</string>
     <!-- Clipboard strings -->
     <string name="clipboard__header_title">Papan klip</string>
+    <string name="clipboard__search_placeholder" comment="Hint inside the clipboard search field">Cari di papan klip</string>
+    <string name="clipboard__search_no_results" comment="Shown when no clip contains what was typed">Tidak ada klip yang memuat itu</string>
     <string name="clipboard__disabled__title">Riwayat papan klip saat ini dinonaktifkan</string>
     <string name="clipboard__disabled__message">Riwayat papan klip {app_name} memungkinkan Anda untuk menyimpan dan akses teks dan gambar yang Anda salin secara cepat, dengan kemampuan untuk menyematkan item, konfigurasi pembersihan otomatis, dan tetapkan batas jumlah item.</string>
     <string name="clipboard__disabled__enable_button">Aktifkan riwayat papan klip</string>
@@ -662,6 +691,8 @@ Klik di sini untuk menyelesaikan masalah ini.</string>
     <string name="pref__clipboard__sync_to_system_clipboard__label">Sinkronkan ke papan klip sistem</string>
     <string name="pref__clipboard__group_clipboard_suggestion__label">Saran papan klip</string>
     <string name="pref__clipboard__suggestion_enabled__label" comment="Preference title">Saran konten papan klip</string>
+    <string name="pref__clipboard__trim_on_copy__label" comment="Preference title, keep short">Pangkas saat menyalin</string>
+    <string name="pref__clipboard__trim_on_copy__summary" comment="Preference summary, keep short (one line)">Menghapus spasi dan baris baru di kedua ujung</string>
     <string name="pref__clipboard__suggestion_enabled__summary" comment="Preference summary">Sarankan konten papan klip yang sebelumnya disalin</string>
     <string name="pref__clipboard__num_history_grid_columns__label">Jumlah kolom kisi</string>
     <string name="pref__clipboard__suggestion_timeout__label" comment="Preference title; Translators: This should form a sentence together with `pref__clipboard__suggestion_timeout__summary` and is the first part">Batasi saran papan klip sampai</string>
@@ -1026,6 +1057,9 @@ Klik di sini untuk menyelesaikan masalah ini.</string>
     <plurals name="unit__characters__written">
         <item quantity="other">Karakter {v}</item>
     </plurals>
+    <plurals name="unit__words__written">
+        <item quantity="other">{v} kata</item>
+    </plurals>
     <plurals name="unit__candidates__written">
         <item quantity="other">Kandidat {v}</item>
     </plurals>
@@ -1252,6 +1286,8 @@ Klik di sini untuk menyelesaikan masalah ini.</string>
     <string name="dictate__providers_test_success">Terhubung · {count} model</string>
     <string name="dictate__providers_test_failed">Koneksi gagal</string>
     <string name="dictate__providers_network_group">Jaringan</string>
+    <string name="dictate__request_timeout_title">Batas waktu permintaan</string>
+    <string name="dictate__request_timeout_summary">{v} dtk · naikkan jika server Anda sendiri lambat</string>
     <string name="dictate__proxy_title">Proksi</string>
     <string name="dictate__proxy_summary_off">Nonaktif · koneksi langsung</string>
     <string name="dictate__proxy_enabled_title">Gunakan proksi</string>
@@ -1463,9 +1499,15 @@ Klik di sini untuk menyelesaikan masalah ini.</string>
     <string name="dictate__import_title">Transkripsikan berkas</string>
     <string name="dictate__import_menu">Transkripsikan berkas</string>
     <string name="dictate__import_menu_summary">Pilih berkas audio atau video dan baca isinya</string>
-    <string name="dictate__import_status_preparing">Menyiapkan…</string>
-    <string name="dictate__import_status_transcribing">Mentranskripsikan…</string>
-    <string name="dictate__import_status_part">Bagian %1$d dari %2$d…</string>
+    <string name="dictate__import_step_copy">Menerima berkas</string>
+    <string name="dictate__import_step_extract">Mengekstrak audio</string>
+    <string name="dictate__import_step_prepare">Menyiapkan audio</string>
+    <string name="dictate__import_step_upload">Mengunggah</string>
+    <string name="dictate__import_step_transcribe">Transkripsi dengan {provider}</string>
+    <string name="dictate__import_step_transcribe_local">Transkripsi di perangkat ini</string>
+    <string name="dictate__import_step_finish">Menyelesaikan</string>
+    <string name="dictate__import_step_percent">{v}%</string>
+    <string name="dictate__import_step_part">Bagian {current} dari {total}</string>
     <string name="dictate__import_result_label">Transkrip</string>
     <string name="dictate__import_prompt_button">Olah ulang</string>
     <string name="dictate__import_revert">Urungkan</string>
@@ -1548,6 +1590,7 @@ Klik di sini untuk menyelesaikan masalah ini.</string>
     <string name="dictate__wear_standalone_summary">Kirim kunci API ke jam tangan agar bisa mendikte tanpa ponsel di dekatnya.</string>
     <string name="dictate__wear_standalone_title">Sinkronkan kunci ke jam</string>
     <string name="emoji__search__hint">Cari emoji</string>
+    <string name="emoji__row__open_panel">Buka semua emoji</string>
     <string name="emoji__search__no_results">Tidak ada emoji yang cocok</string>
     <string name="pref__suggestion__api30_inline_suggestions_enabled__label">Saran isi otomatis sistem</string>
     <string name="pref__suggestion__block_possibly_offensive__summary">Mencegah kata yang mungkin menyinggung disarankan saat Anda mengetik</string>
@@ -1652,6 +1695,10 @@ Klik di sini untuk menyelesaikan masalah ini.</string>
     <string name="dictate__action_save_audio">Simpan audio</string>
     <string name="dictate__audio_saved">Audio disimpan ke Downloads/Dictate: %s</string>
     <string name="dictate__audio_save_failed">Tidak dapat menyimpan audio</string>
+    <string name="dictate__instant_recording_mode_off">Nonaktif</string>
+    <string name="dictate__instant_recording_mode_always">Setiap kali papan ketik terbuka</string>
+    <string name="dictate__instant_recording_mode_after_switch">Hanya setelah beralih ke {app_name}</string>
+    <string name="dictate__instant_recording_in_numeric">Juga di kolom angka</string>
     <string name="dictate__instant_recording_skip_numeric_title">Lewati bidang angka</string>
     <string name="dictate__instant_recording_skip_numeric_summary">Jangan mulai otomatis di bidang angka, telepon, atau PIN</string>
     <string name="settings__localization__subtype_status_words">Saran</string>

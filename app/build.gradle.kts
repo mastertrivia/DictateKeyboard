@@ -177,14 +177,10 @@ configure<ApplicationExtension> {
         }
     }
 
-    lint {
-        baseline = file("lint.xml")
-        // FileTranscriptionActivity registers an activity result on a plain ComponentActivity (no
-        // Fragments involved), so the activity-result registration needs no Fragment dependency.
-        // Mirrors the same disable in :wear. The check otherwise fails lintVitalRelease with a
-        // false positive, because no androidx.fragment:fragment >= 1.3.0 is on the classpath.
-        disable.add("InvalidFragmentVersionForActivityResult")
-    }
+    // No `baseline` here on purpose: app/lint.xml is lint's *configuration* file, which lint picks up
+    // from the module directory on its own. Naming it as a baseline made lint read the severity
+    // overrides as recorded findings and left every real issue unbaselined, so any fatal one failed
+    // the release build (issue #332).
 
     testOptions {
         unitTests {
@@ -212,6 +208,12 @@ tasks.withType<Test> {
     testLogging {
         events = setOf(TestLogEvent.FAILED, TestLogEvent.PASSED, TestLogEvent.SKIPPED)
     }
+    // Gradle hands a test JVM 512 MB unless told otherwise, and the property tests in
+    // ImeWindowControllerEditorMoveTest build a datastore and a controller per iteration — with the
+    // coverage agent attached that runs out of heap partway through the suite. On a memory-tight
+    // machine it surfaces as an OutOfMemoryError, on a roomier one as a test worker that never
+    // finishes shutting down (issue #331).
+    maxHeapSize = "2g"
     useJUnitPlatform()
 }
 

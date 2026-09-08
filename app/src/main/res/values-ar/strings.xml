@@ -18,6 +18,8 @@
     <string name="prefs__media__emoji_history__title" comment="Preference group title">سجل الرموز التعبيرية</string>
     <string name="prefs__media__emoji_history_enabled" comment="Preference title">تمكين سجل الرموز التعبيرية</string>
     <string name="prefs__media__emoji_history_enabled__summary" comment="Preference summary">الاحتفاظ بالرموز التعبيرية المستخدمة مؤخرًا للوصول السريع</string>
+    <string name="prefs__media__emoji_row_enabled">صف الرموز التعبيرية</string>
+    <string name="prefs__media__emoji_row_enabled__summary">إظهار صف من الرموز التعبيرية المثبتة والمستخدمة مؤخرًا فوق لوحة المفاتيح</string>
     <string name="prefs__media__emoji_history_pinned_update_strategy" comment="Preference title">تحديث الاستراتيجية (مثبت)</string>
     <string name="prefs__media__emoji_history_recent_update_strategy" comment="Preference title">إستراتيجية التحديث (الأخيرة)</string>
     <string name="prefs__media__emoji_history_max_size">الحد الأقصى للعناصر التي يجب الاحتفاظ بها</string>
@@ -58,6 +60,10 @@
     <string name="quick_action__arrow_left__tooltip">تنفيذ السهم لليسار</string>
     <string name="quick_action__arrow_right" comment="Please mind the limited available space for the quick action strings">سهم لليمين</string>
     <string name="quick_action__arrow_right__tooltip">تنفيذ السهم لليمين</string>
+    <string name="quick_action__move_start_of_page" comment="Please mind the limited available space for the quick action strings">بداية النص</string>
+    <string name="quick_action__move_start_of_page__tooltip">الانتقال إلى بداية النص</string>
+    <string name="quick_action__move_end_of_page" comment="Please mind the limited available space for the quick action strings">نهاية النص</string>
+    <string name="quick_action__move_end_of_page__tooltip">الانتقال إلى نهاية النص</string>
     <string name="quick_action__clipboard_clear_primary_clip" comment="Please mind the limited available space for the quick action strings">مسح الحافظة</string>
     <string name="quick_action__clipboard_clear_primary_clip__tooltip">تنفيذ مسح للحافظة الأساسية</string>
     <string name="quick_action__clipboard_copy" comment="Please mind the limited available space for the quick action strings">نسخ</string>
@@ -90,6 +96,8 @@
     <string name="quick_action__voice_input__tooltip" comment="IME stands for Input Method Editor and is indirectly equivalent to 'keyboard'.">افتح موفر خدمة الإدخال الصوتي</string>
     <string name="quick_action__one_handed_mode" comment="Please mind the limited available space for the quick action strings">اليد الواحدة</string>
     <string name="quick_action__one_handed_mode__tooltip">تفعيل وضع اليد الواحدة</string>
+    <string name="quick_action__toggle_number_row" comment="Quick action that shows or hides the row of digit keys above the letters. Please mind the limited available space for the quick action strings">صف الأرقام</string>
+    <string name="quick_action__toggle_number_row__tooltip">إظهار صف الأرقام أو إخفاؤه</string>
     <string name="quick_action__drag_marker" comment="This action is only used as a placeholder in the actions editor drag and drop screen and only visible in debug mode">سحب التمييز</string>
     <string name="quick_action__drag_marker__tooltip" comment="This action is only used as a placeholder in the actions editor drag and drop screen and only visible in debug mode">موضع علامة السحب الحالي</string>
     <string name="quick_action__noop" comment="Noop=no operation; this action is only used as a placeholder in the actions editor drag and drop screen">لا شَيْء</string>
@@ -118,6 +126,12 @@
     <string name="settings__search__clear_recent" comment="Button to clear the recent searches">مسح عمليات البحث الأخيرة</string>
     <string name="settings__search__popular" comment="Header above a small list of popular settings shortcuts">شائعة</string>
     <string name="settings__search__no_results" comment="Shown when a settings search returns nothing">لم يتم العثور على إعدادات</string>
+    <string name="settings__search__keywords__text_expansion" comment="NOT SHOWN ANYWHERE — extra search terms that lead to the typing-shortcut setting, which lets a short trigger expand into a saved block of text. Translate as the words people in your language would actually type when looking for that feature, separated by spaces. Do not translate word for word; add or drop terms as makes sense.">توسيع النص اختصار قصاصة ماكرو نص تلقائي snippet text expansion</string>
+    <string name="settings__search__keywords__selection_metrics" comment="NOT SHOWN ANYWHERE — extra search terms that lead to the setting which shows how many words and characters are selected. Translate as the words people in your language would actually type when looking for it, separated by spaces. Do not translate word for word.">عدد الكلمات عداد الأحرف الطول إحصائيات</string>
+    <string name="settings__search__keywords__trim_on_copy" comment="NOT SHOWN ANYWHERE — extra search terms that lead to the setting which removes spaces and line breaks at the ends of copied text. Translate as the words people in your language would actually type when looking for it, separated by spaces. Do not translate word for word.">اقتصاص مسافات إزالة تنظيف نسخ قص</string>
+    <string name="settings__search__keywords__clear_cache">ذاكرة مؤقتة تخزين مساحة ملفات مؤقتة تحرير حذف تنظيف</string>
+    <string name="settings__search__keywords__emoji_row">رموز تعبيرية صف شريط مؤخرا مستخدمة فوق لوحة المفاتيح سريع</string>
+    <string name="settings__search__keywords__request_timeout">مهلة انتهت المهلة بطيء انتظار اتصال ثواني</string>
     <string name="settings__localization__title" comment="Title of languages and Layout screen">اللغات و التخطيطات</string>
     <string name="settings__localization__display_language_names_in__label" comment="Label of Display language names in preference">عرض أسم اللغة المفعلة</string>
     <string name="settings__localization__group_subtypes__label" comment="Label of subtypes group">أنواع الإدخال الفرعية</string>
@@ -331,6 +345,8 @@
     <string name="pref__smartbar__group_layout_specific__label" comment="Preference group title">خيارات التخطيط المخصص</string>
     <string name="pref__smartbar__flip_toggles__label" comment="Preference title">تبديل ازرار التنقل</string>
     <string name="pref__smartbar__flip_toggles__summary" comment="Preference summary">زر تبديل صف المهام</string>
+    <string name="pref__smartbar__selection_metrics__label" comment="Preference title, keep short">عدّاد التحديد</string>
+    <string name="pref__smartbar__selection_metrics__summary" comment="Preference summary, keep short (one line)">عدد الكلمات والأحرف المحددة</string>
     <string name="pref__smartbar__shared_actions_auto_expand_collapse__label" comment="Preference title">توسيع/طي تلقائي</string>
     <string name="pref__smartbar__shared_actions_auto_expand_collapse__summary" comment="Preference summary">توسيع/طي صف الإجراء المشترك تلقائيا استنادا إلى الحالة الحالية</string>
     <string name="pref__smartbar__extended_actions_placement__label" comment="Preference title">مبدل إجراءات المهام</string>
@@ -350,8 +366,15 @@
     <string name="pref__correction__auto_space_punctuation__summary" comment="Preference summary">وضع بشكل تلقائي مسافة بعد علامات الترقيم</string>
     <string name="pref__correction__remember_caps_lock_state__label" comment="Preference title">تذكر حالة زر الأحرف الكبيرة</string>
     <string name="pref__correction__remember_caps_lock_state__summary" comment="Preference summary">يضل وضع الأحرف الكبيرة قيد التشغيل عند الإنتقال إلى حقل نصي آخر</string>
-    <string name="pref__correction__double_space_period__label" comment="Preference title">نقطة المسافة المزدوجة</string>
-    <string name="pref__correction__double_space_period__summary" comment="Preference summary">الضغط مرتين على مفتاح المسافة يضيف نقطة متبوعة بمسافة</string>
+    <string name="pref__correction__double_space_period__label" comment="Preference title">نقر مزدوج على مفتاح المسافة</string>
+    <string name="enum__double_space_action__punctuation" comment="Enum value label">نهاية الجملة</string>
+    <string name="enum__double_space_action__punctuation__description" comment="Enum value description. The character in brackets is the Devanagari danda, the Hindi full stop, and must stay as it is.">الحرف الذي تنتهي به الجملة في اللغة التي تكتب بها، تليه مسافة — نقطة في الغالب، والدَندا (।) في الهندية.</string>
+    <string name="enum__double_space_action__comma" comment="Enum value label">فاصلة</string>
+    <string name="enum__double_space_action__comma__description" comment="Enum value description">فاصلة تليها مسافة.</string>
+    <string name="enum__double_space_action__newline" comment="Enum value label">سطر جديد</string>
+    <string name="enum__double_space_action__newline__description" comment="Enum value description">سطر جديد بدل المسافة.</string>
+    <string name="enum__double_space_action__slash" comment="Enum value label">شرطة مائلة</string>
+    <string name="enum__double_space_action__slash__description" comment="Enum value description">شرطة مائلة بلا مسافات، لكتابة مثل و/أو.</string>
     <string name="pref__spelling__title" comment="Preference group title">التدقيق الإملائي</string>
     <string name="pref__spelling__active_spellchecker__summary_disabled">معطل على مستوى النظام. لن تظهر أي خطوط حمراء في الحقول النصية للكلمات غير الصحيحة. انقر للتغيير.</string>
     <string name="pref__spelling__active_spellchecker__summary_none">لم يتم تعيين خدمة المدقق الإملائي للنص المضمّن. انقر للتغيير.</string>
@@ -434,6 +457,10 @@
     <string name="pref__other__settings_accent_color__label" comment="Label of accent color preference in Other">اللون الثانوي للإعدادات    </string>
     <string name="pref__other__settings_language__label" comment="Label of Settings language preference in Other">إعدادات اللغة</string>
     <string name="pref__other__show_app_icon__label" comment="Label of Show app icon preference in Other">إظهار أيقونة البرنامج في درج التطبيقات</string>
+    <string name="pref__other__clear_cache__label">مسح ذاكرة التخزين المؤقت</string>
+    <string name="pref__other__clear_cache__summary">الملفات المؤقتة: {size}</string>
+    <string name="pref__other__clear_cache__confirm">مسح</string>
+    <string name="pref__other__clear_cache__message">يحذف الملفات المؤقتة التي يمكن للتطبيق إنشاؤها مجددًا: ملف تجري تفريغه، وصور GIF وملصقات تم تنزيلها، وصور مفكوكة. لا يمس هذا سجل الإملاء ولا التسجيلات ولا الإعدادات ولا القواميس. قد يتوقف تسجيل أو تفريغ يعمل الآن.</string>
     <string name="pref__other__show_app_icon__summary_atleast_q" comment="Summary of Show app icon preference in Other for Android 10+">ممكّن دائمًا على اندرويد 10+ فما فوق بسبب قيود النظام</string>
     <!-- About UI strings -->
     <string name="about__title" comment="Title of About activity">حول التطبيق</string>
@@ -528,6 +555,8 @@
     <string name="crash_multiple_notification__body" comment="Body of the notification for consecutive crashes">تم العودة إلى لوحة المفاتيح السابقة لإيقاف التعطل المتكرر الغير منتهي. انقر لعرض تفاصيل الخطأ</string>
     <!-- Clipboard strings -->
     <string name="clipboard__header_title">الحافظة</string>
+    <string name="clipboard__search_placeholder" comment="Hint inside the clipboard search field">البحث في الحافظة</string>
+    <string name="clipboard__search_no_results" comment="Shown when no clip contains what was typed">لا يوجد عنصر يحتوي على ذلك</string>
     <string name="clipboard__disabled__title">سجل الحافظة معطل حاليا</string>
     <string name="clipboard__disabled__message">{app_name}\'يتيح لك تاريخ الحافظة تخزين النصوص والصور التي تقوم بتخزينها والوصول إليها بسرعة، مع إمكانية تثبيت العناصر، قم بتكوين التنظيف التلقائي وتعيين حدود عنصر أقصى.</string>
     <string name="clipboard__disabled__enable_button">تمكين سجل الحافظة</string>
@@ -558,6 +587,8 @@
     <string name="pref__clipboard__sync_to_system_clipboard__label">مزامنة الى حافظة النظام</string>
     <string name="pref__clipboard__group_clipboard_suggestion__label">إقتراحات الحافظة</string>
     <string name="pref__clipboard__suggestion_enabled__label" comment="Preference title">إقتراحات محتوى الحافظة</string>
+    <string name="pref__clipboard__trim_on_copy__label" comment="Preference title, keep short">اقتصاص عند النسخ</string>
+    <string name="pref__clipboard__trim_on_copy__summary" comment="Preference summary, keep short (one line)">إزالة المسافات وفواصل الأسطر من الطرفين</string>
     <string name="pref__clipboard__suggestion_enabled__summary" comment="Preference summary">اقتراح المحتويات المنسوخة في سجل الحافظة</string>
     <string name="pref__clipboard__suggestion_timeout__label" comment="Preference title; Translators: This should form a sentence together with `pref__clipboard__suggestion_timeout__summary` and is the first part">تحديد حجم مخصص لاقتراحات الحافظة إلى</string>
     <string name="pref__clipboard__suggestion_timeout__summary" comment="Preference summary; Translators: This should form a sentence together with `pref__clipboard__suggestion_timeout__label` and is the second part">العناصر التي تم نسخها خلال آخر {v}</string>
@@ -924,6 +955,14 @@
         <item quantity="many">{v} احرف</item>
         <item quantity="other">{v} احرف</item>
     </plurals>
+    <plurals name="unit__words__written">
+        <item quantity="zero">{v} كلمة</item>
+        <item quantity="one">{v} كلمة</item>
+        <item quantity="two">{v} كلمتان</item>
+        <item quantity="few">{v} كلمات</item>
+        <item quantity="many">{v} كلمة</item>
+        <item quantity="other">{v} كلمة</item>
+    </plurals>
     <plurals name="unit__candidates__written">
         <item quantity="zero">{v} مرشح</item>
         <item quantity="one">{v} مرشح</item>
@@ -1155,6 +1194,8 @@
     <string name="dictate__providers_test_success">متصل · {count} نماذج</string>
     <string name="dictate__providers_test_failed">فشل الاتصال</string>
     <string name="dictate__providers_network_group">الشبكة</string>
+    <string name="dictate__request_timeout_title">مهلة الطلب</string>
+    <string name="dictate__request_timeout_summary">{v} ثانية · ارفعها إذا كان خادمك بطيئًا</string>
     <string name="dictate__proxy_title">الوكيل</string>
     <string name="dictate__proxy_summary_off">مُعطّل · اتصال مباشر</string>
     <string name="dictate__proxy_enabled_title">استخدام وكيل</string>
@@ -1366,9 +1407,15 @@
     <string name="dictate__import_title">تفريغ ملف</string>
     <string name="dictate__import_menu">تفريغ ملف</string>
     <string name="dictate__import_menu_summary">اختر ملف صوت أو فيديو واقرأ ما قيل فيه</string>
-    <string name="dictate__import_status_preparing">جارٍ التحضير…</string>
-    <string name="dictate__import_status_transcribing">جارٍ التفريغ…</string>
-    <string name="dictate__import_status_part">الجزء %1$d من %2$d…</string>
+    <string name="dictate__import_step_copy">استلام الملف</string>
+    <string name="dictate__import_step_extract">استخراج الصوت من الفيديو</string>
+    <string name="dictate__import_step_prepare">تجهيز الصوت</string>
+    <string name="dictate__import_step_upload">الرفع</string>
+    <string name="dictate__import_step_transcribe">التفريغ باستخدام {provider}</string>
+    <string name="dictate__import_step_transcribe_local">التفريغ على هذا الجهاز</string>
+    <string name="dictate__import_step_finish">الإنهاء</string>
+    <string name="dictate__import_step_percent">{v}%</string>
+    <string name="dictate__import_step_part">الجزء {current} من {total}</string>
     <string name="dictate__import_result_label">النص</string>
     <string name="dictate__import_prompt_button">إعادة الصياغة</string>
     <string name="dictate__import_revert">تراجع</string>
@@ -1451,6 +1498,7 @@
     <string name="dictate__wear_standalone_summary">أرسل مفتاح API إلى الساعة لتتمكن من الإملاء دون وجود الهاتف قريبًا.</string>
     <string name="dictate__wear_standalone_title">مزامنة المفتاح مع الساعة</string>
     <string name="emoji__search__hint">البحث عن رمز تعبيري</string>
+    <string name="emoji__row__open_panel">فتح كل الرموز التعبيرية</string>
     <string name="emoji__search__no_results">لا توجد رموز تعبيرية مطابقة</string>
     <string name="pref__suggestion__api30_inline_suggestions_enabled__label">اقتراحات الملء التلقائي من النظام</string>
     <string name="pref__suggestion__block_possibly_offensive__summary">يمنع اقتراح الكلمات التي قد تكون مسيئة أثناء الكتابة</string>
@@ -1555,6 +1603,10 @@
     <string name="dictate__action_save_audio">حفظ الصوت</string>
     <string name="dictate__audio_saved">تم حفظ الصوت في Downloads/Dictate: %s</string>
     <string name="dictate__audio_save_failed">تعذّر حفظ الصوت</string>
+    <string name="dictate__instant_recording_mode_off">إيقاف</string>
+    <string name="dictate__instant_recording_mode_always">في كل مرة تُفتح فيها لوحة المفاتيح</string>
+    <string name="dictate__instant_recording_mode_after_switch">فقط بعد التبديل إلى {app_name}</string>
+    <string name="dictate__instant_recording_in_numeric">وأيضًا في حقول الأرقام</string>
     <string name="dictate__instant_recording_skip_numeric_title">تخطي حقول الأرقام</string>
     <string name="dictate__instant_recording_skip_numeric_summary">لا تبدأ تلقائيًا في حقول الأرقام أو الهاتف أو رمز PIN</string>
     <string name="settings__localization__subtype_status_words">الاقتراحات</string>

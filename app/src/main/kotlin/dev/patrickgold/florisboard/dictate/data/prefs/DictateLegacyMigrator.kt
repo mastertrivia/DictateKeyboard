@@ -340,6 +340,26 @@ object DictateLegacyMigrator {
     }
 
     /**
+     * One-time switch onto hold-to-record (issue #235), now the default.
+     *
+     * Same shape and same reasoning as the prompt-row switch above: a keyboard already in use would
+     * otherwise keep a default nobody ever chose, and go on behaving differently from every fresh
+     * install for as long as it exists. Holding the mic to speak is what nearly everyone reaches for;
+     * what it displaces — holding the *idle* mic to pick a file — has had its own way in since #301.
+     *
+     * This does write over a deliberate "off", and there is no way to tell that apart from a default
+     * never touched. That is why it belongs in the what's-new dialog: the setting is one tap away in
+     * Dictate › Recording, and the release has to say so. Idempotent via
+     * `prefs.dictate.pushToTalkDefaultMigrated`.
+     */
+    suspend fun migratePushToTalkDefaultIfNeeded() {
+        val prefs by FlorisPreferenceStore
+        if (prefs.dictate.pushToTalkDefaultMigrated.get()) return
+        prefs.dictate.pushToTalk.set(true)
+        prefs.dictate.pushToTalkDefaultMigrated.set(true)
+    }
+
+    /**
      * Drops the Devanagari digit row (१२३…) from saved Hindi subtypes (issue #315). Hindi is written with
      * Western digits in practice, and the preset no longer asks for the localized row — but a subtype is
      * persisted with its full layout map, so the old choice would otherwise survive forever.
@@ -421,8 +441,48 @@ object DictateLegacyMigrator {
         }
     }
 
+    /**
+     * Points saved Hindi subtypes at the new `devanagari` punctuation rule (issue #333).
+     *
+     * Hindi ends a sentence with the danda `।`, not a full stop, and until now nothing in this keyboard
+     * knew that: the double-tap shortcut wrote `. ` in every language, and the tightening and
+     * auto-space rules did not recognise a danda as the end of anything. The rule says so now and the
+     * presets name it — but a preset only ever seeds a *new* subtype, so every Hindi keyboard that
+     * already exists would keep the Latin one.
+     *
+     * Same shape and same restraint as [migrateFrenchPunctuationRuleIfNeeded]: only subtypes still
+     * carrying the untouched old default are rewritten.
+     */
+    suspend fun migrateDevanagariPunctuationRuleIfNeeded() {
+        val prefs by FlorisPreferenceStore
+        if (prefs.localization.devanagariPunctuationMigrated.get()) return
+        prefs.localization.devanagariPunctuationMigrated.set(true)
+
+        val listRaw = prefs.localization.subtypes.get()
+        if (listRaw.isBlank()) return
+        val subtypes = runCatching {
+            SubtypeJsonConfig.decodeFromString<List<Subtype>>(listRaw)
+        }.getOrNull() ?: return
+
+        var changed = false
+        val migrated = subtypes.map { subtype ->
+            val isUntouchedHindiDefault = subtype.primaryLocale.language == "hi" &&
+                subtype.punctuationRule == extCorePunctuationRule(LEGACY_DEFAULT_PUNCTUATION_ID)
+            if (isUntouchedHindiDefault) {
+                changed = true
+                subtype.copy(punctuationRule = extCorePunctuationRule(DEVANAGARI_PUNCTUATION_ID))
+            } else {
+                subtype
+            }
+        }
+        if (changed) {
+            prefs.localization.subtypes.set(SubtypeJsonConfig.encodeToString(migrated))
+        }
+    }
+
     private const val LEGACY_DEFAULT_PUNCTUATION_ID = "default"
     private const val FRENCH_PUNCTUATION_ID = "french"
+    private const val DEVANAGARI_PUNCTUATION_ID = "devanagari"
 
     private const val LEGACY_HINDI_CHARACTERS_ID = "hindi_in"
     private const val LEGACY_HINDI_NUMERIC_ROW_ID = "devanagari"
