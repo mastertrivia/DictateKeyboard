@@ -34,6 +34,9 @@ name: Build APK
 #     built twice; pass force=true to rebuild one anyway.
 #   - The 4-hourly schedule is the safety net that catches a release whose
 #     tag event the fork missed for any reason.
+#   - workflow_dispatch with source_ref -> UNRELEASED build of that fork ref
+#     (branch/tag/SHA). It bypasses the release list entirely and is never
+#     recorded as a processed release, so it cannot disturb official builds.
 #
 # Signing:
 #   The APK signature must be stable between builds, or Android refuses to
@@ -60,6 +63,11 @@ on:
         type: string
       upstream_release_tag:
         description: 'Upstream release tag to build (e.g. v6.1.2). Empty = auto-detect the oldest unprocessed upstream release tag newer than v6.1.1'
+        required: false
+        default: ''
+        type: string
+      source_ref:
+        description: 'UNRELEASED build: build this fork ref (branch, tag or SHA) instead of an upstream release tag. Takes precedence over upstream_release_tag; never marked as a processed release.'
         required: false
         default: ''
         type: string
@@ -159,6 +167,7 @@ jobs:
         shell: bash
         env:
           INPUT_TAG: ${{ github.event.inputs.upstream_release_tag }}
+          INPUT_REF: ${{ github.event.inputs.source_ref }}
           FORCE: ${{ github.event.inputs.force }}
         run: |
           set -euo pipefail
@@ -179,6 +188,18 @@ jobs:
 
           RELEASE_TAG=""
           MODE="auto"
+
+          if [ -n "$INPUT_REF" ]; then
+            # Unreleased/ad-hoc build of an arbitrary fork ref (branch/tag/SHA).
+            # This bypasses the release machinery entirely and is never recorded
+            # as a processed release, so it cannot affect the official pipeline.
+            MODE="ref"
+            echo "mode=$MODE" >> "$GITHUB_OUTPUT"
+            echo "build_ref=$INPUT_REF" >> "$GITHUB_OUTPUT"
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+            echo "Selected fork ref for an UNRELEASED build: ${INPUT_REF}"
+            exit 0
+          fi
 
           if [ -n "$INPUT_TAG" ]; then
             MODE="manual"
@@ -255,20 +276,36 @@ jobs:
         shell: bash
         env:
           RELEASE_TAG: ${{ steps.determine.outputs.release_tag }}
+          BUILD_REF: ${{ steps.determine.outputs.build_ref }}
+          MODE: ${{ steps.determine.outputs.mode }}
           FORCE: ${{ github.event.inputs.force }}
         run: |
           set -euo pipefail
-          git remote add upstream "https://github.com/${UPSTREAM_REPO}.git" 2>/dev/null \
-            || git remote set-url upstream "https://github.com/${UPSTREAM_REPO}.git"
 
-          # Full (not shallow) fetch of the tag so the working history around the
-          # release commit is intact (some buildType suffixes query git history).
-          git fetch -q "upstream" "refs/tags/${RELEASE_TAG}:refs/tags/upstream/${RELEASE_TAG}"
-          RELEASE_COMMIT=$(git rev-parse "refs/tags/upstream/${RELEASE_TAG}^{commit}")
-          echo "release_commit=$RELEASE_COMMIT" >> "$GITHUB_OUTPUT"
+          if [ -n "${BUILD_REF:-}" ]; then
+            # UNRELEASED build: check out the requested fork ref exactly.
+            git fetch -q origin "${BUILD_REF}"
+            RELEASE_COMMIT=$(git rev-parse "FETCH_HEAD^{commit}")
+            SOURCE_LABEL="ref ${BUILD_REF}"
+            echo "release_commit=$RELEASE_COMMIT" >> "$GITHUB_OUTPUT"
+            echo "artifact_suffix=-$(printf '%s' "$BUILD_REF" | tr '/ ' '--' | tr -cd 'A-Za-z0-9._-')-$(printf '%s' "$RELEASE_COMMIT" | cut -c1-7)" >> "$GITHUB_OUTPUT"
+            echo "Checking out fork ref ${BUILD_REF} at commit ${RELEASE_COMMIT} ..."
+            git checkout -q --detach "$RELEASE_COMMIT"
+          else
+            git remote add upstream "https://github.com/${UPSTREAM_REPO}.git" 2>/dev/null \
+              || git remote set-url upstream "https://github.com/${UPSTREAM_REPO}.git"
 
-          echo "Checking out upstream ${RELEASE_TAG} at commit ${RELEASE_COMMIT} ..."
-          git checkout -q --detach "$RELEASE_COMMIT"
+            # Full (not shallow) fetch of the tag so the working history around the
+            # release commit is intact (some buildType suffixes query git history).
+            git fetch -q "upstream" "refs/tags/${RELEASE_TAG}:refs/tags/upstream/${RELEASE_TAG}"
+            RELEASE_COMMIT=$(git rev-parse "refs/tags/upstream/${RELEASE_TAG}^{commit}")
+            SOURCE_LABEL="upstream tag ${RELEASE_TAG}"
+            echo "release_commit=$RELEASE_COMMIT" >> "$GITHUB_OUTPUT"
+            echo "artifact_suffix=" >> "$GITHUB_OUTPUT"
+
+            echo "Checking out upstream ${RELEASE_TAG} at commit ${RELEASE_COMMIT} ..."
+            git checkout -q --detach "$RELEASE_COMMIT"
+          fi
 
           if ls /tmp/ci-patches/*.patch >/dev/null 2>&1; then
             for p in /tmp/ci-patches/*.patch; do
@@ -290,12 +327,12 @@ jobs:
                 continue
               fi
               if ! git apply --3way --whitespace=nowarn "$p"; then
-                echo "::error::Fork-only CI patch $p no longer applies cleanly to upstream ${RELEASE_TAG}."
+                echo "::error::Fork-only CI patch $p no longer applies cleanly to ${SOURCE_LABEL}."
                 echo "The fork's CI tweaks (gradle.properties daemon heaps, :app lint disable) must be refreshed against this upstream release."
                 exit 1
               fi
             done
-            echo "Applied fork-only CI patches on top of ${RELEASE_TAG}."
+            echo "Applied fork-only CI patches on top of ${SOURCE_LABEL}."
           fi
 
           # Surface the version the tag itself declares.
@@ -303,25 +340,32 @@ jobs:
           VC=$(sed -n 's/^projectVersionCode=//p' gradle.properties)
           echo "VERSION_NAME=$VN" >> "$GITHUB_ENV"
           echo "VERSION_CODE=$VC" >> "$GITHUB_ENV"
-          echo "Working tree now at ${RELEASE_TAG} (${RELEASE_COMMIT}), declaring versionName=${VN} versionCode=${VC}"
+          echo "Working tree now at ${SOURCE_LABEL} (${RELEASE_COMMIT}), declaring versionName=${VN} versionCode=${VC}"
 
-          # Update-continuity guard: an APK only installs OVER an existing
-          # install when its versionCode is >= the installed one (and it is
-          # signed by the same key, checked later). Refuse to ship a release
-          # whose versionCode is not strictly greater than every release we have
-          # already processed, so a downgrade/duplicate can never silently happen.
           if ! printf '%s' "$VC" | grep -qE '^[0-9]+$'; then
-            echo "::error::Could not read a numeric projectVersionCode from the ${RELEASE_TAG} gradle.properties (got '${VC}')."
+            echo "::error::Could not read a numeric projectVersionCode from the ${SOURCE_LABEL} gradle.properties (got '${VC}')."
             exit 1
           fi
-          PREV_MAX_CODE=$(git show "refs/remotes/origin/${MARKER_BRANCH}:${MARKER_FILE}" 2>/dev/null \
-            | awk 'NF>=3 && $3 ~ /^[0-9]+$/ {print $3}' | sort -n | tail -1 || true)
-          if [ -n "$PREV_MAX_CODE" ] && [ "${FORCE:-false}" != "true" ] && [ "$VC" -le "$PREV_MAX_CODE" ]; then
-            echo "::error::versionCode ${VC} for ${RELEASE_TAG} is not greater than the highest already-processed versionCode ${PREV_MAX_CODE}."
-            echo "Existing installs would not accept this as an update. Set force=true only if you really mean to publish a non-increasing versionCode."
-            exit 1
+
+          if [ -n "${BUILD_REF:-}" ]; then
+            # Unreleased ref builds are not releases: the marker/versionCode
+            # monotonicity contract does not apply. Just report what it declares.
+            echo "Unreleased ref build: skipping the release versionCode monotonicity check (declared versionCode ${VC})."
+          else
+            # Update-continuity guard: an APK only installs OVER an existing
+            # install when its versionCode is >= the installed one (and it is
+            # signed by the same key, checked later). Refuse to ship a release
+            # whose versionCode is not strictly greater than every release we have
+            # already processed, so a downgrade/duplicate can never silently happen.
+            PREV_MAX_CODE=$(git show "refs/remotes/origin/${MARKER_BRANCH}:${MARKER_FILE}" 2>/dev/null \
+              | awk 'NF>=3 && $3 ~ /^[0-9]+$/ {print $3}' | sort -n | tail -1 || true)
+            if [ -n "$PREV_MAX_CODE" ] && [ "${FORCE:-false}" != "true" ] && [ "$VC" -le "$PREV_MAX_CODE" ]; then
+              echo "::error::versionCode ${VC} for ${SOURCE_LABEL} is not greater than the highest already-processed versionCode ${PREV_MAX_CODE}."
+              echo "Existing installs would not accept this as an update. Set force=true only if you really mean to publish a non-increasing versionCode."
+              exit 1
+            fi
+            echo "Update-continuity check OK: versionCode ${VC} > ${PREV_MAX_CODE:-<no prior processed code>}."
           fi
-          echo "Update-continuity check OK: versionCode ${VC} > ${PREV_MAX_CODE:-<no prior processed code>}."
 
       - name: Set up Android SDK components
         if: steps.determine.outputs.should_build == 'true'
@@ -445,7 +489,8 @@ jobs:
           echo "APK_VERSION=$(jq -r '.elements[0].versionName' "$APK_DIR/output-metadata.json")" >> "$GITHUB_ENV"
 
           # The upstream tag being built must be the version actually shipped.
-          if [ "$BUILD_TYPE" = "release" ] && [ "$TAG_VERSION" != "$(jq -r '.elements[0].versionName' "$APK_DIR/output-metadata.json")" ]; then
+          # (Unreleased ref builds have no tag version to compare against.)
+          if [ -n "$TAG_VERSION" ] && [ "$BUILD_TYPE" = "release" ] && [ "$TAG_VERSION" != "$(jq -r '.elements[0].versionName' "$APK_DIR/output-metadata.json")" ]; then
             echo "::error::Version mismatch: building upstream ${RELEASE_TAG} but the APK reports versionName $(jq -r '.elements[0].versionName' "$APK_DIR/output-metadata.json"). Expected ${TAG_VERSION}."
             exit 1
           fi
@@ -493,7 +538,7 @@ jobs:
         if: steps.determine.outputs.should_build == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: dictate-keyboard-${{ env.APK_VERSION }}-${{ env.BUILD_TYPE }}
+          name: dictate-keyboard-${{ env.APK_VERSION }}-${{ env.BUILD_TYPE }}${{ steps.checkout_release.outputs.artifact_suffix }}
           path: app/build/outputs/apk/${{ env.BUILD_TYPE }}/*.apk
           if-no-files-found: error
           retention-days: 30
@@ -505,9 +550,20 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ steps.determine.outputs.release_tag }}
+          BUILD_REF: ${{ steps.determine.outputs.build_ref }}
           RELEASE_COMMIT: ${{ steps.checkout_release.outputs.release_commit }}
         run: |
-          RELEASE_NAME="dictate-v${APK_VERSION}-ci"
+          SHORT="${RELEASE_COMMIT:0:7}"
+          if [ -n "${BUILD_REF:-}" ]; then
+            REF_SLUG=$(printf '%s' "$BUILD_REF" | tr '/ ' '--' | tr -cd 'A-Za-z0-9._-')
+            RELEASE_NAME="dictate-${REF_SLUG}-${SHORT}-ci"
+            TITLE="Dictate Keyboard v${APK_VERSION} (UNRELEASED build from ${BUILD_REF} @ ${SHORT})"
+            NOTES="UNRELEASED CI build from fork ref \`${BUILD_REF}\` (commit \`${RELEASE_COMMIT:-${GITHUB_SHA}}\`), with the fork's CI build patches applied. This is NOT an official upstream release. Artifact: \`${APK}\`, size: ${APK_SIZE} bytes, versionCode: ${VERSION_CODE}."
+          else
+            RELEASE_NAME="dictate-v${APK_VERSION}-ci"
+            TITLE="Dictate Keyboard v${APK_VERSION} (CI build from upstream ${RELEASE_TAG})"
+            NOTES="Built from the exact upstream release tag \`${RELEASE_TAG}\` (commit \`${RELEASE_COMMIT:-${GITHUB_SHA}}\`), with only the fork's CI build patches applied. Artifact: \`${APK}\`, size: ${APK_SIZE} bytes, versionCode: ${VERSION_CODE}."
+          fi
           if gh release view "$RELEASE_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo "::warning::Fork release ${RELEASE_NAME} already exists; skipping creation."
             exit 0
@@ -515,8 +571,8 @@ jobs:
           gh release create "$RELEASE_NAME" "$APK" \
             --repo "$GITHUB_REPOSITORY" \
             --target "${RELEASE_COMMIT:-${GITHUB_SHA}}" \
-            --title "Dictate Keyboard v${APK_VERSION} (CI build from upstream ${RELEASE_TAG})" \
-            --notes "Built from the exact upstream release tag \`${RELEASE_TAG}\` (commit \`${RELEASE_COMMIT:-${GITHUB_SHA}}\`), with only the fork's CI build patches applied. Artifact: \`${APK}\`, size: ${APK_SIZE} bytes, versionCode: ${VERSION_CODE}."
+            --title "$TITLE" \
+            --notes "$NOTES"
           echo "Created fork release ${RELEASE_NAME}."
 
       # Record this upstream release tag as processed so it is never built
@@ -525,7 +581,7 @@ jobs:
       # performed from the freshest remote base each attempt, so concurrent
       # runs merge cleanly (each appends its own line after fast-forwarding).
       - name: Mark upstream release as processed
-        if: steps.determine.outputs.should_build == 'true'
+        if: steps.determine.outputs.should_build == 'true' && steps.determine.outputs.mode != 'ref'
         shell: bash
         env:
           RELEASE_TAG: ${{ steps.determine.outputs.release_tag }}
@@ -585,6 +641,7 @@ jobs:
         env:
           RELEASE_TAG: ${{ steps.determine.outputs.release_tag }}
           TAG_VERSION: ${{ steps.determine.outputs.tag_version }}
+          BUILD_REF: ${{ steps.determine.outputs.build_ref }}
           MODE: ${{ steps.determine.outputs.mode }}
           SKIP_REASON: ${{ steps.determine.outputs.skip_reason }}
           SHOULD_BUILD: ${{ steps.determine.outputs.should_build }}
@@ -597,12 +654,16 @@ jobs:
           |---|---|
           EOF
           if [ "$SHOULD_BUILD" = "true" ]; then
-            printf '| Upstream release | %s |\n' "${RELEASE_TAG}" >> "$GITHUB_STEP_SUMMARY"
+            if [ -n "${BUILD_REF:-}" ]; then
+              printf '| Source ref (UNRELEASED) | %s |\n' "${BUILD_REF}" >> "$GITHUB_STEP_SUMMARY"
+            else
+              printf '| Upstream release | %s |\n' "${RELEASE_TAG}" >> "$GITHUB_STEP_SUMMARY"
+            fi
             printf '| Source commit | `%s` |\n' "${RELEASE_COMMIT}" >> "$GITHUB_STEP_SUMMARY"
             printf '| Version | v%s (versionCode %s) |\n' "${APK_VERSION}" "${VERSION_CODE}" >> "$GITHUB_STEP_SUMMARY"
             printf '| APK | `%s` (%s bytes) |\n' "${APK}" "${APK_SIZE}" >> "$GITHUB_STEP_SUMMARY"
             printf '| Build type | %s |\n' "${BUILD_TYPE}" >> "$GITHUB_STEP_SUMMARY"
-            echo "Built upstream ${RELEASE_TAG} (${RELEASE_COMMIT}) -> ${APK} v${APK_VERSION}"
+            echo "Built ${BUILD_REF:-upstream ${RELEASE_TAG}} (${RELEASE_COMMIT}) -> ${APK} v${APK_VERSION}"
           else
             printf '| Outcome | skipped (%s) |\n' "${SKIP_REASON:-unknown}" >> "$GITHUB_STEP_SUMMARY"
             echo "Nothing built (${SKIP_REASON:-unknown})."
