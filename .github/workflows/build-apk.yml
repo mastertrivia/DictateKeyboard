@@ -537,10 +537,14 @@ jobs:
 
           PUSHED=0
           for attempt in 1 2 3 4 5; do
-            # Start from the freshest remote tip of the marker branch.
+            # Start from the freshest remote tip of the marker branch. -f
+            # discards the fork-patch modifications still present in the work
+            # tree from the build checkout; switching branches while they are
+            # dirty would otherwise abort with "local changes would be
+            # overwritten". The build is already finished at this point.
             if git fetch -q origin "${MARKER_BRANCH}:refs/remotes/origin/${MARKER_BRANCH}" 2>/dev/null \
                && git rev-parse -q --verify "refs/remotes/origin/${MARKER_BRANCH}" >/dev/null; then
-              git checkout -q -B "${MARKER_BRANCH}" "refs/remotes/origin/${MARKER_BRANCH}"
+              git checkout -q -f -B "${MARKER_BRANCH}" "refs/remotes/origin/${MARKER_BRANCH}"
             else
               git checkout -q --orphan "${MARKER_BRANCH}"
               git rm -rfq --cached . 2>/dev/null || true
