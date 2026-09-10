@@ -51,6 +51,11 @@ concurrency:
 jobs:
   sync:
     runs-on: ubuntu-latest
+    env:
+      # SHA-256 of the pinned CI signing certificate. A daily identity check
+      # below fails loudly if the cached keystore ever drifts, long before the
+      # next release build would surface it.
+      EXPECTED_CERT_SHA256: '38eb6683c0f9fde03882c176a372d5a86dee860183c785cec4b7a517f3db1520'
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -80,6 +85,9 @@ jobs:
       # intended protection against silently rotating the signing identity.
       - name: Warm CI signing keystore
         shell: bash
+        env:
+          KS_PASS: ${{ secrets.KEYSTORE_PASSWORD }}
+          KS_ALIAS: ${{ secrets.KEY_ALIAS }}
         run: |
           KEYSTORE="$HOME/.ci-signing/ci-release.jks"
           if [ -f "$KEYSTORE" ]; then
@@ -91,6 +99,26 @@ jobs:
           else
             echo "::warning::CI signing keystore not present in the Actions cache and no KEYSTORE_BASE64 secret is set."
             echo "This does not block syncing upstream, but the next 'Build APK' run will fail until the keystore is restored (cache restore or secret). No new key is generated automatically, to avoid rotating the signing identity."
+          fi
+
+          # Daily signing-identity watchdog: when a keystore is available, make
+          # sure it is still the pinned key. A drift is a hard failure so it can
+          # never go unnoticed until the next release build.
+          if [ -f "$KEYSTORE" ]; then
+            KS_PASS="${KS_PASS:-dictate-ci-2026}"
+            KS_ALIAS="${KS_ALIAS:-dictate}"
+            KS_SHA=$(keytool -list -v -keystore "$KEYSTORE" -storepass "$KS_PASS" -alias "$KS_ALIAS" 2>/dev/null \
+              | sed -n 's/^[[:space:]]*SHA256: //p' | tr -d ' :' | tr 'A-F' 'a-f')
+            if [ -z "$KS_SHA" ]; then
+              echo "::error::Could not read the signing certificate from the cached CI keystore (wrong password/alias?)."
+              exit 1
+            fi
+            if [ "$KS_SHA" != "$EXPECTED_CERT_SHA256" ]; then
+              echo "::error::Signing identity drift detected: keystore is ${KS_SHA}, pinned expectation is ${EXPECTED_CERT_SHA256}."
+              echo "Restore the intended keystore (cache or KEYSTORE_BASE64 secret). Do not accept a changed key silently."
+              exit 1
+            fi
+            echo "Signing identity verified against pinned certificate ($KS_SHA)."
           fi
 
       - name: Configure git
