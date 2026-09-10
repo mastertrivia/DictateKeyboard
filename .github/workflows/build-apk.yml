@@ -45,6 +45,10 @@ name: Build APK
 #   then be restored from the secret override (KEYSTORE_BASE64 + KEYSTORE_
 #   PASSWORD/KEY_ALIAS/KEY_PASSWORD) or a fresh key may be bootstrapped by
 #   setting allow_new_key_if_missing=true (deliberate key rotation only).
+#   Whatever the source of the keystore, this workflow ALWAYS checks its
+#   certificate against the pinned EXPECTED_CERT_SHA256 and fails on any
+#   deviation, so the signing identity can never drift by accident. A deliberate
+#   rotation requires the explicit allow_key_change=true input.
 
 on:
   workflow_dispatch:
@@ -80,6 +84,11 @@ on:
         default: false
       allow_new_key_if_missing:
         description: 'Bootstrap only: generate a fresh signing keystore if none exists (this ROTATES the signing key - only use deliberately)'
+        type: boolean
+        required: false
+        default: false
+      allow_key_change:
+        description: 'DANGER: allow the signing identity to differ from the pinned expected certificate (deliberate key rotation only)'
         type: boolean
         required: false
         default: false
@@ -246,6 +255,7 @@ jobs:
         shell: bash
         env:
           RELEASE_TAG: ${{ steps.determine.outputs.release_tag }}
+          FORCE: ${{ github.event.inputs.force }}
         run: |
           set -euo pipefail
           git remote add upstream "https://github.com/${UPSTREAM_REPO}.git" 2>/dev/null \
@@ -295,6 +305,24 @@ jobs:
           echo "VERSION_CODE=$VC" >> "$GITHUB_ENV"
           echo "Working tree now at ${RELEASE_TAG} (${RELEASE_COMMIT}), declaring versionName=${VN} versionCode=${VC}"
 
+          # Update-continuity guard: an APK only installs OVER an existing
+          # install when its versionCode is >= the installed one (and it is
+          # signed by the same key, checked later). Refuse to ship a release
+          # whose versionCode is not strictly greater than every release we have
+          # already processed, so a downgrade/duplicate can never silently happen.
+          if ! printf '%s' "$VC" | grep -qE '^[0-9]+$'; then
+            echo "::error::Could not read a numeric projectVersionCode from the ${RELEASE_TAG} gradle.properties (got '${VC}')."
+            exit 1
+          fi
+          PREV_MAX_CODE=$(git show "refs/remotes/origin/${MARKER_BRANCH}:${MARKER_FILE}" 2>/dev/null \
+            | awk 'NF>=3 && $3 ~ /^[0-9]+$/ {print $3}' | sort -n | tail -1 || true)
+          if [ -n "$PREV_MAX_CODE" ] && [ "${FORCE:-false}" != "true" ] && [ "$VC" -le "$PREV_MAX_CODE" ]; then
+            echo "::error::versionCode ${VC} for ${RELEASE_TAG} is not greater than the highest already-processed versionCode ${PREV_MAX_CODE}."
+            echo "Existing installs would not accept this as an update. Set force=true only if you really mean to publish a non-increasing versionCode."
+            exit 1
+          fi
+          echo "Update-continuity check OK: versionCode ${VC} > ${PREV_MAX_CODE:-<no prior processed code>}."
+
       - name: Set up Android SDK components
         if: steps.determine.outputs.should_build == 'true'
         shell: bash
@@ -328,6 +356,7 @@ jobs:
           KS_ALIAS: ${{ secrets.KEY_ALIAS }}
           KS_KEY_PASS: ${{ secrets.KEY_PASSWORD }}
           ALLOW_NEW_KEY: ${{ github.event.inputs.allow_new_key_if_missing }}
+          ALLOW_KEY_CHANGE: ${{ github.event.inputs.allow_key_change }}
         run: |
           KS_PASS="${KS_PASS:-dictate-ci-2026}"
           KS_ALIAS="${KS_ALIAS:-dictate}"
@@ -362,6 +391,28 @@ jobs:
           EOF
           echo "Wrote keystore.properties for release signing."
 
+          # Pin the signing identity BEFORE spending time on the build. Whatever
+          # the keystore source (cache or KEYSTORE_BASE64 secret), its
+          # certificate MUST equal EXPECTED_CERT_SHA256, otherwise every future
+          # APK would fail to install over the ones users already have. An
+          # operator can only bypass this with the explicit allow_key_change
+          # input, which is reserved for a deliberate key rotation.
+          if [ "$BUILD_TYPE" != "debug" ] && [ "$ALLOW_KEY_CHANGE" != "true" ]; then
+            KS_SHA=$(keytool -list -v -keystore "$KEYSTORE" -storepass "$KS_PASS" -alias "$KS_ALIAS" 2>/dev/null \
+              | sed -n 's/^[[:space:]]*SHA256: //p' | tr -d ' :' | tr 'A-F' 'a-f')
+            if [ -z "$KS_SHA" ]; then
+              echo "::error::Could not read the signing certificate from the CI keystore."
+              exit 1
+            fi
+            if [ "$KS_SHA" != "$EXPECTED_CERT_SHA256" ]; then
+              echo "::error::Refusing to build: CI keystore certificate ${KS_SHA} does not match the pinned expected certificate ${EXPECTED_CERT_SHA256}."
+              echo "This protects update continuity (Android rejects an update signed with a different key)."
+              echo "Restore the intended keystore, or set allow_key_change=true only for a deliberate key rotation."
+              exit 1
+            fi
+            echo "Signing identity verified against pinned certificate ($KS_SHA)."
+          fi
+
       - name: Build APK
         if: steps.determine.outputs.should_build == 'true'
         shell: bash
@@ -380,6 +431,7 @@ jobs:
         env:
           RELEASE_TAG: ${{ steps.determine.outputs.release_tag }}
           TAG_VERSION: ${{ steps.determine.outputs.tag_version }}
+          ALLOW_KEY_CHANGE: ${{ github.event.inputs.allow_key_change }}
         run: |
           APK_DIR="app/build/outputs/apk/$BUILD_TYPE"
           ls -la "$APK_DIR"
@@ -429,9 +481,9 @@ jobs:
               exit 1
             fi
 
-            if [ -z "${{ secrets.KEYSTORE_BASE64 }}" ] && [ "$KS_SHA" != "$EXPECTED_CERT_SHA256" ]; then
-              echo "::error::Signing keystore changed unexpectedly (${KS_SHA} != expected ${EXPECTED_CERT_SHA256})."
-              echo "The cache may have rotated the key. Restore the intended keystore and re-run; never silently accept a new key."
+            if [ "$ALLOW_KEY_CHANGE" != "true" ] && [ "$KS_SHA" != "$EXPECTED_CERT_SHA256" ]; then
+              echo "::error::Signing keystore does not match the pinned certificate (${KS_SHA} != expected ${EXPECTED_CERT_SHA256})."
+              echo "Refusing to publish an APK that would break updates over existing installs. Restore the intended keystore (never silently accept a new key), or pass allow_key_change=true for a deliberate rotation."
               exit 1
             fi
             echo "Signature verified: APK is signed by the stable CI keystore."
@@ -468,7 +520,8 @@ jobs:
           echo "Created fork release ${RELEASE_NAME}."
 
       # Record this upstream release tag as processed so it is never built
-      # twice. State is stored on the ci/release-history branch. Appends are
+      # twice. State is stored on the ci/release-history branch, one line per
+      # release as "<tag> <commit> <versionCode> <timestamp>". Appends are
       # performed from the freshest remote base each attempt, so concurrent
       # runs merge cleanly (each appends its own line after fast-forwarding).
       - name: Mark upstream release as processed
@@ -484,10 +537,14 @@ jobs:
 
           PUSHED=0
           for attempt in 1 2 3 4 5; do
-            # Start from the freshest remote tip of the marker branch.
+            # Start from the freshest remote tip of the marker branch. -f
+            # discards the fork-patch modifications still present in the work
+            # tree from the build checkout; switching branches while they are
+            # dirty would otherwise abort with "local changes would be
+            # overwritten". The build is already finished at this point.
             if git fetch -q origin "${MARKER_BRANCH}:refs/remotes/origin/${MARKER_BRANCH}" 2>/dev/null \
                && git rev-parse -q --verify "refs/remotes/origin/${MARKER_BRANCH}" >/dev/null; then
-              git checkout -q -B "${MARKER_BRANCH}" "refs/remotes/origin/${MARKER_BRANCH}"
+              git checkout -q -f -B "${MARKER_BRANCH}" "refs/remotes/origin/${MARKER_BRANCH}"
             else
               git checkout -q --orphan "${MARKER_BRANCH}"
               git rm -rfq --cached . 2>/dev/null || true
@@ -499,7 +556,7 @@ jobs:
             if [ -f "${MARKER_FILE}" ]; then
               grep -v "^${RELEASE_TAG}[[:space:]]" "${MARKER_FILE}" > "$TMP" || true
             fi
-            echo "${RELEASE_TAG} ${RELEASE_COMMIT:-unknown} $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$TMP"
+            echo "${RELEASE_TAG} ${RELEASE_COMMIT:-unknown} ${VERSION_CODE:-0} $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$TMP"
             sort -V -u -o "$TMP" "$TMP"
             mv "$TMP" "${MARKER_FILE}"
 
