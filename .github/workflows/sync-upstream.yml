@@ -25,8 +25,10 @@ name: Sync upstream
 
 on:
   schedule:
-    # Runs daily at 03:17 UTC to pick up whatever the developer published the day before.
-    - cron: '17 3 * * *'
+    # Runs twice a day (03:17 and 15:17 UTC) so upstream commits land within hours
+    # instead of up to a day. Cheap: a no-op fetch + "Already up to date" when
+    # there is nothing new.
+    - cron: '17 3,15 * * *'
   workflow_dispatch:
     inputs:
       upstream_repo:
