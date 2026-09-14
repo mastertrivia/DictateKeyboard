@@ -97,6 +97,8 @@
     <string name="quick_action__floating_window_mode" comment="Please mind the limited available space for the quick action strings">Peldošs</string>
     <string name="quick_action__one_handed_mode" comment="Please mind the limited available space for the quick action strings">Vienrocīgs</string>
     <string name="quick_action__one_handed_mode__tooltip">Pārslēgt vienrocīgo ievadi</string>
+    <string name="quick_action__split_layout" comment="Please mind the limited available space for the quick action strings">Dalīta</string>
+    <string name="quick_action__split_layout__tooltip">Pārslēgt dalīto tastatūru</string>
     <string name="quick_action__toggle_number_row" comment="Quick action that shows or hides the row of digit keys above the letters. Please mind the limited available space for the quick action strings">Ciparu rinda</string>
     <string name="quick_action__toggle_number_row__tooltip">Rādīt vai paslēpt ciparu rindu</string>
     <string name="quick_action__drag_marker__tooltip" comment="This action is only used as a placeholder in the actions editor drag and drop screen and only visible in debug mode">Pašreizējā rādītāja vilkšanas atrašanās vieta</string>
@@ -397,6 +399,8 @@
     <string name="pref__keyboard__font_size_multiplier__label" comment="Preference title">Fonta izmēra reizinātājs</string>
     <string name="pref__keyboard__group_layout__label" comment="Preference group title">Izkārtojums</string>
     <string name="pref__keyboard__landscape_input_ui_mode__label" comment="Preference value">Līmeniska pilnekrāna ievade</string>
+    <string name="pref__keyboard__key_spacing__label" comment="Preference title">Atstarpe starp taustiņiem</string>
+    <string name="pref__keyboard__key_spacing__summary" comment="Preference summary">{v}% vertikāli, {h}% horizontāli — lielāka atstarpe padara mazākus taustiņus, nevis tastatūru.</string>
     <string name="pref__keyboard__group_keypress__label" comment="Preference group title">Taustiņa piespiešana</string>
     <string name="pref__keyboard__popup_enabled__label" comment="Preference title">Uznirstošā lodziņa redzamība</string>
     <string name="pref__keyboard__popup_enabled__summary" comment="Preference summary">Rādīt uznirstošo lodziņu, kad tiek nospiests taustiņš</string>
@@ -1658,6 +1662,26 @@
     <string name="dictate__history_clear_title">Notīrīt vēsturi?</string>
     <string name="dictate__history_clear_message">Šī darbība neatgriezeniski izdzēš visus vēstures ierakstus un jebkuru saglabāto audio.</string>
     <string name="dictate__history_clear_confirm">Notīrīt visu</string>
+    <string name="dictate__history_export_title">Eksportēt uz mapi</string>
+    <string name="dictate__history_export_summary">Katrs jaunais diktāts, tiklīdz tas ir pabeigts, tiek ierakstīts arī šajā mapē kā vienkāršs teksta fails.</string>
+    <string name="dictate__history_export_folder">Mape</string>
+    <string name="dictate__history_export_folder_unset">Nav iestatīts</string>
+    <string name="dictate__history_export_folder_unavailable">Mape nav pieejama — izvēlieties to vēlreiz</string>
+    <string name="dictate__history_export_choose">Izvēlēties mapi</string>
+    <string name="dictate__history_export_change">Mainīt</string>
+    <string name="dictate__history_export_disconnect">Atvienot</string>
+    <string name="dictate__history_export_audio_title">Eksportēt arī ierakstu</string>
+    <string name="dictate__history_export_audio_summary">Saglabā audio blakus atšifrējumam.</string>
+    <string name="dictate__history_export_audio_needs_retention">Nepieciešams “Saglabāt audio”.</string>
+    <string name="dictate__history_export_all">Eksportēt visu tagad</string>
+    <string name="dictate__history_export_all_summary">Ieraksta katru diktātu, kas mapē vēl nav: tos, kas radīti pirms mapes izvēles, un tos, kurus neizdevās ierakstīt, kamēr mape nebija pieejama.</string>
+    <string name="dictate__history_export_all_result">Ierakstīti: {written}, jau bija: {skipped}, neizdevās: {failed}</string>
+    <string name="dictate__history_export_last_failure">Ierakstīšana {when} neizdevās. “Eksportēt visu tagad” papildina trūkstošo.</string>
+    <string name="dictate__history_export_warning_title">Kas tur nonāk</string>
+    <string name="dictate__history_export_warning_message">Mapē turpmāk būs katra jūsu diktāta teksts, un arī ieraksti, ja to ieslēgsiet. Viss, kas to sinhronizē — mākoņa klients, dublēšanas rīks, cita lietotne — aiznes šos atšifrējumus prom no šīs ierīces.\n\nDictate turpina rakstīt, līdz atvienojat mapi, un nekad neko no tās nedzēš: ieraksti, kas izkrīt no vēstures, paliek mapē. Paroļu un inkognito lauki nekad netiek reģistrēti un tāpēc netiek arī eksportēti.</string>
+    <string name="dictate__history_export_needs_history">Mapes eksports ieraksta to, ko reģistrē vēsture, tāpēc vēsturei jābūt ieslēgtai.</string>
+    <string name="dictate__history_export_enable_history">Ieslēgt vēsturi</string>
+    <string name="dictate__history_export_pick_failed">Neizdevās iegūt rakstīšanas piekļuvi šai mapei</string>
     <string name="dictate__stats_empty">Vēl nav diktātu — statistika parādīsies šeit, tiklīdz sāksi diktēt.</string>
     <string name="dictate__stats_time_saved">Ietaupītais laiks</string>
     <string name="dictate__stats_time_saved_sub">salīdzinot ar rakstīšanu</string>

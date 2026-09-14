@@ -96,6 +96,8 @@
     <string name="quick_action__voice_input__tooltip" comment="IME stands for Input Method Editor and is indirectly equivalent to 'keyboard'.">Apri fornitore d\'immissione di voce</string>
     <string name="quick_action__one_handed_mode" comment="Please mind the limited available space for the quick action strings">A una mano</string>
     <string name="quick_action__one_handed_mode__tooltip">Attiva o disattiva modalità a una mano</string>
+    <string name="quick_action__split_layout" comment="Please mind the limited available space for the quick action strings">Diviso</string>
+    <string name="quick_action__split_layout__tooltip">Attiva o disattiva la tastiera divisa</string>
     <string name="quick_action__toggle_number_row" comment="Quick action that shows or hides the row of digit keys above the letters. Please mind the limited available space for the quick action strings">Riga numeri</string>
     <string name="quick_action__toggle_number_row__tooltip">Mostra o nascondi la riga dei numeri</string>
     <string name="quick_action__drag_marker" comment="This action is only used as a placeholder in the actions editor drag and drop screen and only visible in debug mode">Trascina</string>
@@ -350,6 +352,8 @@
     <string name="pref__keyboard__font_size_multiplier__label" comment="Preference title">Moltiplicatore dimensione carattere</string>
     <string name="pref__keyboard__group_layout__label" comment="Preference group title">Layout</string>
     <string name="pref__keyboard__landscape_input_ui_mode__label" comment="Preference value">Inserimento a schermo intero orizzontale</string>
+    <string name="pref__keyboard__key_spacing__label" comment="Preference title">Spazio tra i tasti</string>
+    <string name="pref__keyboard__key_spacing__summary" comment="Preference summary">{v}% verticale, {h}% orizzontale — uno spazio più ampio rimpicciolisce i tasti, non la tastiera.</string>
     <string name="pref__keyboard__group_keypress__label" comment="Preference group title">Pressione tasti</string>
     <string name="pref__keyboard__popup_enabled__label" comment="Preference title">Visibilità Popup</string>
     <string name="pref__keyboard__popup_enabled__summary" comment="Preference summary">Mostra popup quando si preme un tasto</string>
@@ -1501,6 +1505,26 @@
     <string name="dictate__history_clear_title">Cancellare la cronologia?</string>
     <string name="dictate__history_clear_message">Questa operazione elimina definitivamente tutte le voci della cronologia e ogni audio conservato.</string>
     <string name="dictate__history_clear_confirm">Cancella tutto</string>
+    <string name="dictate__history_export_title">Esporta in una cartella</string>
+    <string name="dictate__history_export_summary">Ogni nuova dettatura viene scritta anche in questa cartella come file di testo, appena è pronta.</string>
+    <string name="dictate__history_export_folder">Cartella</string>
+    <string name="dictate__history_export_folder_unset">Non impostata</string>
+    <string name="dictate__history_export_folder_unavailable">Cartella non disponibile — selezionala di nuovo</string>
+    <string name="dictate__history_export_choose">Scegli cartella</string>
+    <string name="dictate__history_export_change">Cambia</string>
+    <string name="dictate__history_export_disconnect">Disconnetti</string>
+    <string name="dictate__history_export_audio_title">Esporta anche la registrazione</string>
+    <string name="dictate__history_export_audio_summary">Salva l\'audio accanto alla trascrizione.</string>
+    <string name="dictate__history_export_audio_needs_retention">Richiede «Conserva audio».</string>
+    <string name="dictate__history_export_all">Esporta tutto ora</string>
+    <string name="dictate__history_export_all_summary">Scrive ogni dettatura non ancora presente nella cartella: quelle precedenti alla scelta e quelle che l\'app non è riuscita a scrivere mentre la cartella non era raggiungibile.</string>
+    <string name="dictate__history_export_all_result">{written} scritte, {skipped} già presenti, {failed} non riuscite</string>
+    <string name="dictate__history_export_last_failure">Una scrittura non è riuscita {when}. «Esporta tutto ora» recupera ciò che manca.</string>
+    <string name="dictate__history_export_warning_title">Cosa finisce lì</string>
+    <string name="dictate__history_export_warning_message">La cartella conterrà il testo di ogni dettatura che farai da ora in poi, e anche le registrazioni se lo attivi. Tutto ciò che la sincronizza — un client cloud, uno strumento di backup, un\'altra app — porta quelle trascrizioni fuori da questo dispositivo.\n\nDictate continua a scrivere finché non disconnetti la cartella e non vi cancella mai nulla: le voci che escono dalla cronologia restano nella cartella. I campi password e in incognito non vengono mai registrati e quindi mai esportati.</string>
+    <string name="dictate__history_export_needs_history">L\'esportazione su cartella scrive ciò che la cronologia registra, quindi la cronologia deve essere attiva.</string>
+    <string name="dictate__history_export_enable_history">Attiva cronologia</string>
+    <string name="dictate__history_export_pick_failed">Impossibile ottenere l\'accesso in scrittura a quella cartella</string>
     <string name="dictate__stats_empty">Ancora nessuna dettatura — le statistiche appariranno qui quando inizi a dettare.</string>
     <string name="dictate__stats_time_saved">Tempo risparmiato</string>
     <string name="dictate__stats_time_saved_sub">rispetto alla digitazione</string>

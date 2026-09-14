@@ -101,6 +101,8 @@
     <string name="quick_action__floating_window_mode__tooltip">切换浮动键盘窗口模式</string>
     <string name="quick_action__one_handed_mode" comment="Please mind the limited available space for the quick action strings">单手模式</string>
     <string name="quick_action__one_handed_mode__tooltip">单手模式开关</string>
+    <string name="quick_action__split_layout" comment="Please mind the limited available space for the quick action strings">分屏键盘</string>
+    <string name="quick_action__split_layout__tooltip">分屏键盘开关</string>
     <string name="quick_action__resize_mode" comment="Please mind the limited available space for the quick action strings">调整大小</string>
     <string name="quick_action__resize_mode__tooltip">切换调整大小模式</string>
     <string name="quick_action__toggle_number_row" comment="Quick action that shows or hides the row of digit keys above the letters. Please mind the limited available space for the quick action strings">数字行</string>
@@ -445,6 +447,8 @@
     <string name="pref__keyboard__font_size_multiplier__label" comment="Preference title">字体大小缩放倍率</string>
     <string name="pref__keyboard__group_layout__label" comment="Preference group title">布局</string>
     <string name="pref__keyboard__landscape_input_ui_mode__label" comment="Preference value">横向全屏输入</string>
+    <string name="pref__keyboard__key_spacing__label" comment="Preference title">按键间距</string>
+    <string name="pref__keyboard__key_spacing__summary" comment="Preference summary">垂直 {v}%、水平 {h}% — 间距越大按键越小，键盘大小不变。</string>
     <string name="pref__keyboard__group_keypress__label" comment="Preference group title">按键</string>
     <string name="pref__keyboard__popup_enabled__label" comment="Preference title">弹出键可见</string>
     <string name="pref__keyboard__popup_enabled__summary" comment="Preference summary">按键时显示弹出提示</string>
@@ -1707,6 +1711,26 @@
     <string name="dictate__history_clear_title">清除历史记录？</string>
     <string name="dictate__history_clear_message">这将永久删除所有历史记录条目和任何保留的音频。</string>
     <string name="dictate__history_clear_confirm">全部清除</string>
+    <string name="dictate__history_export_title">导出到文件夹</string>
+    <string name="dictate__history_export_summary">每段新的听写完成后，都会以纯文本文件的形式同时写入该文件夹。</string>
+    <string name="dictate__history_export_folder">文件夹</string>
+    <string name="dictate__history_export_folder_unset">未设置</string>
+    <string name="dictate__history_export_folder_unavailable">文件夹不可用 — 请重新选择</string>
+    <string name="dictate__history_export_choose">选择文件夹</string>
+    <string name="dictate__history_export_change">更改</string>
+    <string name="dictate__history_export_disconnect">断开</string>
+    <string name="dictate__history_export_audio_title">同时导出录音</string>
+    <string name="dictate__history_export_audio_summary">将音频保存在转写文本旁边。</string>
+    <string name="dictate__history_export_audio_needs_retention">需要先开启“保留音频”。</string>
+    <string name="dictate__history_export_all">立即导出全部</string>
+    <string name="dictate__history_export_all_summary">写入所有尚未出现在该文件夹中的听写：选择文件夹之前的记录，以及文件夹不可用期间未能写入的记录。</string>
+    <string name="dictate__history_export_all_result">已写入 {written} 条，已存在 {skipped} 条，失败 {failed} 条</string>
+    <string name="dictate__history_export_last_failure">{when}有一次写入失败。“立即导出全部”可以补齐缺失的文件。</string>
+    <string name="dictate__history_export_warning_title">文件夹里会有什么</string>
+    <string name="dictate__history_export_warning_message">从现在起，该文件夹会保存你每一段听写的文字；如果开启，还会保存录音。任何同步它的工具 — 云端客户端、备份工具或其他应用 — 都会把这些转写带离本设备。\n\n在你断开该文件夹之前，Dictate 会持续写入，并且从不删除其中的文件：从历史记录中移除的条目仍会留在文件夹里。密码字段和无痕输入从不记录，因此也从不导出。</string>
+    <string name="dictate__history_export_needs_history">文件夹导出写入的是历史记录所保存的内容，因此需要开启历史记录。</string>
+    <string name="dictate__history_export_enable_history">开启历史记录</string>
+    <string name="dictate__history_export_pick_failed">无法获得该文件夹的写入权限</string>
     <string name="dictate__stats_empty">还没有听写 — 开始听写后统计会显示在这里。</string>
     <string name="dictate__stats_time_saved">节省的时间</string>
     <string name="dictate__stats_time_saved_sub">相比打字</string>
