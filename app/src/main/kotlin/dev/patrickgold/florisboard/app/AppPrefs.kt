@@ -1150,9 +1150,16 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
             key = "gestures__swipe_right",
             default = SwipeAction.SWITCH_TO_PREV_SUBTYPE,
         )
+        // Up and down default to a cursor move, where up used to do nothing at all (issue #364): the
+        // vertical glide they switch on is the other half of the one left/right have had all along, and a
+        // trackpad that only goes sideways was the complaint that asked for it.
         val spaceBarSwipeUp = enum(
             key = "gestures__space_bar_swipe_up",
-            default = SwipeAction.NO_ACTION,
+            default = SwipeAction.MOVE_CURSOR_UP,
+        )
+        val spaceBarSwipeDown = enum(
+            key = "gestures__space_bar_swipe_down",
+            default = SwipeAction.MOVE_CURSOR_DOWN,
         )
         val spaceBarSwipeLeft = enum(
             key = "gestures__space_bar_swipe_left",
@@ -1173,6 +1180,13 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
         val deleteKeyLongPress = enum(
             key = "gestures__delete_key_long_press",
             default = SwipeAction.DELETE_CHARACTER,
+        )
+        // On by default (issue #366): for anyone who only taps ?123 nothing changes except that the layer
+        // appears under the finger instead of on the lift, and holding it open is the gesture people arrive
+        // from an iPhone expecting. Switchable all the same, because it does claim the slide off the key.
+        val momentaryLayer = boolean(
+            key = "gestures__momentary_layer",
+            default = true,
         )
         val swipeDistanceThreshold = int(
             key = "gestures__swipe_distance_threshold",
