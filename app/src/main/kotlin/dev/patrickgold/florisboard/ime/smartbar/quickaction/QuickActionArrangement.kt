@@ -94,10 +94,6 @@ data class QuickActionArrangement(
                 // Local sticker panel (issue #280): the folder the user picked, no network involved.
                 // Like the GIF action it sits in the list until dragged into the bar.
                 QuickAction.InsertKey(TextKeyData.IME_UI_MODE_STICKER),
-                // Scan text (issue #390): camera → recognised lines → the one you tap. Here and not
-                // higher up, because it is answering a question most fields never ask; the issue itself
-                // says it is not a Smartbar default.
-                QuickAction.InsertKey(TextKeyData.IME_UI_MODE_SCAN),
                 QuickAction.InsertKey(TextKeyData.TOGGLE_COMPACT_LAYOUT),
                 // Split keyboard for two thumbs on a wide window (issue #362). Next to one-handed
                 // because they are the same kind of answer: greyed out below 600dp, where two halves
@@ -150,8 +146,9 @@ data class QuickActionArrangement(
         // arrangement so they don't linger as "!! invalid !!". -245 = the old autocorrect-toggle
         // placeholder (autocorrect is now fully automatic). -27/-28 = the line-start/line-end buttons
         // that existed for a day between two commits of #335 before they became field-start/field-end;
-        // they never reached a release, but a debug arrangement can still carry them.
-        private val REMOVED_ACTION_CODES = setOf(-245, -27, -28)
+        // they never reached a release, but a debug arrangement can still carry them. -229 = the
+        // scan-text panel opener, removed together with the OCR feature.
+        private val REMOVED_ACTION_CODES = setOf(-245, -27, -28, -229)
 
         override fun deserialize(value: String): QuickActionArrangement {
             val raw: QuickActionArrangement = QuickActionJsonConfig.decodeFromString(value)
