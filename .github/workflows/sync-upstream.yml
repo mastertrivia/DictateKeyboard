@@ -1,22 +1,21 @@
 name: Sync upstream
 
-# Keeps this fork in step with the upstream repository (DevEmperor/DictateKeyboard):
-# on a schedule (and on manual trigger) it fetches upstream/main and merges it into
-# this fork's main, then pushes.
+# Manual maintenance tool: merges upstream/main into this fork's main on demand.
 #
-# IMPORTANT - this workflow NEVER builds an APK. Syncing ordinary upstream
-# commits must not produce releases; the "Build APK" workflow is independent and
-# runs only for official upstream RELEASE TAGS (v6.1.2, v6.1.3, ...), checking
-# out the exact tagged commit. See .github/workflows/build-apk.yml.
+# Automatic syncing does NOT happen here anymore. The "Build APK" workflow now
+# merges each official upstream RELEASE TAG into main immediately before it
+# builds, so the fork advances exactly when upstream releases - and the fork's
+# permanent exclusions (arm64-v8a only, no Scan Text / ML Kit OCR) survive the
+# merge. See .github/workflows/build-apk.yml.
 #
-# The workflow also touches the shared CI signing-keystore cache every day. GitHub
-# evicts cache entries not accessed for 7 days, and the signing key MUST stay the
-# same forever (Android refuses to install an update signed with a different key).
-# The daily restore keeps the key alive indefinitely. It never regenerates the
-# key: if the keystore is genuinely lost (cache purge), the "Build APK" workflow
-# fails loudly so the key can be restored from the KEYSTORE_BASE64 secret instead
-# of silently rotating. If that secret is set, this workflow also re-materialises
-# the keystore from it so a cold cache heals itself with the SAME key.
+# IMPORTANT - this workflow NEVER builds an APK.
+#
+# Do not use this to sync ahead of a release: pulling in post-release upstream
+# commits makes main's version differ from the release tag, and the next release
+# build's version check will then refuse to build. Let the release build sync.
+#
+# Keystore cache keep-alive is handled by the "Build APK" workflow's 4-hourly
+# schedule, which restores the shared signing-keystore cache on every run.
 #
 # If upstream ever edits the exact same lines this fork changed (gradle.properties
 # heap settings, the :app lint disable, ...), the merge stops with a conflict and
@@ -24,11 +23,9 @@ name: Sync upstream
 # browser and use "Sync fork".
 
 on:
-  schedule:
-    # Runs twice a day (03:17 and 15:17 UTC) so upstream commits land within hours
-    # instead of up to a day. Cheap: a no-op fetch + "Already up to date" when
-    # there is nothing new.
-    - cron: '17 3,15 * * *'
+  # Manual trigger only: upstream is synced automatically by the release build,
+  # so there is deliberately no schedule. The fork advances only when upstream
+  # publishes an official release.
   workflow_dispatch:
     inputs:
       upstream_repo:
@@ -47,7 +44,9 @@ permissions:
   actions: write
 
 concurrency:
-  group: sync-upstream
+  # Share the release build's group so a manual sync can never race the merge the
+  # release build performs on main.
+  group: build-apk
   cancel-in-progress: false
 
 jobs:

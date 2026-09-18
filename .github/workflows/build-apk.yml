@@ -12,17 +12,24 @@ name: Build APK
 # "Sync upstream" without producing any APK.
 #
 # How the correct source is chosen:
-#   1. The workflow checks out the EXACT commit the upstream release tag points
-#      to (not this fork's moving main branch), so an APK labelled "6.1.2" is
-#      really built from upstream's v6.1.2 source.
-#   2. Two small fork-only tweaks are then re-applied on top of that pristine
-#      tag so the code still builds on GitHub's ubuntu-latest runners. Those
-#      tweaks live as plain patches in .github/ci-patches/ and are applied with
-#      `git apply --3way` (see the comments at the top of each patch):
+#   1. The workflow fetches the EXACT commit the upstream release tag points to,
+#      then merges it INTO this fork's main branch. main carries the fork's
+#      permanent exclusions (arm64-v8a only, no Google ML Kit / "Scan Text" OCR),
+#      so merging is what keeps those exclusions in every future release build
+#      while still picking up the official source and its version.
+#   2. Two small fork-only tweaks are then re-applied on top so the code still
+#      builds on GitHub's ubuntu-latest runners. Those tweaks live as plain
+#      patches in .github/ci-patches/ and are applied with `git apply --3way`
+#      (see the comments at the top of each patch):
 #        - gradle.properties  -> CI-safe Gradle/Kotlin daemon heaps
 #        - app/build.gradle.kts -> the :app lint disable mirroring :wear
-#   3. Because we build the pristine upstream tag, projectVersionName and
-#      projectVersionCode stay exactly what upstream declared for the release.
+#   3. projectVersionName/projectVersionCode come from main after the merge,
+#      which is exactly what upstream declared for the release.
+#   4. If upstream edits the same lines the fork's exclusions own, the merge
+#      stops with a conflict and the run FAILS loudly - it never silently drops
+#      the exclusions or ships OCR again. An "Enforce fork exclusions" source
+#      guard and an APK-content guard additionally fail the build if either
+#      exclusion is ever missing, even when the merge itself was clean.
 #
 # Trigger model:
 #   - workflow_dispatch with an upstream_release_tag  -> build that exact tag.
@@ -255,7 +262,7 @@ jobs:
           echo "Selected upstream release: ${RELEASE_TAG} (mode: ${MODE})"
 
       # The fork-only patches live on main; copy them aside BEFORE the working
-      # tree is switched to the pristine upstream release commit below.
+      # tree is switched to the release commit merged into main below.
       - name: Stash fork-only CI patches
         if: steps.determine.outputs.should_build == 'true'
         shell: bash
@@ -267,10 +274,10 @@ jobs:
             echo "Stashed fork-only CI patches:"
             ls -1 /tmp/ci-patches
           else
-            echo "::warning::No fork-only CI patches found in .github/ci-patches/; building the tag exactly as upstream released it."
+            echo "::warning::No fork-only CI patches found in .github/ci-patches/; building the release merged into main as-is."
           fi
 
-      - name: Check out exact upstream release commit and apply fork patches
+      - name: Sync release into main, check it out, and apply fork patches
         id: checkout_release
         if: steps.determine.outputs.should_build == 'true'
         shell: bash
@@ -292,19 +299,38 @@ jobs:
             echo "Checking out fork ref ${BUILD_REF} at commit ${RELEASE_COMMIT} ..."
             git checkout -q --detach "$RELEASE_COMMIT"
           else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
             git remote add upstream "https://github.com/${UPSTREAM_REPO}.git" 2>/dev/null \
               || git remote set-url upstream "https://github.com/${UPSTREAM_REPO}.git"
 
             # Full (not shallow) fetch of the tag so the working history around the
             # release commit is intact (some buildType suffixes query git history).
             git fetch -q "upstream" "refs/tags/${RELEASE_TAG}:refs/tags/upstream/${RELEASE_TAG}"
-            RELEASE_COMMIT=$(git rev-parse "refs/tags/upstream/${RELEASE_TAG}^{commit}")
-            SOURCE_LABEL="upstream tag ${RELEASE_TAG}"
+            TAG_COMMIT=$(git rev-parse "refs/tags/upstream/${RELEASE_TAG}^{commit}")
+
+            # Sync before build: merge the release INTO main so the fork's permanent
+            # exclusions (arm64-v8a only, no Scan Text / ML Kit OCR) survive, and so
+            # the official version is picked up from the tag. A conflict means
+            # upstream touched the code the exclusions own; fail loudly rather than
+            # silently dropping them or shipping OCR again.
+            git fetch -q origin main
+            git checkout -q -B main origin/main
+            echo "Merging upstream ${RELEASE_TAG} (${TAG_COMMIT}) into main ..."
+            if ! git merge --no-edit "$TAG_COMMIT"; then
+              echo "::error::Merge conflict syncing upstream ${RELEASE_TAG} into main."
+              echo "Upstream changed code the fork's exclusions own (arm64-v8a only, no Scan Text OCR)."
+              echo "Resolve the conflict, push main, then re-run this workflow with force=true."
+              exit 1
+            fi
+            git push -q origin main
+            RELEASE_COMMIT=$(git rev-parse HEAD)
+            SOURCE_LABEL="upstream tag ${RELEASE_TAG} merged into main"
             echo "release_commit=$RELEASE_COMMIT" >> "$GITHUB_OUTPUT"
             echo "artifact_suffix=" >> "$GITHUB_OUTPUT"
 
-            echo "Checking out upstream ${RELEASE_TAG} at commit ${RELEASE_COMMIT} ..."
-            git checkout -q --detach "$RELEASE_COMMIT"
+            echo "Synced ${SOURCE_LABEL} at commit ${RELEASE_COMMIT}."
           fi
 
           if ls /tmp/ci-patches/*.patch >/dev/null 2>&1; then
@@ -366,6 +392,31 @@ jobs:
             fi
             echo "Update-continuity check OK: versionCode ${VC} > ${PREV_MAX_CODE:-<no prior processed code>}."
           fi
+
+      # The two permanent fork exclusions, asserted at the source level before any
+      # time is spent compiling. This is the safety net for a clean merge that
+      # nonetheless imported upstream's OCR again (e.g. a new file or dependency).
+      - name: Enforce fork exclusions
+        if: steps.determine.outputs.should_build == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          fail=0
+          if ! grep -q 'abiFilters += listOf("arm64-v8a")' app/build.gradle.kts; then
+            echo "::error::app/build.gradle.kts no longer restricts the build to arm64-v8a."
+            fail=1
+          fi
+          if grep -rn -iE 'mlkit|text-recognition' gradle/libs.versions.toml app/build.gradle.kts; then
+            echo "::error::The ML Kit OCR dependency reappeared."
+            fail=1
+          fi
+          if [ -d app/src/main/kotlin/dev/patrickgold/florisboard/dictate/scan ] \
+             || [ -d lib/dictate-core/src/main/kotlin/dev/patrickgold/florisboard/dictate/scan ]; then
+            echo "::error::The Scan Text OCR sources reappeared."
+            fail=1
+          fi
+          [ "$fail" -eq 0 ] || exit 1
+          echo "Fork exclusions intact: arm64-v8a only, no Scan Text OCR."
 
       - name: Set up Android SDK components
         if: steps.determine.outputs.should_build == 'true'
@@ -487,6 +538,20 @@ jobs:
           echo "APK=$APK" >> "$GITHUB_ENV"
           echo "APK_SIZE=$(stat -c %s "$APK")" >> "$GITHUB_ENV"
           echo "APK_VERSION=$(jq -r '.elements[0].versionName' "$APK_DIR/output-metadata.json")" >> "$GITHUB_ENV"
+
+          # Artifact-level exclusions guard: whatever the source, the shipped APK
+          # must carry arm64-v8a native libraries only and no ML Kit OCR pipeline.
+          LIBS=$(unzip -Z1 "$APK" | grep '^lib/' || true)
+          BAD_ABIS=$(printf '%s\n' "$LIBS" | cut -d/ -f2 | sort -u | grep -v '^arm64-v8a$' || true)
+          if [ -n "$BAD_ABIS" ]; then
+            echo "::error::APK contains non-arm64-v8a native libraries: $(printf '%s' "$BAD_ABIS" | tr '\n' ' ')"
+            exit 1
+          fi
+          if printf '%s\n' "$LIBS" | grep -qi 'mlkit'; then
+            echo "::error::APK still packages the ML Kit OCR pipeline."
+            exit 1
+          fi
+          echo "Artifact exclusions verified: only arm64-v8a native libs, no ML Kit OCR."
 
           # The upstream tag being built must be the version actually shipped.
           # (Unreleased ref builds have no tag version to compare against.)
