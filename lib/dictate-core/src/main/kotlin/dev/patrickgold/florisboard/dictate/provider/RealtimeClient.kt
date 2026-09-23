@@ -535,14 +535,8 @@ private class ElevenLabsRealtimeSession(
         override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
             android.util.Log.w("DictateRT", "elevenlabs realtime WS failed (http=${response?.code}): ${t.message}")
             emitError(t)
-        }
-        override fun onClosed(webSocket: WebSocket, code: Int, reason: String) = finishClosed(webSocket)
-    }
-
-    override fun sendAudio(pcm16: ByteArray, len: Int) {
-        audioGate.sendAudio(pcm16, len) { audio, length ->
-            ws?.let { sendAudioFrame(it, audio, length) }
-        }
+            }
+        }.toString()
     }
 
     private fun sendAudioFrame(socket: WebSocket, pcm16: ByteArray, len: Int) {
