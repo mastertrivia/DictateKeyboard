@@ -901,19 +901,6 @@ private val WhatsNewPages63: List<WhatsNewPage> = listOf(
         art = TourArt.TOOL_RISE,
     ),
     WhatsNewPage(
-        icon = Icons.Filled.Search,
-        eyebrow = R.string.apptour63__scan_eyebrow,
-        title = R.string.apptour63__scan_title,
-        body = R.string.apptour63__scan_body,
-        // Scanning is reached from a Smartbar action, so the screen that matters is the one where
-        // the actions are arranged — there is no scan settings page, and inventing a deep link to
-        // the keyboard itself would land the user somewhere they cannot act.
-        cta = R.string.apptour63__cta_try,
-        route = Routes.Settings.Smartbar,
-        highlight = true,
-        art = TourArt.SCAN_TEXT,
-    ),
-    WhatsNewPage(
         icon = Icons.Filled.SelectAll,
         eyebrow = R.string.apptour63__editing_eyebrow,
         title = R.string.apptour63__editing_title,

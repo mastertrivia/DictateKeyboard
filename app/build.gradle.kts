@@ -76,15 +76,11 @@ configure<ApplicationExtension> {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // sherpa-onnx on-device STT (issue #104): ship the ABIs the vendored native libs cover —
-        // arm64-v8a (modern phones), armeabi-v7a (older 32-bit devices) and x86_64.
-        //
-        // x86_64 exists for emulators rather than for hardware: without it Play reports the app as
-        // incompatible on every emulator image, which rules out rehearsing a purchase on a throwaway
-        // account. Real users pay nothing for it — the bundle is split per architecture, so a phone
-        // only ever downloads the libraries it can run. See tools/fetch-sherpa-onnx.sh.
+        // ARM64 only: ship a single 64-bit ARM set of native libs. Every target device runs it, and
+        // the universal APK no longer carries armeabi-v7a/x86_64 copies of sherpa-onnx/onnxruntime.
+        // See tools/fetch-sherpa-onnx.sh.
         ndk {
-            abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
+            abiFilters += listOf("arm64-v8a")
         }
 
         buildConfigField("String", "BUILD_COMMIT_HASH", "\"${getGitCommitHash().get()}\"")
@@ -259,19 +255,6 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.mikepenz.aboutlibraries.core)
     implementation(libs.mikepenz.aboutlibraries.compose)
-    // Scan text (issue #390): on-device OCR for the printed IBAN/serial/address nobody wants to retype.
-    // Deliberately the BUNDLED model rather than com.google.android.gms:play-services-mlkit-text-
-    // recognition, which fetches the model over the network on first use — #390 promises that nothing
-    // about this feature talks to a network, and a first tap that says "still downloading" would break
-    // that twice over. Measured in the built APK (2026-09-16), arm64-v8a, which is the only number that
-    // matters once the bundle splits per ABI:
-    //   download  ~5.7 MB — libmlkit_google_ocr_pipeline.so compresses to 4.41 MB, the tflite models
-    //                       under assets/mlkit-google-ocr-models/ to 1.28 MB
-    //   installed ~12.6 MB — the .so is stored uncompressed and page-aligned (11.06 MB) plus 1.49 MB
-    //                       of models. armeabi-v7a is 6.78 MB, x86_64 11.63 MB.
-    // Next to the 26 MB of libonnxruntime.so this app already ships, and play-services-base/-basement
-    // already come in via play-services-wearable.
-    implementation(libs.mlkit.text.recognition)
     implementation(libs.okhttp)
     implementation(libs.patrickgold.compose.tooltip)
     implementation(libs.patrickgold.jetpref.datastore.model)
@@ -322,7 +305,7 @@ val verifySherpaOnnxLibs by tasks.registering {
         // Must match the abiFilters above. A missing ABI here would not fail the build — it would
         // produce a split for that architecture carrying no sherpa-onnx at all, which installs
         // happily and then dies the first time on-device transcription or the VAD is touched.
-        for (abi in listOf("arm64-v8a", "armeabi-v7a", "x86_64")) {
+        for (abi in listOf("arm64-v8a")) {
             add(projectDir.file("src/main/jniLibs/$abi/libonnxruntime.so").asFile)
             add(projectDir.file("src/main/jniLibs/$abi/libonnxruntime4j_jni.so").asFile)
             add(projectDir.file("src/main/jniLibs/$abi/libsherpa-onnx-jni.so").asFile)

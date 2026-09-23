@@ -99,10 +99,6 @@ data class QuickActionArrangement(
                 // it is one of the few actions people go looking for, and unlike the split or language
                 // actions it is never greyed out — without an API key the panel itself says so.
                 QuickAction.InsertKey(TextKeyData.IME_UI_MODE_GIF),
-                // Scan text (issue #390): camera → recognised lines → the one you tap. High for discovery
-                // rather than frequency — it is the feature nobody guesses a keyboard has, and the issue's
-                // "not a Smartbar default" was written before this list was a considered order.
-                QuickAction.InsertKey(TextKeyData.IME_UI_MODE_SCAN),
                 QuickAction.InsertKey(TextKeyData.UNDO),
                 // The last of the visible actions. A keyboard with this much behind it — the provider,
                 // the key, the prompts, the languages — needs a door of its own; without one the way in
@@ -176,8 +172,9 @@ data class QuickActionArrangement(
         // arrangement so they don't linger as "!! invalid !!". -245 = the old autocorrect-toggle
         // placeholder (autocorrect is now fully automatic). -27/-28 = the line-start/line-end buttons
         // that existed for a day between two commits of #335 before they became field-start/field-end;
-        // they never reached a release, but a debug arrangement can still carry them.
-        private val REMOVED_ACTION_CODES = setOf(-245, -27, -28)
+        // they never reached a release, but a debug arrangement can still carry them. -229 = the
+        // scan-text panel opener, removed together with the OCR feature.
+        private val REMOVED_ACTION_CODES = setOf(-245, -27, -28, -229)
 
         override fun deserialize(value: String): QuickActionArrangement {
             val raw: QuickActionArrangement = QuickActionJsonConfig.decodeFromString(value)
