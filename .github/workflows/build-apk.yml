@@ -393,11 +393,11 @@ jobs:
             echo "Update-continuity check OK: versionCode ${VC} > ${PREV_MAX_CODE:-<no prior processed code>}."
           fi
 
-      # The two permanent fork exclusions, asserted at the source level before any
-      # time is spent compiling. This is the safety net for a clean merge that
-      # nonetheless imported upstream's OCR again (e.g. a new file or dependency).
+      # Historical fork exclusions (arm64-only / no Scan Text) applied only to
+      # official upstream-tag release builds. UNRELEASED source_ref builds ship
+      # main as-is (v6.3.0 product + custom Basic Voice Typing / realtime).
       - name: Enforce fork exclusions
-        if: steps.determine.outputs.should_build == 'true'
+        if: steps.determine.outputs.should_build == 'true' && steps.determine.outputs.mode != 'ref'
         shell: bash
         run: |
           set -euo pipefail
@@ -539,19 +539,23 @@ jobs:
           echo "APK_SIZE=$(stat -c %s "$APK")" >> "$GITHUB_ENV"
           echo "APK_VERSION=$(jq -r '.elements[0].versionName' "$APK_DIR/output-metadata.json")" >> "$GITHUB_ENV"
 
-          # Artifact-level exclusions guard: whatever the source, the shipped APK
-          # must carry arm64-v8a native libraries only and no ML Kit OCR pipeline.
-          LIBS=$(unzip -Z1 "$APK" | grep '^lib/' || true)
-          BAD_ABIS=$(printf '%s\n' "$LIBS" | cut -d/ -f2 | sort -u | grep -v '^arm64-v8a$' || true)
-          if [ -n "$BAD_ABIS" ]; then
-            echo "::error::APK contains non-arm64-v8a native libraries: $(printf '%s' "$BAD_ABIS" | tr '\n' ' ')"
-            exit 1
+          # Artifact-level exclusions guard for official upstream-tag release
+          # builds only. source_ref (UNRELEASED) builds ship main as-is.
+          if [ -z "${BUILD_REF:-}" ]; then
+            LIBS=$(unzip -Z1 "$APK" | grep '^lib/' || true)
+            BAD_ABIS=$(printf '%s\n' "$LIBS" | cut -d/ -f2 | sort -u | grep -v '^arm64-v8a$' || true)
+            if [ -n "$BAD_ABIS" ]; then
+              echo "::error::APK contains non-arm64-v8a native libraries: $(printf '%s' "$BAD_ABIS" | tr '\n' ' ')"
+              exit 1
+            fi
+            if printf '%s\n' "$LIBS" | grep -qi 'mlkit'; then
+              echo "::error::APK still packages the ML Kit OCR pipeline."
+              exit 1
+            fi
+            echo "Artifact exclusions verified: only arm64-v8a native libs, no ML Kit OCR."
+          else
+            echo "Skipping ABI/OCR artifact exclusions for UNRELEASED source_ref build."
           fi
-          if printf '%s\n' "$LIBS" | grep -qi 'mlkit'; then
-            echo "::error::APK still packages the ML Kit OCR pipeline."
-            exit 1
-          fi
-          echo "Artifact exclusions verified: only arm64-v8a native libs, no ML Kit OCR."
 
           # The upstream tag being built must be the version actually shipped.
           # (Unreleased ref builds have no tag version to compare against.)
