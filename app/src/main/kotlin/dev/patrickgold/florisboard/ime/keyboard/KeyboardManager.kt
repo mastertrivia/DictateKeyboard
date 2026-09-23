@@ -1528,6 +1528,13 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
                 closeEmojiSearch(returnToMedia = false)
                 activeState.imeUiMode = ImeUiMode.EDITING
             }
+            // Opens the scan panel (issue #390). Nothing is captured here — the panel is the surface that
+            // asks for a photo, so that opening it from an old session shows what was already recognised
+            // instead of firing the camera at whoever only wanted to look.
+            KeyCode.IME_UI_MODE_SCAN -> {
+                closeEmojiSearch(returnToMedia = false)
+                activeState.imeUiMode = ImeUiMode.SCAN
+            }
             KeyCode.IME_UI_MODE_DICTATE -> dev.patrickgold.florisboard.dictate.DictateController.onMicClick(appContext)
             KeyCode.DICTATE_LIVE_PROMPT -> dev.patrickgold.florisboard.dictate.DictateController.startLivePrompt(appContext)
             KeyCode.DICTATE_PROMPTS -> {

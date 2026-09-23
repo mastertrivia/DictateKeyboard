@@ -521,6 +521,11 @@ private fun LegacyActionKey(
         LegacyEditAction.EDITING -> ThemedIconKey(KeyCode.NOOP, action.icon, label, modifier) {
             keyboardManager.activeState.imeUiMode = ImeUiMode.EDITING
         }
+        // Scan text (issue #390), opened the same direct way. The panel asks for the photo itself, so
+        // this is only ever a way in, never a shutter.
+        LegacyEditAction.SCAN -> ThemedIconKey(KeyCode.NOOP, action.icon, label, modifier) {
+            keyboardManager.activeState.imeUiMode = ImeUiMode.SCAN
+        }
     }
 }
 
