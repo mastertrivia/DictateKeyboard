@@ -152,6 +152,15 @@ enum class TranscriptionApi {
      * dispatches to the offline engine instead of building an HTTP client.
      */
     LOCAL_ONDEVICE,
+
+    /**
+     * Basic voice typing: the phone's own speech recognition (Google voice typing / SODA on most
+     * devices). No HTTP at all — the ported helium314.keyboard.voice engine binds the system's
+     * RecognitionService through android.speech.SpeechRecognizer and streams results into the field.
+     * Like [LOCAL_ONDEVICE], this value only marks a provider preset so the dictation flow routes
+     * there instead of ever building an HTTP client.
+     */
+    BASIC_RECOGNITION_SERVICE,
 }
 
 /**

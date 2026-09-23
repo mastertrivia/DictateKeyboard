@@ -69,6 +69,20 @@ interface RealtimeSession {
 
     /** Abort the session immediately without awaiting a final result (e.g. the user cancelled). */
     fun cancel()
+
+    /**
+     * Google-parity recovery (stage 2): how much of the audio fed to this session a settled
+     * transcription already covers, measured in seconds of the **sent** stream (16 kHz mono for
+     * every current provider). Everything before this boundary was transcribed while the user was
+     * still speaking — exactly how Google's client works — so when the stream is lost, the caller
+     * re-sends only the region after it instead of the whole recording.
+     *
+     * A final arriving mid-stream advances the boundary: audio up to it is covered, audio after it
+     * (the phrase still being spoken) is not. Returns null when the session does not track
+     * coverage or nothing was ever settled, in which case the caller falls back to the full
+     * recording as before — the boundary is a cost cut, never a correctness bet.
+     */
+    fun coveredAudioSeconds(): Double? = null
 }
 
 /**

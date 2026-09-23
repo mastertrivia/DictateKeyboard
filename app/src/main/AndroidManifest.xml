@@ -17,6 +17,10 @@
          and to manage audio focus / SCO routing while recording -->
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30"/>
+    <!-- Basic voice typing: the ported engine holds a wake lock while listening and manages
+         Bluetooth headset capture on Android 12+ (same permissions its source app declares). -->
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
 
     <!-- Permission needed to create notifications on devices running Android 13+ -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
@@ -45,6 +49,11 @@
         </intent>
         <intent>
             <action android:name="android.service.textservice.SpellCheckerService"/>
+        </intent>
+        <!-- Basic voice typing: SpeechRecognizer binds the system's RecognitionService. Without this
+             query the lookup returns nothing on Android 11+ and the mic silently does nothing. -->
+        <intent>
+            <action android:name="android.speech.RecognitionService"/>
         </intent>
         <intent>
             <action android:name="android.intent.action.MAIN"/>
@@ -283,6 +292,25 @@
         <activity
             android:name="dev.patrickgold.florisboard.dictate.FileTranscriptionActivity"
             android:theme="@style/FlorisAppTheme.Transparent"
+            android:excludeFromRecents="true"
+            android:exported="false"/>
+
+        <!-- Scan text trampoline (issue #390): the keyboard cannot start an activity for a result, so
+             this one opens the system camera (or the photo picker) and leaves the image in the cache.
+             NB: no android:noHistory, for the same reason as the trampoline above – the camera coming
+             to the foreground would destroy it and its result would never arrive.
+             No CAMERA permission is declared anywhere in this manifest, and that is what makes the
+             feature possible: ACTION_IMAGE_CAPTURE is only gated on apps that declare it.
+             android:taskAffinity="" is load-bearing and was learned the hard way: without it this
+             activity joins the *settings app's* task, the camera stacks on top of that, and finishing
+             brings the settings app forward instead of the app the user was typing in. They never got
+             back to their field, and the scan was discarded for belonging to a different app. An empty
+             affinity gives it a throwaway task of its own, so finishing returns to whatever was in
+             front before. -->
+        <activity
+            android:name="dev.patrickgold.florisboard.dictate.scan.ScanCaptureActivity"
+            android:theme="@style/FlorisAppTheme.Transparent"
+            android:taskAffinity=""
             android:excludeFromRecents="true"
             android:exported="false"/>
 

@@ -629,6 +629,44 @@ private class GeminiRealtimeSession(
     @Volatile private var finishing = false
     @Volatile private var done = false
 
+    //
+    // Coverage tracking (stage 2, the Google recovery pattern). While the user speaks, the server
+    // settles phrase after phrase; each settled phrase covers the audio sent up to roughly when it
+    // arrived. Google's client never re-uploads covered audio — when its stream has to be recovered,
+    // only the last phrase travels again. This is that bookkeeping: a running count of the audio
+    // handed to the wire, and the byte boundary the most recent final covered. The controller turns
+    // the difference into "re-send only the tail" when it falls back to batch.
+    //
+    /** Mono 16 kHz PCM16 (every current realtime rate here): 32 000 bytes of audio per second. */
+    private val coverageBytesPerSecond = 32_000.0
+
+    /** Total bytes of audio handed toward the wire so far (gated + sent). Written on the audio thread. */
+    @Volatile private var fedAudioBytes = 0L
+
+    /**
+     * Bytes of that stream a settled transcription covers: the count as of the last final, minus a
+     * safety margin (the server settles a phrase while its last ~2 s of audio may still be arriving,
+     * so those seconds stay uncovered). Read by [coveredAudioSeconds] on the stop/fallback path.
+     */
+    @Volatile private var coveredBytes = 0L
+
+    /** The conservative lag between "audio sent" and "audio settled", in bytes. */
+    private val coverageLagBytes = (2.0 * coverageBytesPerSecond).toLong()
+
+    override fun coveredAudioSeconds(): Double {
+        val covered = coveredBytes.coerceIn(0L, fedAudioBytes)
+        return covered / coverageBytesPerSecond
+    }
+
+    override fun sendAudio(pcm16: ByteArray, len: Int) {
+        // Count what the recorder gave us, whether or not the gate has released it yet: the recording
+        // on disk contains exactly these bytes, so coverage must be measured against all of them.
+        fedAudioBytes += len
+        audioGate.sendAudio(pcm16, len) { audio, length ->
+            ws?.let { sendAudioFrame(it, audio, length) }
+        }
+    }
+
     fun connect() {
         val url = "wss://generativelanguage.googleapis.com/ws/" +
             "google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=$apiKey"
@@ -671,6 +709,10 @@ private class GeminiRealtimeSession(
         server?.get("inputTranscription")?.jsonObject?.get("text")?.jsonPrimitive?.content?.let { chunk ->
             if (chunk.isNotEmpty()) emitFinal(chunk)
         }
+        // Activity events confirm the tuned detection is running; tracked only for the latency log.
+        if (server?.containsKey("activityStart") == true || server?.containsKey("activityEnd") == true) {
+            android.util.Log.i("DictateRT", "gemini vad event activityStart=${server?.containsKey("activityStart")}")
+        }
         val ended = server?.get("turnComplete")?.jsonPrimitive?.booleanOrNull == true ||
             server?.get("generationComplete")?.jsonPrimitive?.booleanOrNull == true
         // Gemini ends a *turn* this way, not only the dictation: a pause in the middle closes one and
@@ -694,6 +736,9 @@ private class GeminiRealtimeSession(
     private fun emitFinal(chunk: String) {
         pendingInterim = ""
         audioSinceFinal = false
+        // This phrase is settled: everything sent up to ~[coverageLagBytes] ago is now covered by
+        // text, and only the (short) region after it can still be owed to the user.
+        coveredBytes = (fedAudioBytes - coverageLagBytes).coerceAtLeast(0L)
         callbacks.onFinalSegment(chunk)
     }
 
@@ -702,6 +747,27 @@ private class GeminiRealtimeSession(
             put("model", "models/$model")
             putJsonObject("generationConfig") {
                 put("responseModalities", buildJsonArray { add("TEXT") })
+            }
+            // Google's own client (Robin, the in-app Gemini conversation code) runs its voice turns with
+            // activity detection tuned for reflex speed: speech start committed almost immediately, and
+            // every pause ends a turn while the user is still talking, so each phrase locks as it is
+            // spoken and the stop finds nothing pending but the last phrase. The server's automatic
+            // detection supports exactly these knobs, and leaving them unset keeps the conservative
+            // defaults: a long prefix padding before the first interim reaches us (the "text only starts
+            // after 3-5 seconds" feel) and a slow silence threshold that locks turns late (everything
+            // still in draft at stop). Both ends HIGH plus a short silence window is the same schedule
+            // the native client keeps. Auto-detection stays ENABLED — the activityStart/activityEnd
+            // client signals are only legal when it is disabled, and the per-turn finals this engine
+            // relies on are produced by the server's end-of-speech. audioStreamEnd in finish() stays
+            // legal for the same reason.
+            putJsonObject("realtimeInputConfig") {
+                putJsonObject("automaticActivityDetection") {
+                    put("disabled", false)
+                    put("startOfSpeechSensitivity", "START_SENSITIVITY_HIGH")
+                    put("endOfSpeechSensitivity", "END_SENSITIVITY_HIGH")
+                    put("prefixPaddingMs", 100)
+                    put("silenceDurationMs", 300)
+                }
             }
             putJsonObject("inputAudioTranscription") {
                 // An empty list is Google's own way of asking for automatic detection, so the user's

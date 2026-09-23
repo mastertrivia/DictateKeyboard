@@ -696,6 +696,24 @@ object ProviderRegistry {
     )
 
     /**
+     * Basic voice typing: the phone's own speech recognition — the same door every keyboard knocks
+     * on (Google voice typing / SODA on most devices). No network code, no key, no model: the ported
+     * helium314.keyboard.voice engine binds the system RecognitionService through
+     * android.speech.SpeechRecognizer and streams results into the field. First in the list on
+     * purpose — it is the instant, free, zero-setup option, and it is also the local reflex layer a
+     * later SODA + server stage can lean on.
+     */
+    val BASIC = ProviderPreset(
+        id = "basic",
+        displayName = "Basic Voice Typing",
+        baseUrl = "",
+        capabilities = STT_ONLY,
+        transcriptionApi = TranscriptionApi.BASIC_RECOGNITION_SERVICE,
+        supportsDynamicModels = false,
+        apiKeyUrl = null,
+    )
+
+    /**
      * On-device, fully offline transcription (issue #104). No network, no API key. Handled by
      * [LocalTranscriptionProvider] (sherpa-onnx + a bundled Whisper model), not by the HTTP client –
      * [TranscriptionApi.LOCAL_ONDEVICE] marks it so the dictation flow routes there. The model id is the
@@ -717,8 +735,8 @@ object ProviderRegistry {
 
     /** All built-in presets in display order. The custom option is added by the UI on top of these. */
     val presets: List<ProviderPreset> = listOf(
-        CLOUD, OPENAI, GROQ, OPENROUTER, GEMINI, ANTHROPIC, TOGETHER, DEEPINFRA, MISTRAL, SONIOX,
-        ELEVENLABS, DEEPGRAM, ASSEMBLYAI, AZURE, XAI, DEEPSEEK, SILICONFLOW, OLLAMA, LOCAL,
+        BASIC, CLOUD, OPENAI, GROQ, OPENROUTER, GEMINI, ANTHROPIC, TOGETHER, DEEPINFRA, MISTRAL,
+        SONIOX, ELEVENLABS, DEEPGRAM, ASSEMBLYAI, AZURE, XAI, DEEPSEEK, SILICONFLOW, OLLAMA, LOCAL,
     )
 
     fun byId(id: String): ProviderPreset? = presets.firstOrNull { it.id == id }

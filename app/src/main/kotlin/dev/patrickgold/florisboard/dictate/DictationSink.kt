@@ -11,6 +11,9 @@
 package dev.patrickgold.florisboard.dictate
 
 import android.content.Context
+import android.text.SpannableString
+import android.text.style.ForegroundColorSpan
+import dev.patrickgold.florisboard.FlorisImeService
 import dev.patrickgold.florisboard.editorInstance
 import dev.patrickgold.florisboard.ime.text.key.KeyCode
 import dev.patrickgold.florisboard.ime.text.key.KeyType
@@ -120,43 +123,79 @@ class ImeDictationSink(context: Context) : DictationSink {
     override fun setDictationPreview(newText: String, prevText: String) = applyDictationDiff(prevText, newText)
 
     override fun commitDictationFinal(finalText: String, prevText: String): Boolean {
-        // Atomic swap of the streamed preview for the finished/reworded text (keeps the common prefix,
-        // replaces only the divergent tail in one batch → no character-by-character flicker).
-        if (prevText == finalText) return true
+        // Finalize the grey temporary preview (see [applyDictationDiff]): with the transcript living in
+        // the composing region, one commitText call both ends the region and writes the finished text —
+        // commitText *replaces* the composing region by contract, so no diff arithmetic is needed here
+        // and the text turns from grey to final in the same frame the provider's last word arrives.
+        if (previewComposingLength > 0) {
+            val ic = currentInputConnectionOrNull() ?: run {
+                previewComposingLength = 0
+                return false
+            }
+            ic.commitText(finalText, 1)
+            previewComposingLength = 0
+            return true
+        }
+        // No preview was shown ("show the text only when I stop"): plain insert, as before.
+        if (finalText == prevText) return true
         val cp = prevText.commonPrefixWith(finalText).length
         editorInstance.replaceTextBeforeCursor(prevText.length - cp, finalText.substring(cp))
         return true
     }
 
     override fun clearDictationPreview(prevText: String) {
-        // Atomic delete of the whole streamed preview in one batch. Doing this per-character (backspaces)
-        // ANRs and can kill the keyboard when a long dictation is cancelled mid-recording.
+        // Cancel the composing region wholesale: setComposingText("") removes the grey preview from
+        // the field in one batch (per-character deletes ANR and can kill the keyboard on a long
+        // dictation). When no region is live, fall back to the atomic batch delete as before.
+        if (previewComposingLength > 0) {
+            currentInputConnectionOrNull()?.let { it.setComposingText("", 1) }
+            previewComposingLength = 0
+            return
+        }
         if (prevText.isNotEmpty()) editorInstance.replaceTextBeforeCursor(prevText.length, "")
     }
 
+    /** The live editor connection, or null when the window has already gone away. */
+    private fun currentInputConnectionOrNull() = FlorisImeService.currentInputConnection()
+
+    /** Characters of the grey composing region this sink currently has live in the field. */
+    private var previewComposingLength = 0
+
     /**
-     * Turns the currently-shown dictation text [old] into [new] with the minimal edit: keep the common
-     * prefix, delete the divergent tail (right before the cursor) and commit the new tail. Uses the
-     * editor's own commit/delete so it stays consistent with the content model (no composing-region
-     * collision). Append-only streaming (the common case) never deletes.
+     * Turns the currently-shown dictation text [old] into [new] — as **grey, temporary composing
+     * text** rather than committed characters. This is the same mechanism the ported basic-voice
+     * engine uses: the streaming preview sits in the field's composing region (rendered grey by the
+     * span below, wherever the app honors composing styles), each update replaces the region
+     * wholesale in one call, and nothing becomes permanent until the provider finalizes or the user
+     * stops — at which point [commitDictationFinal] swaps it for the final text in one call.
+     *
+     * Streaming dictation *needs* this to be temporary: the provider keeps correcting earlier words
+     * while you speak, so committing as you go would leave wrong text baked into the field that the
+     * final pass then has to un-type. HeliBoard's voice typing behaves exactly this way, and so does
+     * the preview now.
+     *
+     * The [prevText] parameter is kept for the no-preview path above and for callers that track the
+     * shown text; with a live region it is irrelevant — setComposingText replaces the region as a
+     * whole, so no diff arithmetic can drift out of sync.
      */
     private fun applyDictationDiff(old: String, new: String) {
-        if (old == new) return
-        val cp = old.commonPrefixWith(new).length
-        val deleteLen = old.length - cp
-        if (deleteLen == 0) {
-            // Pure append (the common streaming case): editor-consistent raw commit (no phantom/auto space
-            // so the field stays byte-identical to what we tracked), no composing-region collision.
-            editorInstance.commitTextRaw(new.substring(cp))
-        } else {
-            // A revision (provider rewrote the tail): replace it in one atomic batch, never per-character.
-            editorInstance.replaceTextBeforeCursor(deleteLen, new.substring(cp))
+        if (new.isEmpty()) {
+            if (previewComposingLength > 0) clearDictationPreview(old)
+            return
         }
+        val ic = currentInputConnectionOrNull() ?: return
+        val grey = SpannableString(new)
+        grey.setSpan(ForegroundColorSpan(PREVIEW_GREY), 0, new.length, SpannableString.SPAN_EXCLUSIVE_EXCLUSIVE)
+        ic.setComposingText(grey, 1)
+        previewComposingLength = new.length
     }
 
     private companion object {
         /** Synthetic Enter key dispatched for auto-enter; reuses the keyboard's full enter logic. */
         private val EnterKeyData =
             TextKeyData(type = KeyType.ENTER_EDITING, code = KeyCode.ENTER, label = "enter")
+
+        /** Grey used for the temporary streaming preview — the same shade the ported engine composes with. */
+        private const val PREVIEW_GREY = 0xFF888888.toInt()
     }
 }

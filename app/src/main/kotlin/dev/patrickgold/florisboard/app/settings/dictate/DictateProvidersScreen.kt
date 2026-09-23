@@ -200,8 +200,11 @@ fun DictateProvidersScreen() = FlorisScreen {
                 entries = buildList {
                     ProviderRegistry.presets
                         .filter { it.capabilities.transcription }
-                        // On-device (offline) first in the picker, above the cloud providers (issue #228).
-                        .sortedByDescending { it.transcriptionApi == TranscriptionApi.LOCAL_ONDEVICE }
+                        // Basic voice typing (the phone's own recognizer) first — the instant, free,
+                        // zero-setup option — then on-device (offline), then the cloud providers.
+                        .sortedByDescending { it.transcriptionApi == TranscriptionApi.LOCAL_ONDEVICE ||
+                            it.transcriptionApi == TranscriptionApi.BASIC_RECOGNITION_SERVICE }
+                        .sortedBy { if (it.transcriptionApi == TranscriptionApi.BASIC_RECOGNITION_SERVICE) 0 else 1 }
                         .forEach { add(it.id to it.displayName) }
                     customAccounts.forEach { add(it.providerId to customLabel(it)) }
                 },
@@ -224,10 +227,12 @@ fun DictateProvidersScreen() = FlorisScreen {
             val keySet = stringRes(R.string.dictate__providers_status_key_set)
             val noKey = stringRes(R.string.dictate__providers_status_no_key)
 
-            // On-device (offline) provider first, above the cloud providers like OpenAI (issue #228);
-            // the rest keep their registry display order (sortedByDescending is stable).
+            // Basic voice typing first (the phone's own recognizer), then on-device (offline), then
+            // the cloud providers in registry order — same ranking as the picker above.
             val orderedPresets = ProviderRegistry.presets
-                .sortedByDescending { it.transcriptionApi == TranscriptionApi.LOCAL_ONDEVICE }
+                .sortedByDescending { it.transcriptionApi == TranscriptionApi.LOCAL_ONDEVICE ||
+                    it.transcriptionApi == TranscriptionApi.BASIC_RECOGNITION_SERVICE }
+                .sortedBy { if (it.transcriptionApi == TranscriptionApi.BASIC_RECOGNITION_SERVICE) 0 else 1 }
             val cloudAccount = accounts.getOrEmpty(ProviderRegistry.CLOUD.id)
             val cloudNoCredit = stringRes(R.string.dictate__cloud_row_summary_none)
             val cloudBalance = stringRes(
@@ -469,7 +474,9 @@ private fun TranscriptionProviderPreference(entries: List<Pair<String, String>>)
         var sel by remember { mutableStateOf(selectedId) }
         var fb by remember { mutableStateOf(fallbackEnabled) }
         val selectionIsLocal =
-            ProviderRegistry.byId(sel)?.transcriptionApi == TranscriptionApi.LOCAL_ONDEVICE
+            ProviderRegistry.byId(sel)?.transcriptionApi?.let {
+                it == TranscriptionApi.LOCAL_ONDEVICE || it == TranscriptionApi.BASIC_RECOGNITION_SERVICE
+            } == true
         JetPrefAlertDialog(
             title = stringRes(R.string.dictate__providers_active_transcription),
             confirmLabel = stringRes(R.string.action__ok),
@@ -543,6 +550,10 @@ private fun providerSummary(
     keySet: String,
     noKey: String,
 ): String {
+    if (preset.transcriptionApi == TranscriptionApi.BASIC_RECOGNITION_SERVICE) {
+        // Basic voice typing has no key and no model — say what it is instead of "No key ·".
+        return basicSummary
+    }
     if (preset.transcriptionApi == TranscriptionApi.LOCAL_ONDEVICE) {
         // On-device provider: surface the active downloaded models instead of an API-key state. There can
         // be two — a one-shot and a live/streaming one (#233) — and both are worth showing, otherwise the
@@ -573,6 +584,10 @@ private fun providerSummary(
     val keyState = if (account?.hasKey == true) keySet else noKey
     return "$keyState · $caps"
 }
+
+/** One-line status for the Basic voice typing row: there is nothing to set up. */
+private val basicSummary: String
+    @Composable get() = stringRes(R.string.dictate__basic_provider_summary)
 
 /**
  * Multi-field editor for a single provider. Built-in providers ([preset] != null) expose only the key
@@ -760,7 +775,15 @@ private fun ProviderEditorDialog(
         onDismiss = onDismiss,
         onNeutral = { onDelete?.invoke() },
     ) {
-        if (preset?.transcriptionApi == TranscriptionApi.LOCAL_ONDEVICE) {
+        if (preset?.transcriptionApi == TranscriptionApi.BASIC_RECOGNITION_SERVICE) {
+            // Basic voice typing: nothing to configure — no key, no model, no URL. The body is the
+            // explanation alone, so the dialog cannot be mistaken for a half-loaded editor.
+            Text(
+                text = stringRes(R.string.dictate__basic_provider_note),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        } else if (preset?.transcriptionApi == TranscriptionApi.LOCAL_ONDEVICE) {
             // On-device provider: no key/remote model — manage downloadable models instead (#104).
             // Two independent picks (#233): the one-shot model lives in `transcriptionModel`, the live
             // streaming one in `realtimeModel` — which is otherwise unused for this provider and means

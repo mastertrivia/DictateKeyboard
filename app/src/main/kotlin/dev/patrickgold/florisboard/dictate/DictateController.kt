@@ -39,6 +39,7 @@ import dev.patrickgold.florisboard.app.FlorisPreferenceStore
 import dev.patrickgold.florisboard.dictate.audio.AudioConcat
 import dev.patrickgold.florisboard.dictate.audio.AudioConvert
 import dev.patrickgold.florisboard.dictate.audio.AudioDecode
+import dev.patrickgold.florisboard.dictate.audio.AudioWav
 import dev.patrickgold.florisboard.dictate.audio.AudioLevelSmoother
 import dev.patrickgold.florisboard.dictate.audio.AudioEncode
 import dev.patrickgold.florisboard.dictate.audio.AudioSpeedUp
@@ -105,8 +106,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import helium314.keyboard.voice.SpeechNotesVoiceEngine
 import java.io.File
 import java.text.NumberFormat
+import java.util.Locale
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
 
@@ -343,6 +346,12 @@ object DictateController {
     private var segmentStopped = false        // stop requested; finish once the queue drains
     private var segmentRecordedSeconds = 0L
     private var segmentVad: LiveSpeechSplitter? = null  // live VAD auto-split, when enabled (Phase 2)
+
+    // Basic voice typing (BASIC provider): the ported HeliBoard engine and its host. Non-null only
+    // while a basic session is running — every entry point below checks it before touching the
+    // audio pipeline, because in this mode the system recognizer owns the microphone and the text.
+    private var basicVoiceHost: BasicVoiceHost? = null
+    private var basicVoiceEngine: SpeechNotesVoiceEngine? = null
     private val segmentAudioFiles = HashMap<Int, File>()  // kept segment WAVs (index -> file) for history merge
     private var segmentKeepAudio = false                  // whether to keep + merge segment audio (retention on)
     private val _segmentFlushCount = MutableStateFlow(0)
@@ -687,7 +696,7 @@ object DictateController {
         _lockSlideProgress.value = 0f
         setPushToTalk(phase = PushToTalkPhase.HOLDING)
         outputTarget = target
-        startRecording(context)
+        if (isBasicVoiceProvider()) startBasicVoice(context) else startRecording(context)
     }
 
     /**
@@ -802,7 +811,7 @@ object DictateController {
             is UiState.Rewording -> cancelRewording()
             else -> {
                 outputTarget = target
-                startRecording(context)
+                if (isBasicVoiceProvider()) startBasicVoice(context) else startRecording(context)
             }
         }
     }
@@ -1120,6 +1129,15 @@ object DictateController {
             _state.value is UiState.Transcribing ||
             _state.value is UiState.Rewording
         ) return
+        if (isBasicVoiceProvider()) {
+            // Basic voice typing writes into the field itself; it cannot hand text back through the
+            // recognition callback. Say so instead of recording audio that can never be transcribed.
+            _state.value = UiState.Error(
+                message = context.getString(R.string.dictate__basic_keyboard_only),
+                neutral = true,
+            )
+            return
+        }
         outputTarget = OutputTarget.RECOGNITION_SERVICE
         startRecording(context)
     }
@@ -1170,6 +1188,8 @@ object DictateController {
         startJob = null
         recorder?.cancel()
         recorder = null
+        // Basic voice typing: abort the recognizer and remove everything it put in the field.
+        stopBasicVoice(cancel = true)
         // Long-form segmented (#170): abort the background segment transcriptions; the realtime cleanup
         // below removes the progressively-shown preview text (segmented reuses realtimeShown/Context).
         if (segmentedActive) {
@@ -1288,6 +1308,78 @@ object DictateController {
         transcribeJob = null
         _pendingPrompts.value = emptyList()
         _state.value = UiState.Idle
+    }
+
+    /** True while the transcription provider is Basic voice typing (the phone's own recognizer). */
+    private fun isBasicVoiceProvider(): Boolean =
+        prefs.dictate.transcriptionProviderId.get() == ProviderRegistry.BASIC.id
+
+    /** Maps the active dictation language to a BCP-47 tag for the recognizer; null = device default. */
+    private fun basicVoiceLanguage(): String? {
+        val code = prefs.dictate.activeInputLanguage.get()
+        if (code == DictateLanguages.DETECT) return Locale.getDefault().toLanguageTag()
+        return code
+    }
+
+    /**
+     * Starts a basic-voice-typing session: the ported HeliBoard engine (system SpeechRecognizer)
+     * listens and writes grey composing text into the field itself until stop is tapped. The
+     * controller only hosts it and keeps the recording bar visible — there is no audio file, no
+     * upload and no provider request anywhere in this path, exactly like in HeliBoard.
+     */
+    private fun startBasicVoice(context: Context) {
+        if (_state.value is UiState.Recording) return
+        if (basicVoiceEngine != null) return
+        val appContext = context.applicationContext
+        if (outputTarget != OutputTarget.IME) {
+            // The engine writes through the live InputConnection; the floating overlay has none of
+            // its own to offer, so this provider is keyboard-only by design.
+            _state.value = UiState.Error(
+                message = appContext.getString(R.string.dictate__basic_keyboard_only),
+                neutral = true,
+            )
+            return
+        }
+        // Starting supersedes any kept audio offers, same as a normal recording start.
+        discardRetainedAudio()
+        discardCarryOver()
+        val host = BasicVoiceHost(appContext) { onBasicVoiceStopped() }
+        val engine = SpeechNotesVoiceEngine(appContext, host)
+        basicVoiceHost = host
+        basicVoiceEngine = engine
+        host.resetSession()
+        basicVoiceLanguage()?.let { engine.setLanguage(it) }
+        // Reuse the recording state so the bar (timer, stop button) behaves identically.
+        _state.value = UiState.Recording(SystemClock.elapsedRealtime())
+        engine.startOrPause()
+    }
+
+    /** The engine reported IDLE: the session is over — drop the bar and forget the engine. */
+    private fun onBasicVoiceStopped() {
+        basicVoiceEngine = null
+        basicVoiceHost = null
+        unregisterScreenOffReceiver()
+        if (_state.value is UiState.Recording) _state.value = UiState.Idle
+    }
+
+    /**
+     * Ends the basic-voice session. [cancel] also removes everything the engine put in the field
+     * (discard mode first, so any late recognizer callback cannot re-add text); a plain stop lets
+     * the engine flush and report IDLE, which runs [onBasicVoiceStopped] for the teardown.
+     */
+    private fun stopBasicVoice(cancel: Boolean) {
+        val engine = basicVoiceEngine ?: return
+        if (cancel) {
+            basicVoiceHost?.discardSessionNow()
+            unregisterScreenOffReceiver()
+            basicVoiceEngine = null
+            basicVoiceHost = null
+            engine.stopIfListening()
+            // State teardown is left to the caller: cancelRecording's existing block decides
+            // between an immediate Idle and the kept-bar discard animation.
+        } else {
+            engine.stopIfListening()
+        }
     }
 
     /**
@@ -1469,6 +1561,12 @@ object DictateController {
 
     private fun stopAndTranscribe(context: Context, forceLocal: Boolean = false) {
         setPushToTalk(phase = PushToTalkPhase.NONE)
+        // Basic voice typing: the engine owns this session — stopping it flushes the grey text into
+        // committed text and reports IDLE, which runs the teardown. Nothing below applies.
+        if (basicVoiceEngine != null) {
+            stopBasicVoice(cancel = false)
+            return
+        }
         // Long-form segmented (#170): finish the segment queue instead of uploading one big file.
         if (segmentedActive) {
             stopSegmentedAndFinalize(context)
@@ -1612,6 +1710,16 @@ object DictateController {
         val preset = presetFor(account)
         val appContext = context.applicationContext
         val model = transcriptionModelFor(appContext, account, preset, "gpt-4o-mini-transcribe")
+        if (preset.transcriptionApi == TranscriptionApi.BASIC_RECOGNITION_SERVICE) {
+            // Basic voice typing has no audio-file path: it listens live only. Any straggler caller
+            // (resend chip, recognition service) gets a neutral notice instead of a built client.
+            _state.value = UiState.Error(
+                message = context.getString(R.string.dictate__basic_file_import_unsupported),
+                neutral = true,
+            )
+            audioFile.delete()
+            return
+        }
         // History metadata (issue #140), resolved once so the success (capture) and EVERY failure path —
         // including the early returns below (no key / model not downloaded) — log the same info.
         val historyProviderName = account.displayName.ifBlank { preset.displayName }
@@ -2427,24 +2535,7 @@ object DictateController {
                 // buffer only if the stream produced nothing at all.
                 val transcript = realtimeTranscript.toString().trim().ifEmpty { realtimeFinal.toString().trim() }
                 _interimText.value = ""
-                // A stream still delivering when the tail cap ran out is missing its end, and half a
-                // dictation is worse than the wait: the recording is complete, so transcribe that instead.
-                if (realtimeFailed || !tailComplete || transcript.isEmpty()) {
-                    // Drop the live provisional text; the batch path commits fresh from the WAV. With the
-                    // preview hidden there is nothing in the field to take back, and realtimeShown says so.
-                    runCatching { sink(appContext).clearDictationPreview(realtimeShown.toString()) }
-                    realtimeShown.setLength(0)
-                    realtimeTranscript.setLength(0)
-                    if (wavFile != null && wavFile.exists() && wavFile.length() > 0L) {
-                        livePromptArmed = live
-                        transcribe(context, wavFile, recordedSeconds, gate = false)
-                    } else {
-                        _state.value = UiState.Error(appContext.getString(R.string.dictate__error_no_audio))
-                    }
-                    return@launch
-                }
-                // History (issue #140): capture the metadata + WAV before deleting the cache file, so
-                // audio retention (if on) can copy it in during finalize; then drop the cache original.
+                // History metadata is shared by the two commit paths below (success and tail recovery).
                 val rtAccount = transcriptionAccount()
                 val rtPreset = presetFor(rtAccount)
                 val rtModel = rtAccount.realtimeModel.takeIf { it.isNotBlank() }
@@ -2457,6 +2548,42 @@ object DictateController {
                     language = prefs.dictate.activeInputLanguage.get().takeIf { it != DictateLanguages.DETECT } ?: "",
                     source = DictateHistorySource.REALTIME,
                 )
+                // A stream still delivering when the tail cap ran out is missing its end, and half a
+                // dictation is worse than the wait. But re-uploading the whole recording — the old move —
+                // throws away everything the server already settled while the user was speaking, and that
+                // is exactly the part Google never re-sends: its client recovers by re-transcribing only
+                // the phrase that was still open. So first try the tail-only recovery (stage 2): slice the
+                // recording at the settled-coverage boundary and transcribe just that region, reusing the
+                // settled transcript as continuity. When it cannot run (no coverage tracking, no tail
+                // worth sending, the tail transcription itself failing), the full-recording fallback
+                // below still applies, exactly as before.
+                if (realtimeFailed || !tailComplete || transcript.isEmpty()) {
+                    val recovered = recoverRealtimeTail(appContext, session, wavFile, transcript)
+                    if (recovered != null) {
+                        // The grey preview stays up on purpose: it still holds the settled transcript,
+                        // and finalizeViaComposing swaps the whole composing region for the finished
+                        // text in one commit — no clear-then-retype flicker, the same finalization a
+                        // healthy stream gets.
+                        livePromptArmed = live
+                        finalizeAndCommit(appContext, recovered, recordedSeconds, live, alreadyFormatted = false, finalizeViaComposing = true, capture = rtCapture)
+                        wavFile?.delete()
+                    } else {
+                        // Drop the live provisional text; the batch path commits fresh from the WAV. With the
+                        // preview hidden there is nothing in the field to take back, and realtimeShown says so.
+                        runCatching { sink(appContext).clearDictationPreview(realtimeShown.toString()) }
+                        realtimeShown.setLength(0)
+                        realtimeTranscript.setLength(0)
+                        if (wavFile != null && wavFile.exists() && wavFile.length() > 0L) {
+                            livePromptArmed = live
+                            transcribe(context, wavFile, recordedSeconds, gate = false)
+                        } else {
+                            _state.value = UiState.Error(appContext.getString(R.string.dictate__error_no_audio))
+                        }
+                    }
+                    return@launch
+                }
+                // History (issue #140): capture metadata was hoisted above (both commit paths use it);
+                // the WAV stays available here so audio retention can copy it in during finalize.
                 finalizeAndCommit(appContext, transcript, recordedSeconds, live, alreadyFormatted = false, finalizeViaComposing = true, capture = rtCapture)
                 wavFile?.delete()
             } catch (c: CancellationException) {
@@ -2489,6 +2616,74 @@ object DictateController {
             !livePromptArmed &&
             !isRealtimeActive(context) &&
             !transcriptionAccount().transcriptionViaChat
+
+    /**
+     * Google-parity tail recovery (stage 2). When a realtime stream has to be rescued, only the
+     * audio no settled transcription covered goes back to the batch model — the same division of
+     * labor the decompiled Google client keeps: covered audio never re-travels.
+     *
+     * The session reports how far its settled text reaches into the sent audio
+     * ([RealtimeSession.coveredAudioSeconds]); the tail is everything after that boundary, sliced
+     * from the full recording the recorder already wrote. The tail is transcribed through the same
+     * raw-segment helper the long-form path uses (silence gate, packing, style prompt), with the
+     * settled transcript as continuity so the seam reads naturally, and the two are joined with the
+     * same piece-joiner every other multi-part transcript uses.
+     *
+     * Returns the combined text, or null whenever the recovery cannot apply — no coverage
+     * tracking, a boundary at/beyond the recording (nothing left to recover), no tail file, or the
+     * tail transcription itself failing — and the caller falls back to the whole recording exactly
+     * as it did before this existed. The null path is the old behavior, so this is strictly a
+     * latency and data win, never a correctness bet.
+     */
+    private suspend fun recoverRealtimeTail(
+        appContext: Context,
+        session: RealtimeSession?,
+        wavFile: File?,
+        settledTranscript: String,
+    ): String? {
+        if (session == null || wavFile == null || !wavFile.exists() || wavFile.length() <= 0L) return null
+        val coveredSeconds = session.coveredAudioSeconds() ?: return null
+        if (coveredSeconds <= 0.0) return null
+        // The tail is the region of the recording after the covered boundary. Decode once; AudioWav
+        // writes the slice back out in the recorder's own format (16 kHz mono PCM16).
+        val samples = runCatching { AudioDecode.decodeToMono16k(wavFile) }.getOrNull() ?: return null
+        val totalLengthSeconds = samples.size.toDouble() / AudioDecode.TARGET_SAMPLE_RATE
+        if (totalLengthSeconds - coveredSeconds < MIN_TAIL_RECOVERY_SECONDS) {
+            // The uncovered region is a sliver: what settled while the user spoke IS the dictation.
+            // This is Google's stop moment — the server had finished the words seconds ago, and the
+            // result is revealed as-is. No second request, no re-upload, no tail race.
+            return settledTranscript.ifBlank { null }
+        }
+        val fromSample = (coveredSeconds * AudioDecode.TARGET_SAMPLE_RATE).toInt()
+            .coerceIn(0, samples.size)
+        if (fromSample >= samples.size) return null
+        val tailFile = File(appContext.cacheDir, "dictate_rt_tail.wav")
+        val ok = runCatching {
+            AudioWav.write(samples, AudioDecode.TARGET_SAMPLE_RATE, tailFile, listOf(intArrayOf(fromSample, samples.size)))
+        }.getOrDefault(false)
+        if (!ok) {
+            tailFile.delete()
+            return null
+        }
+        // Transcribe only the tail. Its silence state is needed below either way, so run the VAD
+        // first (cheap on a small file) and keep the file alive until both consumers are done.
+        val tailWasSilent = runCatching { !SpeechGate.hasSpeech(appContext, tailFile) }.getOrDefault(false)
+        val tailText = transcribeSegmentRaw(appContext, tailFile, continuity = settledTranscript)
+        tailFile.delete()
+        val tightening = appContext.transcriptTighteningSymbols()
+        if (tailText.isNullOrBlank()) {
+            // Null has two meanings and they get opposite answers. A pure-silence tail owes nothing
+            // (the model would only hallucinate into it) — the settled transcript is complete, commit
+            // it. A *failed* request is a real failure: return null so the caller keeps its proven
+            // full-recording fallback, which is the one path that never loses words. The VAD call
+            // tells the two apart cheaply on the small tail file.
+            return if (tailWasSilent) settledTranscript.ifBlank { null } else null
+        }
+        return TranscriptJoin.join(settledTranscript, tailText, tightening)
+    }
+
+    /** Smallest tail worth a second request: shorter than this, the wait costs more than the words. */
+    private val MIN_TAIL_RECOVERY_SECONDS = 0.4
 
     private fun initSegmented(appContext: Context) {
         segmentedActive = true
@@ -3123,6 +3318,12 @@ object DictateController {
      * normal teardown ([cancelRecording]).
      */
     private fun stashRecording(context: Context) {
+        if (basicVoiceEngine != null) {
+            // Basic voice typing has no audio to stash: stop the recognizer (it commits what it has
+            // written so far) and drop the bar. Screen-off and keyboard-hide land here.
+            stopBasicVoice(cancel = false)
+            return
+        }
         val current = _state.value
         val activeRecorder = recorder
         if (current !is UiState.Recording || activeRecorder == null) {
@@ -3790,11 +3991,16 @@ object DictateController {
             }
             is UiState.Transcribing, is UiState.Rewording -> Unit
             else -> {
-                // Latch where the reworded result goes — the keyboard editor, or the accessibility-injected
-                // field for the floating button's freeform voice command (issue #230). Same as onMicClick.
                 outputTarget = target
-                livePromptArmed = true
-                startRecording(context)
+                if (isBasicVoiceProvider()) {
+                    // Basic voice typing has no rewording stage — start it as a plain dictation.
+                    startBasicVoice(context)
+                } else {
+                    // Latch where the reworded result goes — the keyboard editor, or the accessibility-injected
+                    // field for the floating button's freeform voice command (issue #230). Same as onMicClick.
+                    livePromptArmed = true
+                    startRecording(context)
+                }
             }
         }
     }

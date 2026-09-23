@@ -39,6 +39,11 @@ object PhoneTranscriber {
         val id = prefs.dictate.transcriptionProviderId.get()
         val account = prefs.dictate.providerAccounts.get().getOrEmpty(id)
         val preset = presetFor(account)
+        if (preset.transcriptionApi == TranscriptionApi.BASIC_RECOGNITION_SERVICE) {
+            // Basic voice typing is live-mic only; the watch bridge has no file path for it.
+            // An empty transcript keeps the watch UI honest without inventing text.
+            return ""
+        }
         val model = account.transcriptionModel.ifBlank { preset.defaultTranscriptionModel ?: "" }
         val language = prefs.dictate.activeInputLanguage.get().takeIf { it != DictateLanguages.DETECT }
 

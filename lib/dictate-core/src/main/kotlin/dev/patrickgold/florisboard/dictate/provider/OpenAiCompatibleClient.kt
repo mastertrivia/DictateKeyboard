@@ -231,6 +231,10 @@ class OpenAiCompatibleClient(
         // On-device transcription never uses this HTTP client; the dictation flow routes local providers
         // to LocalTranscriptionProvider before one is ever constructed.
         TranscriptionApi.LOCAL_ONDEVICE -> error("LOCAL_ONDEVICE is handled by LocalTranscriptionProvider")
+        // Basic voice typing never uses this HTTP client either; the dictation flow routes it to the
+        // ported SpeechRecognizer engine before a client is ever constructed.
+        TranscriptionApi.BASIC_RECOGNITION_SERVICE ->
+            error("BASIC_RECOGNITION_SERVICE is handled by the system SpeechRecognizer engine")
     }
 
     override suspend fun transcribe(request: TranscriptionRequest): TranscriptionResult =
@@ -1124,6 +1128,7 @@ class OpenAiCompatibleClient(
                 executeForBody(request, maxRetries = 1)
                 return ConnectionCheck(scope)
             }
+            TranscriptionApi.BASIC_RECOGNITION_SERVICE -> return ConnectionCheck(scope)
             else -> return ConnectionCheck(scope, liveModelCount = listModels().size)
         }
     }
