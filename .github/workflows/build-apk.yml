@@ -526,6 +526,7 @@ jobs:
         env:
           RELEASE_TAG: ${{ steps.determine.outputs.release_tag }}
           TAG_VERSION: ${{ steps.determine.outputs.tag_version }}
+          BUILD_REF: ${{ steps.determine.outputs.build_ref }}
           ALLOW_KEY_CHANGE: ${{ github.event.inputs.allow_key_change }}
         run: |
           APK_DIR="app/build/outputs/apk/$BUILD_TYPE"
