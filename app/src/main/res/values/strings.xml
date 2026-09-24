@@ -1675,6 +1675,9 @@
     <string name="enum__space_bar_mode__nothing" comment="Enum value label">No label</string>
     <string name="enum__space_bar_mode__current_language" comment="Enum value label">Current language</string>
     <string name="enum__space_bar_mode__space_bar_key" comment="Enum value label">␣</string>
+    <string name="enum__space_bar_mode__transcription_model" comment="Enum value label">Current transcription model</string>
+    <string name="dictate__auto_switch_language_title" comment="Toggle title on the Transcription languages screen">Auto Switch Dictate Language</string>
+    <string name="dictate__auto_switch_language_summary" comment="Toggle description">Switch the Voice Typing language with the keyboard language automatically</string>
 
     <string name="enum__spelling_language_mode__use_system_languages" comment="Enum value label">Use system languages</string>
     <string name="enum__spelling_language_mode__use_keyboard_subtypes" comment="Enum value label">Use keyboard subtypes</string>
@@ -2180,7 +2183,7 @@
     <string name="dictate__local_model_family_installed" comment="Shown under a model family (Whisper, Kroko) in the on-device picker when some of its variants are downloaded. Both {count} and {total} are numbers.">{count} of {total} installed</string>
     <string name="dictate__local_model_family_open" comment="Spoken action label for the row that opens a model family (Whisper, Kroko) and shows the variants inside it">Show variants</string>
     <string name="dictate__local_fallback_title" comment="Title of the toggle that enables on-device transcription as an offline fallback">Offline fallback</string>
-    <string name="dictate__basic_provider_summary" comment="Summary on the Basic voice typing provider row">Phone\'s built-in voice recognition — instant, free, no key</string>
+    <string name="dictate__basic_provider_summary" comment="Summary on the Basic voice typing provider row">Phone\'s built-in voice recognition — instant, free, no key. Requires Google app</string>
     <string name="dictate__basic_provider_note" comment="Editor dialog body for the Basic voice typing provider: nothing to configure">Uses the phone\'s own speech service (Google voice typing). Nothing to configure — no key and no model. Text appears instantly while you speak and finalizes when you stop. Availability and offline support depend on your device\'s speech service.</string>
     <string name="dictate__basic_keyboard_only" comment="Neutral notice when Basic voice typing is started from the floating button or another non-keyboard target">Basic voice typing writes directly into the field — it is available for the keyboard only. Switch the transcription provider to use the floating button.</string>
     <string name="dictate__basic_file_import_unsupported" comment="Error when file import runs while Basic voice typing is the active provider">Basic voice typing transcribes live speech from the microphone only. Choose an AI provider for file import.</string>

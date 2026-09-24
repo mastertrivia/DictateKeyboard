@@ -72,6 +72,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -208,6 +209,7 @@ fun DictateProvidersScreen() = FlorisScreen {
                         .forEach { add(it.id to it.displayName) }
                     customAccounts.forEach { add(it.providerId to customLabel(it)) }
                 },
+                accounts = accounts,
             )
             // When the active transcription provider runs single-call multimodal (#130), rewording happens
             // inside that one call, so the rewording provider here is currently unused — surfaced as a
@@ -455,12 +457,36 @@ private fun RewordingProviderPreference(entries: List<Pair<String, String>>, sho
  * local fallback is meaningless there). Both the selection and the toggle are committed on confirm.
  */
 @Composable
-private fun TranscriptionProviderPreference(entries: List<Pair<String, String>>) {
+/**
+ * Whether a transcription provider is usable right now — read from the exact state its own row on this
+ * screen shows, so there is one source of truth (user request): keyless engines (basic voice typing,
+ * on-device, Ollama) and configured custom endpoints are always available; key providers need their
+ * key set; Dictate Cloud needs its wallet. Adding or removing a key therefore re-gates the dialog
+ * and re-orders it automatically, with no separate list to keep in sync.
+ */
+private fun isTranscriptionProviderAvailable(id: String, accounts: ProviderAccounts): Boolean {
+    val account = accounts.getOrEmpty(id)
+    return when {
+        id == ProviderRegistry.BASIC.id || id == ProviderRegistry.LOCAL.id -> true
+        id == ProviderRegistry.CLOUD.id -> account.hasWallet
+        account.isCustom -> account.hasKey || account.customBaseUrl.isNotBlank()
+        else -> !account.requiresCredential || account.hasKey
+    }
+}
+
+private fun TranscriptionProviderPreference(
+    entries: List<Pair<String, String>>,
+    accounts: ProviderAccounts,
+) {
     val prefs by FlorisPreferenceStore
     val scope = rememberCoroutineScope()
     val selectedId by prefs.dictate.transcriptionProviderId.collectAsState()
     val fallbackEnabled by prefs.dictate.localFallbackEnabled.collectAsState()
     var open by remember { mutableStateOf(false) }
+
+    // Usable providers first, unavailable after — computed live from the same key/wallet state the
+    // rows below show, so it follows every configuration change automatically (user request).
+    val orderedEntries = entries.sortedBy { !isTranscriptionProviderAvailable(it.first, accounts) }
 
     Preference(
         icon = Icons.Default.Mic,
@@ -500,14 +526,24 @@ private fun TranscriptionProviderPreference(entries: List<Pair<String, String>>)
                         .verticalScroll(scrollState)
                         .padding(end = 6.dp),
                 ) {
-                    entries.forEach { (id, label) ->
+                    orderedEntries.forEach { (id, label) ->
+                        // Unavailable providers stay visible but muted and non-selectable (user
+                        // request): a provider showing "No key" on its row reads the same here.
+                        val available = isTranscriptionProviderAvailable(id, accounts)
+                        val alpha = if (available) 1f else 0.38f
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { sel = id },
+                                .then(if (available) Modifier.clickable { sel = id } else Modifier)
+                                .padding(vertical = 2.dp)
+                                .alpha(alpha),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            RadioButton(selected = sel == id, onClick = { sel = id })
+                            RadioButton(
+                                selected = sel == id,
+                                onClick = { if (available) sel = id },
+                                enabled = available,
+                            )
                             Text(label, modifier = Modifier.padding(start = 8.dp))
                         }
                     }

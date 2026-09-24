@@ -127,16 +127,17 @@ class ImeDictationSink(context: Context) : DictationSink {
         // the composing region, one commitText call both ends the region and writes the finished text —
         // commitText *replaces* the composing region by contract, so no diff arithmetic is needed here
         // and the text turns from grey to final in the same frame the provider's last word arrives.
-        if (previewComposingLength > 0) {
+        if (isPreviewRegionLive()) {
             val ic = currentInputConnectionOrNull() ?: run {
-                previewComposingLength = 0
+                releaseComposingOwnership()
                 return false
             }
             ic.commitText(finalText, 1)
-            previewComposingLength = 0
+            releaseComposingOwnership()
             return true
         }
         // No preview was shown ("show the text only when I stop"): plain insert, as before.
+        releaseComposingOwnership()
         if (finalText == prevText) return true
         val cp = prevText.commonPrefixWith(finalText).length
         editorInstance.replaceTextBeforeCursor(prevText.length - cp, finalText.substring(cp))
@@ -147,19 +148,25 @@ class ImeDictationSink(context: Context) : DictationSink {
         // Cancel the composing region wholesale: setComposingText("") removes the grey preview from
         // the field in one batch (per-character deletes ANR and can kill the keyboard on a long
         // dictation). When no region is live, fall back to the atomic batch delete as before.
-        if (previewComposingLength > 0) {
+        if (isPreviewRegionLive()) {
             currentInputConnectionOrNull()?.let { it.setComposingText("", 1) }
-            previewComposingLength = 0
+            releaseComposingOwnership()
             return
         }
+        releaseComposingOwnership()
         if (prevText.isNotEmpty()) editorInstance.replaceTextBeforeCursor(prevText.length, "")
     }
 
+    /**
+     * Whether a grey composing region for this dictation is live in the field. The sink instances
+     * are created per call (see [DictateController.sink]), so per-instance length tracking cannot
+     * survive between preview updates — the durable state is the editor's ownership claim, which
+     * is set by [applyDictationDiff] and is exactly what must also decide the finalize/clear paths.
+     */
+    private fun isPreviewRegionLive(): Boolean = editorInstance.composingRegionExternallyOwned
+
     /** The live editor connection, or null when the window has already gone away. */
     private fun currentInputConnectionOrNull() = FlorisImeService.currentInputConnection()
-
-    /** Characters of the grey composing region this sink currently has live in the field. */
-    private var previewComposingLength = 0
 
     /**
      * Turns the currently-shown dictation text [old] into [new] — as **grey, temporary composing
@@ -180,14 +187,16 @@ class ImeDictationSink(context: Context) : DictationSink {
      */
     private fun applyDictationDiff(old: String, new: String) {
         if (new.isEmpty()) {
-            if (previewComposingLength > 0) clearDictationPreview(old)
+            if (isPreviewRegionLive()) clearDictationPreview(old) else releaseComposingOwnership()
             return
         }
+        // From the first grey write until the final commit/clear, the dictation owns the composing
+        // region: the editor's selection machinery must not finish/claim it between partials.
+        editorInstance.claimComposingRegionOwnership()
         val ic = currentInputConnectionOrNull() ?: return
         val grey = SpannableString(new)
         grey.setSpan(ForegroundColorSpan(PREVIEW_GREY), 0, new.length, SpannableString.SPAN_EXCLUSIVE_EXCLUSIVE)
         ic.setComposingText(grey, 1)
-        previewComposingLength = new.length
     }
 
     private companion object {

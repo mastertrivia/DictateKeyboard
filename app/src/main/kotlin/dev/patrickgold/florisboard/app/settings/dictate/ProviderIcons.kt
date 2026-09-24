@@ -13,6 +13,7 @@ package dev.patrickgold.florisboard.app.settings.dictate
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.PhoneAndroid
+import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.vectorResource
@@ -53,6 +54,9 @@ fun providerIcon(providerId: String): ImageVector {
         "ollama" -> R.drawable.ic_provider_ollama
         // Nothing runs anywhere but here, so the phone is the mark.
         "local" -> return Icons.Default.PhoneAndroid
+        // Basic voice typing is the phone's own recognizer (the Google app's): a speaking mouth,
+        // not a cloud — there is no server to suggest.
+        "basic" -> return Icons.Default.RecordVoiceOver
         else -> return Icons.Default.Cloud
     }
     return ImageVector.vectorResource(drawable)

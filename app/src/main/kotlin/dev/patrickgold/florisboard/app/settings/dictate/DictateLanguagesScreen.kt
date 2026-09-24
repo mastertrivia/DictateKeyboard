@@ -26,6 +26,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -108,6 +109,21 @@ fun DictateLanguagesScreen() = FlorisScreen {
                 icon = { Icon(Icons.Default.Language, contentDescription = null) },
                 text = stringRes(R.string.dictate__languages_active_title),
                 secondaryText = languageLabel(activeCode),
+            )
+            // Auto Switch Dictate Language: dictation follows the keyboard language while enabled;
+            // manual selection (above and below) keeps working regardless of the toggle's state.
+            val autoSwitch by prefs.dictate.autoSwitchLanguage.collectAsState()
+            JetPrefListItem(
+                text = stringRes(R.string.dictate__auto_switch_language_title),
+                secondaryText = stringRes(R.string.dictate__auto_switch_language_summary),
+                trailing = {
+                    Switch(
+                        checked = autoSwitch,
+                        onCheckedChange = { checked ->
+                            scope.launch { prefs.dictate.autoSwitchLanguage.set(checked) }
+                        },
+                    )
+                },
             )
             HorizontalDivider()
             LazyColumn(

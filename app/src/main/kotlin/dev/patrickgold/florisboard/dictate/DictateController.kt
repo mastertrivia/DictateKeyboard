@@ -1349,6 +1349,10 @@ object DictateController {
         basicVoiceEngine = engine
         host.resetSession()
         basicVoiceLanguage()?.let { engine.setLanguage(it) }
+        // The engine's grey partial results live in the field's composing region; from now until the
+        // session ends, the editor's selection machinery must not finish/re-claim that region between
+        // partials (that would permanently commit each revision and re-type it — the accumulation bug).
+        host.claimComposingOwnership()
         // Reuse the recording state so the bar (timer, stop button) behaves identically.
         _state.value = UiState.Recording(SystemClock.elapsedRealtime())
         engine.startOrPause()
@@ -1356,6 +1360,7 @@ object DictateController {
 
     /** The engine reported IDLE: the session is over — drop the bar and forget the engine. */
     private fun onBasicVoiceStopped() {
+        basicVoiceHost?.releaseComposingOwnership()
         basicVoiceEngine = null
         basicVoiceHost = null
         unregisterScreenOffReceiver()
@@ -1371,6 +1376,7 @@ object DictateController {
         val engine = basicVoiceEngine ?: return
         if (cancel) {
             basicVoiceHost?.discardSessionNow()
+            basicVoiceHost?.releaseComposingOwnership()
             unregisterScreenOffReceiver()
             basicVoiceEngine = null
             basicVoiceHost = null
@@ -1379,6 +1385,8 @@ object DictateController {
             // between an immediate Idle and the kept-bar discard animation.
         } else {
             engine.stopIfListening()
+            // Ownership is released in onBasicVoiceStopped when the engine reports IDLE — its final
+            // flush still composes/commits into the region it owns.
         }
     }
 

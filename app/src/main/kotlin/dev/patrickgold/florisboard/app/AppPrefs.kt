@@ -874,6 +874,14 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
             key = "dictate__active_input_language",
             default = "detect",
         )
+        // Auto Switch Dictate Language: when on, the active dictation language follows the
+        // keyboard's language (English keyboard → English dictation, Hindi → Hindi, …). Manual
+        // selection in the transcription-languages screen keeps working whenever the keyboard
+        // language is unchanged — the sync only fires on a keyboard language change.
+        val autoSwitchLanguage = boolean(
+            key = "dictate__auto_switch_language",
+            default = false,
+        )
         // Guard so the one-time seeding of the device/system dictation language (added on top of the
         // default detect,en) runs only once on a fresh install. See
         // DictateLegacyMigrator.seedDeviceLanguageIfNeeded.

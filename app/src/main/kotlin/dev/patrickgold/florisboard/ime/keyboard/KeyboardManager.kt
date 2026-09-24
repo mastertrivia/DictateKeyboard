@@ -31,6 +31,7 @@ import dev.patrickgold.florisboard.app.FlorisPreferenceStore
 import dev.patrickgold.florisboard.appContext
 import dev.patrickgold.florisboard.clipboardManager
 import dev.patrickgold.florisboard.editorInstance
+import dev.patrickgold.florisboard.dictate.DictateLanguages
 import dev.patrickgold.florisboard.dictate.snippet.SnippetTriggers
 import dev.patrickgold.florisboard.extensionManager
 import dev.patrickgold.florisboard.ime.ImeUiMode
@@ -235,6 +236,15 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
                 updateActiveEvaluators()
                 editorInstance.refreshComposing()
                 resetSuggestions(editorInstance.activeContent)
+                // Auto Switch Dictate Language (user request): the dictation language follows the
+                // keyboard language the moment it changes — English keyboard → English dictation,
+                // Hindi → Hindi — without reopening the languages screen. No-op unless enabled.
+                syncDictationLanguageToKeyboard()
+            }
+            // Also sync once when the toggle itself is switched on, so enabling it while the
+            // keyboard is already, say, Hindi immediately points dictation at Hindi.
+            prefs.dictate.autoSwitchLanguage.asFlow().collectLatestIn(scope) {
+                syncDictationLanguageToKeyboard()
             }
             clipboardManager.primaryClipFlow.collectLatestIn(scope) {
                 updateActiveEvaluators()
@@ -269,6 +279,23 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
     private fun isSplitLayoutActive(): Boolean {
         val config = FlorisImeService.windowControllerOrNull()?.activeWindowConfig?.value ?: return false
         return config.mode == ImeWindowMode.FIXED && config.fixedMode == ImeWindowMode.Fixed.THUMBS
+    }
+
+    /**
+     * Auto Switch Dictate Language (user request): with the toggle on, the active dictation language
+     * follows the keyboard language — English keyboard → English dictation, Hindi → Hindi. Only the
+     * active language moves; the recording bar's quick-cycle list and manual selection (globe chip,
+     * Transcription languages screen) are untouched, and manual choice still wins until the next
+     * keyboard-language change. Never fires when the toggle is off, and never writes "detect": if
+     * the keyboard language has no dictation equivalent, dictation keeps its current language.
+     */
+    private fun syncDictationLanguageToKeyboard() {
+        if (!prefs.dictate.autoSwitchLanguage.get()) return
+        val matched = DictateLanguages.matchDevice(subtypeManager.activeSubtype.primaryLocale) ?: return
+        val current = prefs.dictate.activeInputLanguage.get()
+        if (current != matched.code) {
+            prefs.dictate.activeInputLanguage.set(matched.code)
+        }
     }
 
     fun updateActiveEvaluators(action: () -> Unit = { }) = scope.launch {

@@ -20,6 +20,7 @@ import android.content.Intent
 import android.net.Uri
 import android.view.inputmethod.InputConnection
 import dev.patrickgold.florisboard.FlorisImeService
+import dev.patrickgold.florisboard.editorInstance
 import helium314.keyboard.voice.SpeechNotesVoiceEngine
 import helium314.keyboard.voice.VoiceEngineHost
 import helium314.keyboard.voice.VoiceSounds
@@ -29,6 +30,25 @@ class BasicVoiceHost(
     val appContext: Context,
     private val onEngineStopped: () -> Unit = {},
 ) : VoiceEngineHost {
+
+    private val editorInstance by appContext.editorInstance()
+
+    /**
+     * Marks the dictation session as the owner of the field's composing region (see
+     * [AbstractEditorInstance.composingRegionExternallyOwned]): while the engine streams its grey
+     * text, the editor's selection-update machinery must not finish or re-claim that region between
+     * partial results — finishing it bakes the grey text in permanently and the next partial then
+     * re-types the whole transcript after it (the "Hello Hello hello there …" accumulation bug).
+     * This is the same guard the engine's original host applied in its onUpdateSelection.
+     */
+    fun claimComposingOwnership() {
+        editorInstance.claimComposingRegionOwnership()
+    }
+
+    /** Returns the composing region to the keyboard's normal handling (session over). */
+    fun releaseComposingOwnership() {
+        editorInstance.releaseComposingRegionOwnership()
+    }
 
     /**
      * Everything the engine currently has in the field for this session: committed segments AND
