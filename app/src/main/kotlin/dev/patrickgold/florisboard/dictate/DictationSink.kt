@@ -129,15 +129,15 @@ class ImeDictationSink(context: Context) : DictationSink {
         // and the text turns from grey to final in the same frame the provider's last word arrives.
         if (isPreviewRegionLive()) {
             val ic = currentInputConnectionOrNull() ?: run {
-                releaseComposingOwnership()
+                releaseComposingRegionOwnership()
                 return false
             }
             ic.commitText(finalText, 1)
-            releaseComposingOwnership()
+            releaseComposingRegionOwnership()
             return true
         }
         // No preview was shown ("show the text only when I stop"): plain insert, as before.
-        releaseComposingOwnership()
+        releaseComposingRegionOwnership()
         if (finalText == prevText) return true
         val cp = prevText.commonPrefixWith(finalText).length
         editorInstance.replaceTextBeforeCursor(prevText.length - cp, finalText.substring(cp))
@@ -150,10 +150,10 @@ class ImeDictationSink(context: Context) : DictationSink {
         // dictation). When no region is live, fall back to the atomic batch delete as before.
         if (isPreviewRegionLive()) {
             currentInputConnectionOrNull()?.let { it.setComposingText("", 1) }
-            releaseComposingOwnership()
+            releaseComposingRegionOwnership()
             return
         }
-        releaseComposingOwnership()
+        releaseComposingRegionOwnership()
         if (prevText.isNotEmpty()) editorInstance.replaceTextBeforeCursor(prevText.length, "")
     }
 
@@ -164,6 +164,10 @@ class ImeDictationSink(context: Context) : DictationSink {
      * is set by [applyDictationDiff] and is exactly what must also decide the finalize/clear paths.
      */
     private fun isPreviewRegionLive(): Boolean = editorInstance.composingRegionExternallyOwned
+
+    private fun releaseComposingRegionOwnership() {
+        editorInstance.releaseComposingRegionOwnership()
+    }
 
     /** The live editor connection, or null when the window has already gone away. */
     private fun currentInputConnectionOrNull() = FlorisImeService.currentInputConnection()
@@ -187,7 +191,7 @@ class ImeDictationSink(context: Context) : DictationSink {
      */
     private fun applyDictationDiff(old: String, new: String) {
         if (new.isEmpty()) {
-            if (isPreviewRegionLive()) clearDictationPreview(old) else releaseComposingOwnership()
+            if (isPreviewRegionLive()) clearDictationPreview(old) else releaseComposingRegionOwnership()
             return
         }
         // From the first grey write until the final commit/clear, the dictation owns the composing

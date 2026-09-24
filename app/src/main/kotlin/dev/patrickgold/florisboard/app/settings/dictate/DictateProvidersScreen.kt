@@ -451,13 +451,6 @@ private fun RewordingProviderPreference(entries: List<Pair<String, String>>, sho
 }
 
 /**
- * Active-transcription-provider picker (issue #104). Opens a dialog listing the transcription-capable
- * providers as radio options, with the **offline fallback** toggle as an extra checkbox item at the
- * bottom of the same dialog. The checkbox is hidden when the chosen provider is the on-device one (a
- * local fallback is meaningless there). Both the selection and the toggle are committed on confirm.
- */
-@Composable
-/**
  * Whether a transcription provider is usable right now — read from the exact state its own row on this
  * screen shows, so there is one source of truth (user request): keyless engines (basic voice typing,
  * on-device, Ollama) and configured custom endpoints are always available; key providers need their
@@ -474,6 +467,13 @@ private fun isTranscriptionProviderAvailable(id: String, accounts: ProviderAccou
     }
 }
 
+/**
+ * Active-transcription-provider picker (issue #104). Opens a dialog listing the transcription-capable
+ * providers as radio options, with the **offline fallback** toggle as an extra checkbox item at the
+ * bottom of the same dialog. The checkbox is hidden when the chosen provider is the on-device one (a
+ * local fallback is meaningless there). Both the selection and the toggle are committed on confirm.
+ */
+@Composable
 private fun TranscriptionProviderPreference(
     entries: List<Pair<String, String>>,
     accounts: ProviderAccounts,

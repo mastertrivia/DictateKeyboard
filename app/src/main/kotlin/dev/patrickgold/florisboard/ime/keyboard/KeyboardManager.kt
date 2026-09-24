@@ -291,10 +291,10 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
      */
     private fun syncDictationLanguageToKeyboard() {
         if (!prefs.dictate.autoSwitchLanguage.get()) return
-        val matched = DictateLanguages.matchDevice(subtypeManager.activeSubtype.primaryLocale) ?: return
+        val matched = DictateLanguages.matchDevice(subtypeManager.activeSubtype.primaryLocale.base) ?: return
         val current = prefs.dictate.activeInputLanguage.get()
         if (current != matched.code) {
-            prefs.dictate.activeInputLanguage.set(matched.code)
+            scope.launch { prefs.dictate.activeInputLanguage.set(matched.code) }
         }
     }
 
