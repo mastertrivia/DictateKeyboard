@@ -20,6 +20,7 @@ import android.content.Intent
 import android.net.Uri
 import android.view.inputmethod.InputConnection
 import dev.patrickgold.florisboard.FlorisImeService
+import dev.patrickgold.florisboard.editorInstance
 import helium314.keyboard.voice.SpeechNotesVoiceEngine
 import helium314.keyboard.voice.VoiceEngineHost
 import helium314.keyboard.voice.VoiceSounds
@@ -29,6 +30,37 @@ class BasicVoiceHost(
     val appContext: Context,
     private val onEngineStopped: () -> Unit = {},
 ) : VoiceEngineHost {
+
+    private val editorInstance by appContext.editorInstance()
+
+    /**
+     * Marks the dictation session as the owner of the field's composing region (see
+     * [AbstractEditorInstance.composingRegionExternallyOwned]): while the engine streams its grey
+     * text, the editor's selection-update machinery must not finish or re-claim that region between
+     * partial results — finishing it bakes the grey text in permanently and the next partial then
+     * re-types the whole transcript after it (the "Hello Hello hello there …" accumulation bug).
+     * This is the same guard the engine's original host applied in its onUpdateSelection.
+     */
+    fun claimComposingOwnership() {
+        editorInstance.claimComposingRegionOwnership()
+    }
+
+    /** Returns the composing region to the keyboard's normal handling (session over). */
+    fun releaseComposingOwnership() {
+        editorInstance.releaseComposingRegionOwnership()
+    }
+
+    /**
+     * The engine starts a NEW dictation segment (a fresh recognizer generation after a commit, or a
+     * resumed listening): whatever the user made permanent in the field since — a keyboard touch
+     * that committed the grey text, plus any manual typing on top of it — is their own text now and
+     * is NOT part of the new segment. Reset the accounting so the new grey region starts after it
+     * and the next cancel/stop can only ever remove what this new segment itself wrote.
+     */
+    fun beginNewVoiceSegment() {
+        sessionText.setLength(0)
+        composingLen = 0
+    }
 
     /**
      * Everything the engine currently has in the field for this session: committed segments AND
@@ -144,6 +176,13 @@ class BasicVoiceHost(
      * Accounting follows InputConnection's documented semantics exactly: both [commitText] and
      * [setComposingText] replace the current composing region, so the session text's tail of
      * [composingLen] characters is swapped for the new text on each write.
+     *
+     * Consumed-region rule (the grey-becomes-permanent bug): when the user touches the keyboard,
+     * the engine's grey region is finished by that keypress and becomes permanent text. This is
+     * detected HERE, at the engine's next write — the region it believes it owns is no longer
+     * marked as owned ([AbstractEditorInstance.composingRegionExternallyOwned] is false). The
+     * stale region text is then treated as sealed (never replaced) and the engine's new text
+     * composes fresh after it — anything the user typed in between is never touched.
      */
     private inner class SessionInputConnection(
         private val inner: InputConnection,
@@ -165,6 +204,12 @@ class BasicVoiceHost(
                 clearComposingForDiscard()
                 return true
             }
+            if (composingLen > 0 && composingRegionGone()) {
+                // The old region was already made permanent (keyboard touch); the user may have typed
+                // on top of it. Never replace field text we no longer own: seal the stale region's
+                // text as its own segment and start composing the new text fresh.
+                composingLen = 0
+            }
             val ok = inner.setComposingText(text, newCursorPosition)
             replaceComposingTailWith(text)
             composingLen = text.length
@@ -179,6 +224,12 @@ class BasicVoiceHost(
             }
             composingLen = 0
             return inner.finishComposingText()
+        }
+
+        /** Whether the composing region the engine believes it owns is no longer marked as ours. */
+        private fun composingRegionGone(): Boolean {
+            val owned = runCatching { editorInstance.composingRegionExternallyOwned }.getOrDefault(true)
+            return !owned
         }
 
         /** Swaps the session text's composing tail for [text] (append when nothing is composed). */

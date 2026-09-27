@@ -408,6 +408,11 @@ class FlorisImeService : LifecycleInputMethodService() {
         // being switched on — so they get their own refresh here rather than riding on the prompt strip's.
         dev.patrickgold.florisboard.dictate.snippet.SnippetTriggers.refresh(this)
 
+        // Dictate: warm the transcription provider's transport while the user is still looking at the field,
+        // so a live dictation does not pay for DNS/TCP/TLS inside its own session (Rambler's channel is
+        // always warm). Fire-and-forget and throttled; a no-op without realtime dictation.
+        runCatching { DictateController.warmUpRealtime(this) }
+
         // File transcription: if the user picked a file via the long-press mic trampoline, transcribe
         // it now that we are back on the field. Skips instant-recording when it kicks in.
         val startedFileTranscription =

@@ -61,6 +61,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.toSize
 import dev.patrickgold.florisboard.FlorisImeService
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
+import dev.patrickgold.florisboard.dictate.provider.ProviderRegistry
 import dev.patrickgold.florisboard.dictate.ui.LegacyLayoutState
 import dev.patrickgold.florisboard.editorInstance
 import dev.patrickgold.florisboard.glideTypingManager
@@ -381,6 +382,16 @@ private fun TextKeyButton(
                     SpaceBarMode.NOTHING -> return@let
                     SpaceBarMode.CURRENT_LANGUAGE -> {}
                     SpaceBarMode.SPACE_BAR_KEY -> customLabel = "␣"
+                    SpaceBarMode.TRANSCRIPTION_MODEL -> {
+                        // The active transcription model/provider's name (user request): "Google
+                        // Gemini", "Groq", "Basic Voice Typing", "On-device (offline)", or a
+                        // custom endpoint's own name. Reacts automatically — both inputs are
+                        // observed state, so changing provider re-renders the label.
+                        val transcriptionId by prefs.dictate.transcriptionProviderId.collectAsState()
+                        val accounts by prefs.dictate.providerAccounts.collectAsState()
+                        customLabel = ProviderRegistry.byId(transcriptionId)?.displayName
+                            ?: accounts.getOrEmpty(transcriptionId).displayName.ifBlank { transcriptionId }
+                    }
                 }
             }
             SnyggText(

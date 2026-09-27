@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.ListAlt
 import androidx.compose.material.icons.filled.ModelTraining
 import androidx.compose.material.icons.filled.Psychology
+import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.ViewAgenda
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -117,6 +118,37 @@ fun DictateRewordingScreen() = FlorisScreen {
             modifier = Modifier.settingsSearchAnchor("dictate__auto_formatting_title"),
             title = stringRes(R.string.dictate__auto_formatting_title),
             summary = stringRes(R.string.dictate__auto_formatting_summary),
+        )
+
+        // Gboard "Rambler" parity: the cleanup pass Gboard runs over every transcript (disfluencies,
+        // spelled-out words, grammar, spoken self-corrections, Hinglish romanisation). Off by default
+        // because it is one extra model pass on top of transcription. See RamblerDefaults.
+        SwitchPreference(
+            prefs.dictate.ramblerCleanupEnabled,
+            icon = Icons.Default.AutoFixHigh,
+            modifier = Modifier.settingsSearchAnchor("dictate__rambler_cleanup_title"),
+            title = stringRes(R.string.dictate__rambler_cleanup_title),
+            summary = stringRes(R.string.dictate__rambler_cleanup_summary),
+        )
+
+        // Gboard "Rambler" parity (architecture): run the live session as a *voice editor* so recognition
+        // and cleanup happen in one stream — the shape Rambler's own server route has — instead of paying a
+        // second model call after the stop. Only a conversational live model can carry an instruction.
+        SwitchPreference(
+            prefs.dictate.realtimeVoiceEdit,
+            icon = Icons.Default.Bolt,
+            modifier = Modifier.settingsSearchAnchor("dictate__realtime_voice_edit_title"),
+            title = stringRes(R.string.dictate__realtime_voice_edit_title),
+            summary = stringRes(R.string.dictate__realtime_voice_edit_summary),
+        )
+
+        // Gboard "Rambler" parity: "send" / "clear" / "clear all" spoken at the end of a dictation.
+        SwitchPreference(
+            prefs.dictate.voiceCommandsEnabled,
+            icon = Icons.Default.RecordVoiceOver,
+            modifier = Modifier.settingsSearchAnchor("dictate__voice_commands_title"),
+            title = stringRes(R.string.dictate__voice_commands_title),
+            summary = stringRes(R.string.dictate__voice_commands_summary),
         )
 
         val reasoningScope = rememberCoroutineScope()

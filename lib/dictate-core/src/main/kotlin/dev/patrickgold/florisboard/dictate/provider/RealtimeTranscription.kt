@@ -53,6 +53,20 @@ data class RealtimeRequest(
     val language: String? = null,
     /** Sample rate (Hz) of the mono 16-bit little-endian PCM the caller will send. */
     val sampleRate: Int = 16_000,
+    /**
+     * Google-parity **voice-edit** instruction (Gboard's Rambler route). When non-null, the session is
+     * asked to run as a *voice editor* rather than a pure transcriber: the recognition stream comes back
+     * already cleaned up — disfluencies removed, punctuation and capitalization applied, spoken
+     * self-corrections folded in — so the result the caller commits is final text, not raw ASR that needs
+     * a second model call.
+     *
+     * That is how Rambler works (`S3RequestMutator` pins the route
+     * `gboard_gemini_v3_streaming_voice_edit_mul`): its polish happens *inside* the recognition stream, at
+     * zero extra round trips. Providers without such a route ignore this field and transcribe as before;
+     * Gemini Live maps it to `setup.systemInstruction`, and the session then reads the model's own text
+     * output as the transcript.
+     */
+    val editInstruction: String? = null,
 )
 
 /**

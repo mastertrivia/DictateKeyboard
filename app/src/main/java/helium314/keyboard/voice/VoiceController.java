@@ -347,6 +347,13 @@ public class VoiceController implements RecognitionListener {
         this.pendingTypedChar = "";
         this.speechBegan = false;
         this.stableTextProcessed = false;
+        // New segment: anything that became permanent in the field since the last one (a keyboard
+        // touch committing the grey text, plus the user's manual typing) is settled text — the new
+        // grey region must start after it and never revise or remove it.
+        try {
+            this.callback.onNewVoiceSegment();
+        } catch (Throwable ignored) {
+        }
         setState(RecognitionState.CONNECTING);
         this.connectRunnable.connect(++this.sessionGeneration);
     }

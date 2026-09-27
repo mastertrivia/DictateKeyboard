@@ -52,6 +52,8 @@ import dev.patrickgold.florisboard.dictate.audio.SpeechGate
 import dev.patrickgold.florisboard.dictate.cloud.DictateCloud
 import dev.patrickgold.florisboard.dictate.cloud.DictateCloudApi
 import dev.patrickgold.florisboard.dictate.data.prompts.DictatePromptDefaults
+import dev.patrickgold.florisboard.dictate.data.prompts.RamblerDefaults
+import dev.patrickgold.florisboard.editorInstance
 import dev.patrickgold.florisboard.dictate.data.prompts.PromptModel
 import dev.patrickgold.florisboard.dictate.data.prompts.PromptsDatabaseHelper
 import dev.patrickgold.florisboard.dictate.data.prompts.snippetBody
@@ -286,6 +288,9 @@ object DictateController {
     /** When a sleeping rewording server was last poked awake (#189); see [warmUpRewordingServer]. */
     private var lastWarmUpAtMs = 0L
 
+    /** When the realtime transport was last warmed; see [warmUpRealtime]. */
+    private var lastRealtimeWarmUpAtMs = 0L
+
     private val _pendingPrompts = MutableStateFlow<List<PromptModel>>(emptyList())
     /**
      * Prompts queued by tapping the always-on prompt row while recording (ROW layout). They are applied
@@ -330,6 +335,12 @@ object DictateController {
     /** When the stream last produced text; the tail wait on stop measures the provider's silence from here (#372). */
     @Volatile private var realtimeLastTextAt = 0L
     @Volatile private var realtimeCancelled = false   // block late stream callbacks from re-adding text
+    /**
+     * This realtime session runs as a **voice editor** (see [RamblerDefaults.buildVoiceEditInstruction]):
+     * its text arrives already cleaned up, so the Rambler cleanup pass must NOT run again after the stop —
+     * that would be the second model call the architecture exists to avoid. Reset with the session.
+     */
+    @Volatile private var realtimeVoiceEditActive = false
 
     // --- Long-form segmented dictation (issue #170) ---------------------------------------------
     // Segmented mode transcribes cut segments in the background while recording continues, appending raw
@@ -654,6 +665,9 @@ object DictateController {
 
     /** Shortest gap between two wake-up pokes at a sleeping rewording server (#189). */
     private const val WARM_UP_THROTTLE_MS = 60_000L
+
+    /** Opening the keyboard repeatedly must not turn the realtime transport warm-up into a request storm. */
+    private const val REALTIME_WARM_UP_THROTTLE_MS = 60_000L
 
     /** Cumulative recorded audio (seconds) after which the rate / donate nudges appear (roadmap 9.7/9.8). */
 
@@ -1203,6 +1217,7 @@ object DictateController {
         realtimeCancelled = true
         realtimeSession?.cancel()
         realtimeSession = null
+        realtimeVoiceEditActive = false
         realtimeClosed = null
         _interimText.value = ""
         realtimeContext?.let { ctx -> runCatching { sink(ctx).clearDictationPreview(realtimeShown.toString()) } }
@@ -1212,6 +1227,7 @@ object DictateController {
         unregisterScreenOffReceiver()
         cleanupAudioRouting()
         livePromptArmed = false
+        DictationPreviewState.reset()
         _livePromptActive.value = false
         _pendingPrompts.value = emptyList()
         // Cancelling a continued recording also throws away the carried-over interrupted segment.
@@ -1349,6 +1365,10 @@ object DictateController {
         basicVoiceEngine = engine
         host.resetSession()
         basicVoiceLanguage()?.let { engine.setLanguage(it) }
+        // The engine's grey partial results live in the field's composing region; from now until the
+        // session ends, the editor's selection machinery must not finish/re-claim that region between
+        // partials (that would permanently commit each revision and re-type it — the accumulation bug).
+        host.claimComposingOwnership()
         // Reuse the recording state so the bar (timer, stop button) behaves identically.
         _state.value = UiState.Recording(SystemClock.elapsedRealtime())
         engine.startOrPause()
@@ -1356,6 +1376,7 @@ object DictateController {
 
     /** The engine reported IDLE: the session is over — drop the bar and forget the engine. */
     private fun onBasicVoiceStopped() {
+        basicVoiceHost?.releaseComposingOwnership()
         basicVoiceEngine = null
         basicVoiceHost = null
         unregisterScreenOffReceiver()
@@ -1371,6 +1392,7 @@ object DictateController {
         val engine = basicVoiceEngine ?: return
         if (cancel) {
             basicVoiceHost?.discardSessionNow()
+            basicVoiceHost?.releaseComposingOwnership()
             unregisterScreenOffReceiver()
             basicVoiceEngine = null
             basicVoiceHost = null
@@ -1379,6 +1401,8 @@ object DictateController {
             // between an immediate Idle and the kept-bar discard animation.
         } else {
             engine.stopIfListening()
+            // Ownership is released in onBasicVoiceStopped when the engine reports IDLE — its final
+            // flush still composes/commits into the region it owns.
         }
     }
 
@@ -2142,8 +2166,37 @@ object DictateController {
         finalizeViaComposing: Boolean = false,
         capture: HistoryCapture? = null,
         latencyTrace: BatchLatencyTrace? = null,
+        /** The stream already applied the Rambler cleanup (voice-edit session) — see [postProcessTranscript]. */
+        polishedInStream: Boolean = false,
     ) {
         swallowedRewording = null // this dictation's own slate (issue #284)
+        // --- Gboard Rambler voice commands -------------------------------------------------------------
+        // Rambler classifies the *final* transcript with three anchored regexes (VoiceCommandClassifier)
+        // and acts on it INSTEAD of inserting the words (AgenticDictationExtension.onVoiceText step 8).
+        // Classification therefore runs on the raw ASR text and before any rewording: a command word is not
+        // dictation, and it must never be polished, quoted back or committed. The system voice-input path is
+        // excluded — a calling app asked for text, so it gets text (Gboard has no such output target).
+        if (!live && outputTarget != OutputTarget.RECOGNITION_SERVICE) {
+            val command = if (prefs.dictate.voiceCommandsEnabled.get()) {
+                RamblerDefaults.classifyVoiceCommand(rawText)
+            } else {
+                null
+            }
+            if (command != null && runVoiceCommand(appContext, command, finalizeViaComposing)) {
+                realtimeShown.setLength(0)
+                realtimeTranscript.setLength(0)
+                DictationPreviewState.reset()
+                discardRetainedAudio()
+                _state.value = UiState.Idle
+                latencyTrace?.let { logLatency(it, "voiceCommand") }
+                return
+            }
+            // The words matched a command but the field refused it — most often "send" in a field whose IME
+            // action is not SEND, which is the guard Gboard itself applies. Gboard then drops the utterance
+            // entirely; that is the one place this implementation deliberately deviates and falls through to
+            // an ordinary commit instead, because silently discarding what the user just said is exactly the
+            // "lost text" failure both keyboards are meant to prevent.
+        }
         val finalText = if (live) {
             // The spoken transcript is an instruction; send it to GPT (optionally operating on the current
             // selection) and insert the answer instead of the transcript.
@@ -2160,7 +2213,11 @@ object DictateController {
             // Normal dictation: auto-formatting + auto-apply prompts, then the prompts the user queued by
             // tapping the prompt row while recording, in tap order; then commit. [alreadyFormatted] skips
             // the rewording pass (single-call multimodal #130 already returns finished text).
-            val processed = if (alreadyFormatted) rawText else postProcessTranscript(appContext, rawText)
+            val processed = if (alreadyFormatted) {
+                rawText
+            } else {
+                postProcessTranscript(appContext, rawText, alreadyCleanedUp = polishedInStream)
+            }
             applyPendingPrompts(appContext, processed)
         }
         // Paragraph splitting (issue #225): break a long *pure* transcript into paragraphs at sentence
@@ -2187,6 +2244,9 @@ object DictateController {
             val outSink = sink(appContext)
             // Off the main thread for the overlay, like every other accessibility write: this one ends
             // in the same resolve-focus-write-verify round trip (see [writeToSink]).
+            // The commit is delta-aware: whatever the user already made permanent by touching the
+            // keyboard mid-dictation (DictationPreviewState.committedBase) is not re-typed — the
+            // sink inserts only the uncommitted remainder of the finished transcript.
             val landed = if (outputTarget == OutputTarget.OVERLAY) {
                 withContext(Dispatchers.IO) {
                     outSink.commitDictationFinal(outputText, realtimeShown.toString())
@@ -2196,6 +2256,7 @@ object DictateController {
             }
             realtimeShown.setLength(0)
             realtimeTranscript.setLength(0)
+            DictationPreviewState.reset()
             // This branch never went through commitOutput, so it never saw the insert-failure check
             // either (issue #277) — a swallowed write finished as Idle, i.e. a green check.
             if (reportOverlayInsertFailure(appContext, landed, outputText)) {
@@ -2259,6 +2320,41 @@ object DictateController {
         }
     }
 
+    /**
+     * Runs one of Rambler's built-in voice commands against the focused field and reports whether the field
+     * accepted it.
+     *
+     * The command words were streamed into the grey preview while the user spoke, so the preview is taken
+     * down first — otherwise "send"/"clear" would be left sitting in the field as text. Only the preview is
+     * removed: text a keyboard touch already committed is the user's own (see [DictationPreviewState]) and is
+     * never touched here, which is also what makes a command spoken mid-session safe.
+     *
+     * Commands only run for a field this keyboard writes into. Gboard's Rambler has no overlay or
+     * recognition-service mode either — it is always the active IME acting on its own editor — so the
+     * floating-button and system paths keep the plain commit behaviour (their sinks return false here).
+     */
+    private suspend fun runVoiceCommand(
+        context: Context,
+        command: RamblerDefaults.VoiceCommand,
+        finalizeViaComposing: Boolean,
+    ): Boolean {
+        val outSink = sink(context)
+        if (finalizeViaComposing) {
+            // Same thread rule as the realtime finalize: the overlay's writes go through the accessibility
+            // service, so they stay off the main thread.
+            if (outputTarget == OutputTarget.OVERLAY) {
+                withContext(Dispatchers.IO) { outSink.clearDictationPreview(realtimeShown.toString()) }
+            } else {
+                outSink.clearDictationPreview(realtimeShown.toString())
+            }
+        }
+        return when (command) {
+            RamblerDefaults.VoiceCommand.SEND -> outSink.performSendCommand()
+            RamblerDefaults.VoiceCommand.DELETE_LAST_SENTENCE -> outSink.deleteCommandText(clearAll = false)
+            RamblerDefaults.VoiceCommand.DELETE_ALL -> outSink.deleteCommandText(clearAll = true)
+        }
+    }
+
     /** Copies [text] to the system clipboard — the floating-button always-copy safety net (issue #214). */
     /**
      * A floating-button write the field refused: put the text on the clipboard and say so, instead of
@@ -2290,6 +2386,42 @@ object DictateController {
     }
 
     // --- Real-time streaming (issue #128) -------------------------------------------------------
+
+    /** The realtime wire API to use for the active transcription account, or null if realtime shouldn't run. */
+    /**
+     * Warms the provider's transport when the keyboard comes up, so the first dictation does not pay for
+     * DNS/TCP/TLS inside its own session (see [RealtimeClient.warmUp] — Rambler's channel is always warm).
+     *
+     * Deliberately not fired for the on-device provider: there is no socket to warm and the model's own
+     * warm-up is handled where it is loaded. Fire-and-forget, throttled, and a no-op for everyone who does
+     * not use realtime dictation.
+     */
+    fun warmUpRealtime(context: Context) {
+        if (!prefs.dictate.realtimeTranscription.get()) return
+        val account = transcriptionAccount()
+        val preset = presetFor(account)
+        if (preset.transcriptionApi == TranscriptionApi.LOCAL_ONDEVICE) return
+        // A server of the user's own usually has no key (#249); cloud providers need theirs before
+        // anything about them is worth warming.
+        if (account.apiKey.isBlank() && !preset.isCustom) return
+        if (!preset.supportsRealtime) return
+        val api = preset.realtimeApi
+        val now = SystemClock.elapsedRealtime()
+        if (now - lastRealtimeWarmUpAtMs in 0 until REALTIME_WARM_UP_THROTTLE_MS) return
+        lastRealtimeWarmUpAtMs = now
+        scope.launch(Dispatchers.IO) { runCatching { RealtimeClient.warmUp(api) } }
+    }
+
+    /**
+     * True for a realtime model that only transcribes (`…-transcribe-live`, `gpt-transcribe…`, Whisper).
+     *
+     * Such a model has no room for a voice-edit instruction, so it must not be given one: the session
+     * reads its own text output when an instruction is set, and a model that ignores the instruction would
+     * have nothing to say until the raw fallback at close. Matched on the id so vendor prefixes and later
+     * snapshots are covered.
+     */
+    private fun isTranscriptionOnlyRealtimeModel(model: String): Boolean =
+        model.lowercase().let { it.contains("transcribe") || it.contains("whisper") }
 
     /** The realtime wire API to use for the active transcription account, or null if realtime shouldn't run. */
     private fun realtimeApiForActiveAccount(): RealtimeApi? {
@@ -2367,6 +2499,10 @@ object DictateController {
         realtimeContext = appContext
         realtimeShown.setLength(0)
         realtimeTranscript.setLength(0)
+        // Streaming preview session: the grey region and everything the user makes permanent from it
+        // (by touching the keyboard mid-dictation) are tracked from a clean slate per dictation.
+        DictationPreviewState.reset()
+        realtimeCancelled = false
         // The floating button always holds the words back, whatever the preference says (#357).
         //
         // Live typing rewrites the field several times a second, and outside our own keyboard that goes
@@ -2379,7 +2515,7 @@ object DictateController {
         // The stream itself still runs, so this costs nothing: the transcript is already there when the
         // button is tapped and lands in one commit — the same verified insert a batch dictation does, and
         // without the provider round trip a batch dictation would still be waiting for.
-        realtimeHidden = prefs.dictate.realtimeHidePreview.get() || outputTarget == OutputTarget.OVERLAY
+        realtimeHidden = false
         val closed = CompletableDeferred<Unit>()
         realtimeClosed = closed
         // Type the growing transcript live into the field, applying only the minimal diff each time (#128) —
@@ -2418,6 +2554,36 @@ object DictateController {
             override fun onError(t: Throwable) { realtimeFailed = true }
             override fun onClosed() { closed.complete(Unit) }
         }
+        // Gboard Rambler parity (architecture): when this session can be a *voice editor*, the cleanup
+        // rules become its system instruction, so recognition and polishing happen in ONE stream — the
+        // shape Rambler's own route has (`gboard_gemini_v3_streaming_voice_edit_mul`) — instead of
+        // transcribing now and paying a second model call after the stop. Only a conversational live model
+        // can carry an instruction; a dedicated transcription model must never be asked for one, because
+        // the instruction is what makes the session read its *own* text output, and a model that ignores it
+        // would produce nothing until the raw fallback at close.
+        val voiceEditInstruction = if (
+            api == RealtimeApi.GEMINI &&
+            prefs.dictate.realtimeVoiceEdit.get() &&
+            !isTranscriptionOnlyRealtimeModel(model)
+        ) {
+            val activeLanguage = prefs.dictate.activeInputLanguage.get()
+            RamblerDefaults.buildVoiceEditInstruction(
+                enabledLanguages = if (
+                    activeLanguage.isBlank() || activeLanguage.equals(DictateLanguages.DETECT, ignoreCase = true)
+                ) {
+                    emptyList()
+                } else {
+                    listOf(activeLanguage)
+                },
+                personalDictionary = prefs.dictate.customWords.get()
+                    .split(',', '\n')
+                    .map { it.trim() }
+                    .filter { it.isNotEmpty() },
+            )
+        } else {
+            null
+        }
+        realtimeVoiceEditActive = voiceEditInstruction != null
         val session = runCatching {
             if (localModelDir != null) {
                 // Same idle-unload budget the batch path uses, so a live model doesn't sit in RAM either.
@@ -2436,6 +2602,7 @@ object DictateController {
                     // Same as the batch path: the three providers with a list-shaped language field hear
                     // which languages to expect instead of nothing at all (#99).
                     expectedLanguages = expectedLanguages(),
+                    editInstruction = voiceEditInstruction,
                 )
             }
         }.getOrElse { realtimeFailed = true; null } ?: return null
@@ -2514,6 +2681,10 @@ object DictateController {
         livePromptArmed = false
         val closed = realtimeClosed
         realtimeClosed = null
+        // Read before the job starts: the commit below decides whether the Rambler cleanup still has to run,
+        // and the session's own flag must not outlive the session.
+        val voiceEdited = realtimeVoiceEditActive
+        realtimeVoiceEditActive = false
         setTranscribing()
         val appContext = context.applicationContext
         transcribeJob = scope.launch {
@@ -2565,7 +2736,13 @@ object DictateController {
                         // text in one commit — no clear-then-retype flicker, the same finalization a
                         // healthy stream gets.
                         livePromptArmed = live
-                        finalizeAndCommit(appContext, recovered, recordedSeconds, live, alreadyFormatted = false, finalizeViaComposing = true, capture = rtCapture)
+                        finalizeAndCommit(
+                            appContext, recovered, recordedSeconds, live,
+                            alreadyFormatted = false, finalizeViaComposing = true, capture = rtCapture,
+                            // A recovered tail is raw ASR (the recovery is a batch call), so the cleanup
+                            // rules still have to be applied the normal way here.
+                            polishedInStream = false,
+                        )
                         wavFile?.delete()
                     } else {
                         // Drop the live provisional text; the batch path commits fresh from the WAV. With the
@@ -2573,6 +2750,7 @@ object DictateController {
                         runCatching { sink(appContext).clearDictationPreview(realtimeShown.toString()) }
                         realtimeShown.setLength(0)
                         realtimeTranscript.setLength(0)
+                        DictationPreviewState.reset()
                         if (wavFile != null && wavFile.exists() && wavFile.length() > 0L) {
                             livePromptArmed = live
                             transcribe(context, wavFile, recordedSeconds, gate = false)
@@ -2584,7 +2762,11 @@ object DictateController {
                 }
                 // History (issue #140): capture metadata was hoisted above (both commit paths use it);
                 // the WAV stays available here so audio retention can copy it in during finalize.
-                finalizeAndCommit(appContext, transcript, recordedSeconds, live, alreadyFormatted = false, finalizeViaComposing = true, capture = rtCapture)
+                finalizeAndCommit(
+                    appContext, transcript, recordedSeconds, live,
+                    alreadyFormatted = false, finalizeViaComposing = true, capture = rtCapture,
+                    polishedInStream = voiceEdited,
+                )
                 wavFile?.delete()
             } catch (c: CancellationException) {
                 throw c
@@ -2593,6 +2775,7 @@ object DictateController {
                 runCatching { sink(appContext).clearDictationPreview(realtimeShown.toString()) }
                 realtimeShown.setLength(0)
                 realtimeTranscript.setLength(0)
+                DictationPreviewState.reset()
                 if (wavFile != null && wavFile.exists() && wavFile.length() > 0L) {
                     livePromptArmed = live
                     transcribe(context, wavFile, recordedSeconds, gate = false)
@@ -2857,7 +3040,10 @@ object DictateController {
             _segmentsInFlight.value = segmentInFlightCount.coerceAtLeast(0)
             segmentStopped && segmentInFlightCount <= 0
         }
-        if (shouldFinish) finalizeSegmentedEnd(appContext)
+        if (shouldFinish) {
+            DictationPreviewState.reset()
+            finalizeSegmentedEnd(appContext)
+        }
     }
 
     /**
@@ -3337,6 +3523,7 @@ object DictateController {
         realtimeCancelled = true
         realtimeSession?.cancel()
         realtimeSession = null
+        realtimeVoiceEditActive = false
         realtimeClosed = null
         _interimText.value = ""
         realtimeContext?.let { ctx -> runCatching { sink(ctx).clearDictationPreview(realtimeShown.toString()) } }
@@ -4059,7 +4246,17 @@ object DictateController {
      * user's auto-apply prompts in order. Each step is best-effort – a failing step keeps the text so
      * far so the user never loses their dictation. Returns the text to commit.
      */
-    private suspend fun postProcessTranscript(context: Context, transcript: String): String {
+    private suspend fun postProcessTranscript(
+        context: Context,
+        transcript: String,
+        /**
+         * The transcript came out of a *voice-edit* realtime session, which already applied the Rambler
+         * cleanup rules inside the recognition stream. Running them again would be a second model call for
+         * work that is already done — the exact "transcribe → wait → reword → wait" chain this architecture
+         * removes. Every other step of the chain still runs.
+         */
+        alreadyCleanedUp: Boolean = false,
+    ): String {
         if (!prefs.dictate.rewordingEnabled.get() || transcript.isBlank()) return transcript
         // Punctuation-only transcripts ("...") are not blank but hold nothing to reword, and a model
         // asked to format them answers the *request* instead of the text. See [hasNoWords].
@@ -4083,6 +4280,51 @@ object DictateController {
                 text
             } else {
                 formatted
+            }
+        }
+
+        // 1b) Rambler cleanup pass (Gboard "Rambler" parity). Runs the exact prompt Gboard ships in
+        // JetsonLiteHandler (disfluencies, spelled-out words, grammar, spoken self-corrections, the
+        // app-aware punctuation rule and the Hinglish romanisation override), with the user's custom
+        // words offered as the personal dictionary. Failure-tolerant like every other step here: an
+        // error or a blank answer keeps the running text, so the transcript is never lost.
+        if (prefs.dictate.ramblerCleanupEnabled.get() && !alreadyCleanedUp) {
+            _state.value = UiState.Rewording(context.getString(R.string.dictate__status_formatting))
+            // "detect" is the auto-detect sentinel, not a language tag — never offer it to the model.
+            val activeLanguage = prefs.dictate.activeInputLanguage.get()
+            val languages = if (activeLanguage.isBlank() || activeLanguage.equals("detect", ignoreCase = true)) {
+                emptyList()
+            } else {
+                listOf(activeLanguage)
+            }
+            val personalDictionary = prefs.dictate.customWords.get()
+                .split(',', '\n')
+                .map { it.trim() }
+                .filter { it.isNotEmpty() }
+            // Rambler's <app_context> block: the target app's label and package, which is what turns on
+            // its app-aware punctuation rule (chat/messaging apps get casual punctuation and no final
+            // period, everything else standard punctuation). Read on the main thread because the editor's
+            // info belongs to the IME's thread; a package we cannot resolve simply omits the block.
+            val (targetPackage, targetLabel) = withContext(Dispatchers.Main) {
+                val editor = context.editorInstance().value
+                val pkg = runCatching { editor.activeEditorPackage() }.getOrNull()
+                val label = pkg?.let { p ->
+                    runCatching {
+                        val pm = context.packageManager
+                        pm.getApplicationLabel(pm.getApplicationInfo(p, 0)).toString()
+                    }.getOrNull()
+                }
+                pkg to label
+            }
+            val cleanupPrompt = RamblerDefaults.buildCleanupPrompt(
+                transcript = text,
+                enabledLanguages = languages,
+                appLabel = targetLabel,
+                packageName = targetPackage,
+                personalDictionary = personalDictionary,
+            )
+            text = rewordOrKeep(text) {
+                requestRewordRaw(cleanupPrompt, temperature = RamblerDefaults.CLEANUP_TEMPERATURE.toDouble())
             }
         }
 
@@ -4209,6 +4451,9 @@ object DictateController {
         userContent: String,
         reasoning: DictateReasoningEffort? = null,
         reasoningCustom: String? = null,
+        // Only the Rambler cleanup pass pins one (0.7, Gboard's own value); everything else leaves the
+        // provider default in place.
+        temperature: Double? = null,
     ): String {
         val account = rewordingAccount()
         // Blank rewording key falls back to the transcription account's key (legacy "reuse" behavior).
@@ -4240,7 +4485,7 @@ object DictateController {
             effort.wire
         }
         val result = client.complete(
-            ChatRequest.ofUser(model, userContent, reasoningEffort = reasoningWire),
+            ChatRequest.ofUser(model, userContent, reasoningEffort = reasoningWire, temperature = temperature),
         ).text.trim()
         // Lifetime statistics (issue #142): every rewording/prompt pass funnels through here.
         DictateStats.recordRewording(prefs)
