@@ -428,13 +428,18 @@ jobs:
             exit 1
           fi
           yes | "$SDKMANAGER" --licenses >/dev/null || true
-          "$SDKMANAGER" --install "platforms;android-36" "build-tools;36.0.0"
+          "$SDKMANAGER" --install "platforms;android-36" "build-tools;36.0.0" "ndk;29.0.14206865" "cmake;4.1.2"
           "$SDKMANAGER" --list_installed
 
       - name: Fetch sherpa-onnx native libraries
         if: steps.determine.outputs.should_build == 'true'
         shell: bash
         run: bash tools/fetch-sherpa-onnx.sh
+
+      - name: Build Bergamot native library
+        if: steps.determine.outputs.should_build == 'true'
+        shell: bash
+        run: bash tools/bergamot/build-android.sh arm64-v8a
 
       # The APK signature must be stable between builds, or Android refuses to
       # install a newer build over an older one ("App not installed"). The key
