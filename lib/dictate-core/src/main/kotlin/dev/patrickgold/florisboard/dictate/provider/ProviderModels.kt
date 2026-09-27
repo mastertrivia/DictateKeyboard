@@ -73,9 +73,25 @@ data class ChatRequest(
     val reasoningEffort: String? = null,
 ) {
     companion object {
-        /** Convenience for the common single-user-message rewording case. */
-        fun ofUser(model: String, prompt: String, reasoningEffort: String? = null) =
-            ChatRequest(model, listOf(ChatMessage(ChatRole.USER, prompt)), reasoningEffort = reasoningEffort)
+        /**
+         * Convenience for the common single-user-message rewording case.
+         *
+         * [temperature] exists for callers that must pin a value the model publisher chose: Gboard's
+         * Rambler cleanup runs at `0.7` (`JetsonLiteHandler`, `elh.j(0.7f)`), and the difference is
+         * visible — a lower value makes its rewrite pass more literal and less willing to drop fillers.
+         * Null keeps the provider default, which is what every other caller wants.
+         */
+        fun ofUser(
+            model: String,
+            prompt: String,
+            reasoningEffort: String? = null,
+            temperature: Double? = null,
+        ) = ChatRequest(
+            model,
+            listOf(ChatMessage(ChatRole.USER, prompt)),
+            temperature = temperature,
+            reasoningEffort = reasoningEffort,
+        )
     }
 }
 

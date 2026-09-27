@@ -93,6 +93,56 @@ abstract class AbstractEditorInstance(context: Context) {
             _activeContentFlow.value = v
         }
     private val expectedContentQueue = ExpectedContentQueue()
+
+    /**
+     * Whether a dictation session currently OWNS the field's composing region. While a streaming
+     * dictation preview is live (basic voice typing's grey text, or an AI provider's realtime
+     * preview), that region is the dictation's replace-in-place buffer — the engine/presenter
+     * rewrites it wholesale on every partial result and expects it to still be there.
+     *
+     * The selection-update machinery below must then NOT touch the region: Android's
+     * setComposingRegion/finishComposingText contract *finishes* (permanently commits) whatever
+     * region is live before claiming a new one, so an unsuppressed recompose here bakes the grey
+     * preview into the field between two partial results — the next partial then composes a fresh
+     * region after the committed text and the field accumulates every revision
+     * ("Hello Hello hello there hello there my …"). With the claim active the region is left
+     * strictly to the dictation writer, exactly like the reference HeliBoard fork's
+     * onUpdateSelection guard for its continuous voice engine. Normal typing after the session
+     * ends is unaffected: the claim is released when the preview commits/clears.
+     */
+    @Volatile
+    internal var composingRegionExternallyOwned: Boolean = false
+        private set
+
+    /** Called by a dictation session when it starts writing a live composing region (see above). */
+    fun claimComposingRegionOwnership() {
+        composingRegionExternallyOwned = true
+    }
+
+    /** Called when the dictation session's preview is committed or cleared (see above). */
+    fun releaseComposingRegionOwnership() {
+        composingRegionExternallyOwned = false
+    }
+
+    /**
+     * Fired when the field's composing region is finalized (permanently committed) by the
+     * KEYBOARD's own write paths — commitText over the region (any keypress), deleteAroundCursor
+     * (backspace over the grey text), or an explicit finalize. The one consumer is the active
+     * streaming dictation (set through the sink): the moment the region is consumed, the grey
+     * preview has become ordinary committed text that must never be re-typed or revised — the
+     * dictation switches to writing only the tail of new speech. See [ImeDictationSink].
+     */
+    internal var composingConsumedListener: (() -> Unit)? = null
+
+    /** True while the consumer itself is inside a finalize-triggering write (re-entrancy guard). */
+    @Volatile
+    internal var suppressComposingConsumedEvents: Boolean = false
+
+    protected fun notifyComposingConsumed() {
+        if (suppressComposingConsumedEvents) return
+        composingRegionExternallyOwned = false
+        composingConsumedListener?.invoke()
+    }
     private val _lastCommitPosition = LastCommitPosition()
     val lastCommitPosition
         get() = LastCommitPosition(_lastCommitPosition)
@@ -149,14 +199,15 @@ abstract class AbstractEditorInstance(context: Context) {
             activeCursorCapsMode = content.cursorCapsMode()
             activeContent = content
             keyboardManager.reevaluateInputShiftState()
-            ic.setComposingRegion(content.composing)
+            // A live dictation preview owns the composing region — do not finish/claim it here.
+            if (!composingRegionExternallyOwned) ic.setComposingRegion(content.composing)
         }
     }
 
     protected fun handleMassSelectionUpdate(newSelection: EditorRange, composing: EditorRange) {
         activeCursorCapsMode = InputAttributes.CapsMode.NONE
         activeContent = EditorContent.selectionOnly(newSelection)
-        if (composing.isValid) {
+        if (composing.isValid && !composingRegionExternallyOwned) {
             currentInputConnection()?.setComposingRegion(EditorRange.Unspecified)
         }
         _lastCommitPosition.handleUpdateSelection(newSelection)
@@ -203,7 +254,9 @@ abstract class AbstractEditorInstance(context: Context) {
             activeCursorCapsMode = content.cursorCapsMode()
             activeContent = content
             keyboardManager.reevaluateInputShiftState()
-            if (content.composing != composing) {
+            // A live dictation preview owns the composing region — do not finish/claim it here
+            // (finishing it commits the grey text permanently and the next partial re-types it).
+            if (content.composing != composing && !composingRegionExternallyOwned) {
                 ic.setComposingRegion(content.composing)
             }
         }
@@ -412,6 +465,10 @@ abstract class AbstractEditorInstance(context: Context) {
         val content = activeContent
         val selection = content.selection
         ic.beginBatchEdit()
+        // A keyboard keypress types over whatever region is live: finishComposingText commits the
+        // dictation's grey preview permanently right here. Tell the dictation its region is consumed
+        // BEFORE the new text lands, so its own finalize paths below stay silent about this event.
+        if (composingRegionExternallyOwned) notifyComposingConsumed()
         ic.finishComposingText()
         if (activeInfo.isRawInputEditor) {
             ic.commitText(text, 1)
@@ -513,6 +570,7 @@ abstract class AbstractEditorInstance(context: Context) {
                     )
                     expectedContentQueue.push(newContent)
                     ic.beginBatchEdit()
+                    if (composingRegionExternallyOwned) notifyComposingConsumed()
                     ic.finishComposingText()
                     ic.deleteSurroundingText(length, 0)
                     ic.setComposingRegion(newContent.composing)
@@ -531,6 +589,7 @@ abstract class AbstractEditorInstance(context: Context) {
                     )
                     expectedContentQueue.push(newContent)
                     ic.beginBatchEdit()
+                    if (composingRegionExternallyOwned) notifyComposingConsumed()
                     ic.finishComposingText()
                     ic.deleteSurroundingText(0, length)
                     ic.setComposingRegion(newContent.composing)

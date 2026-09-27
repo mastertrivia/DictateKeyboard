@@ -20,4 +20,10 @@ public interface VoiceEngineHost {
 
     /** Open the host's settings (permission or speech service missing). */
     void openVoiceSetup();
+
+    /**
+     * A fresh dictation segment is starting. The host must re-base its session-text accounting so
+     * text the user already made permanent is not revised or removed by the new segment.
+     */
+    void beginNewVoiceSegment();
 }

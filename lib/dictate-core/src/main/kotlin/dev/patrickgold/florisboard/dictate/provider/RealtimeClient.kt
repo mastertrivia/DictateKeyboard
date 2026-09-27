@@ -22,6 +22,7 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -52,6 +53,53 @@ object RealtimeClient {
             .callTimeout(0, TimeUnit.SECONDS)
             .pingInterval(20, TimeUnit.SECONDS)
             .build()
+    }
+
+    /**
+     * Warms the transport for an upcoming session with [api]: one cheap request to the provider's host, so
+     * DNS, TCP and TLS are already done and OkHttp's connection pool holds a live socket when the
+     * dictation's WebSocket opens.
+     *
+     * This is the closest an authenticated socket gets to the one thing Rambler never pays for: its channel
+     * is a **warm bind into an already-running signed process**, pinned with a 60 s keepalive (`aaqr.k`),
+     * so its first word never waits for a handshake. A WebSocket handshake here is DNS + TCP + TLS + the
+     * HTTP upgrade, and OkHttp reuses a pooled connection for the same host and port — so this pays that
+     * cost while the user is still looking at the field, and the mic press finds the socket ready.
+     *
+     * Fire-and-forget by design: it never surfaces an error and never blocks a caller. Safe to call
+     * repeatedly — a warm second call costs nothing but a request, and the health of the network is the
+     * session's problem, not this one's.
+     */
+    fun warmUp(api: RealtimeApi) {
+        val host = when (api) {
+            RealtimeApi.OPENAI -> "https://api.openai.com/"
+            RealtimeApi.DEEPGRAM -> "https://api.deepgram.com/"
+            RealtimeApi.SONIOX -> "https://stt-rt.soniox.com/"
+            RealtimeApi.ASSEMBLYAI -> "https://streaming.assemblyai.com/"
+            RealtimeApi.ELEVENLABS -> "https://api.elevenlabs.io/"
+            RealtimeApi.GEMINI -> "https://generativelanguage.googleapis.com/"
+            RealtimeApi.MISTRAL_VOXTRAL -> "https://api.mistral.ai/"
+        }
+        runCatching {
+            val request = Request.Builder().url(host).get().build()
+            warmUpClient.newCall(request).enqueue(object : okhttp3.Callback {
+                override fun onFailure(call: okhttp3.Call, e: java.io.IOException) = Unit
+                override fun onResponse(call: okhttp3.Call, response: Response) {
+                    // Bounded no matter what the host answers: the status is irrelevant, the connection is
+                    // the point, and closing the body returns it to the pool.
+                    response.close()
+                }
+            })
+        }
+    }
+
+    /**
+     * [wsClient] with a short call timeout — the warm-up must never leave a call dangling on a dead
+     * network. Derived with `newBuilder()` on purpose: it shares the pool and dispatcher, which is exactly
+     * what makes the warmed connection reusable by the later session.
+     */
+    private val warmUpClient: OkHttpClient by lazy {
+        wsClient.newBuilder().callTimeout(5, TimeUnit.SECONDS).build()
     }
 
     /** The PCM sample rate a given realtime API expects (OpenAI wants 24 kHz; the rest 16 kHz). */
@@ -85,6 +133,8 @@ object RealtimeClient {
         callbacks: RealtimeCallbacks,
         baseUrl: String? = null,
         expectedLanguages: List<String> = emptyList(),
+        /** Voice-edit instruction ([RealtimeRequest.editInstruction]); Gemini only, ignored elsewhere. */
+        editInstruction: String? = null,
     ): RealtimeSession = when (api) {
         RealtimeApi.OPENAI ->
             OpenAiRealtimeSession(wsClient, apiKey, model, language, callbacks, baseUrl, expectedLanguages)
@@ -96,7 +146,7 @@ object RealtimeClient {
         RealtimeApi.ASSEMBLYAI -> AssemblyAiRealtimeSession(wsClient, apiKey, model, language, callbacks).also { it.connect() }
         RealtimeApi.ELEVENLABS -> ElevenLabsRealtimeSession(wsClient, apiKey, model, language, callbacks).also { it.connect() }
         RealtimeApi.GEMINI ->
-            GeminiRealtimeSession(wsClient, apiKey, model, language, callbacks, expectedLanguages)
+            GeminiRealtimeSession(wsClient, apiKey, model, language, callbacks, expectedLanguages, editInstruction)
                 .also { it.connect() }
         RealtimeApi.MISTRAL_VOXTRAL -> MistralRealtimeSession(wsClient, apiKey, model, language, callbacks).also { it.connect() }
     }
@@ -615,6 +665,8 @@ private class GeminiRealtimeSession(
     private val language: String?,
     private val callbacks: RealtimeCallbacks,
     expectedLanguages: List<String> = emptyList(),
+    /** Non-null turns this session into a **voice-edit** session (see [RealtimeRequest.editInstruction]). */
+    private val editInstruction: String? = null,
 ) : RealtimeSession {
 
     private val languageHints = languageHintsOf(language, expectedLanguages)
@@ -623,6 +675,22 @@ private class GeminiRealtimeSession(
     private var ws: WebSocket? = null
     /** The latest speculative text, cleared by every final. What is left at close was heard but never settled. */
     @Volatile private var pendingInterim = ""
+
+    //
+    // Voice-edit mode (Gboard Rambler parity). The session asks the model to recognise *and* edit in one
+    // stream, so the transcript is the model's own text rather than the raw input transcription. The raw
+    // words are still tracked: they advance coverage, and they are handed over at close if the model never
+    // answered for a turn (a transcription-only model ignores the instruction, and a truncated answer can
+    // lose a turn's word). Text is never lost to a missing polish.
+    //
+    /** Whether this session runs as a voice editor. */
+    private val voiceEdit = !editInstruction.isNullOrBlank()
+
+    /** The polished text of the turn in flight; cleared by every final. */
+    private val modelTurnText = StringBuilder()
+
+    /** Settled raw input transcription, kept only as the fallback for a model that never answers. */
+    private val settledInputText = StringBuilder()
     /** Audio has been sent that no settled transcription covers yet — words are still owed to us. */
     @Volatile private var audioSinceFinal = false
     private val audioGate = RealtimeAudioGate()
@@ -706,8 +774,41 @@ private class GeminiRealtimeSession(
                 callbacks.onPartial(hypothesis)
             }
         }
+        // Voice-edit mode reads the model's own answer: the parts it streams for the turn are the edited
+        // transcript, shown live as the partial and settled when the turn ends. Gemini streams those parts
+        // either as deltas or as the whole turn so far, and the two are told apart by whether the new text
+        // repeats what we already hold.
+        if (voiceEdit) {
+            val modelText = server?.get("modelTurn")?.jsonObject?.get("parts")?.jsonArray
+                // Defensive: a part that is not an object (or carries no text) contributes nothing rather
+                // than throwing on the WebSocket thread.
+                ?.mapNotNull { part ->
+                    runCatching { part.jsonObject["text"]?.jsonPrimitive?.content }.getOrNull()
+                }
+                ?.joinToString("")
+                .orEmpty()
+            if (modelText.isNotEmpty()) {
+                if (modelText.startsWith(modelTurnText)) {
+                    modelTurnText.setLength(0)
+                    modelTurnText.append(modelText)
+                } else {
+                    modelTurnText.append(modelText)
+                }
+                callbacks.onPartial(modelTurnText.toString())
+            }
+        }
         server?.get("inputTranscription")?.jsonObject?.get("text")?.jsonPrimitive?.content?.let { chunk ->
-            if (chunk.isNotEmpty()) emitFinal(chunk)
+            if (chunk.isEmpty()) return@let
+            if (voiceEdit) {
+                // Bookkeeping only: the raw phrase advances the coverage boundary exactly as a settled
+                // phrase would, and stays as the fallback text if the model never answers.
+                settledInputText.append(chunk)
+                pendingInterim = ""
+                audioSinceFinal = false
+                coveredBytes = (fedAudioBytes - coverageLagBytes).coerceAtLeast(0L)
+            } else {
+                emitFinal(chunk)
+            }
         }
         // Activity events confirm the tuned detection is running; tracked only for the latency log.
         if (server?.containsKey("activityStart") == true || server?.containsKey("activityEnd") == true) {
@@ -721,7 +822,12 @@ private class GeminiRealtimeSession(
         // the stop is sent — and closing on it would drop everything spoken since. Audio that no
         // transcription has covered yet is the exact test: while some is outstanding this marker is not
         // ours, and the one that answers our own end of stream is still to come.
-        if (ended && finishing && !audioSinceFinal) finalizeAndClose(webSocket)
+        if (ended) {
+            // A finished turn settles what the voice editor produced for it, exactly like a settled
+            // phrase does on the transcription path.
+            flushModelTurn()
+            if (finishing && !audioSinceFinal) finalizeAndClose(webSocket)
+        }
     }
 
     /**
@@ -733,6 +839,23 @@ private class GeminiRealtimeSession(
      * repeated the whole transcript so far, and that one it deleted. Saying the same short sentence twice
      * is exactly that shape, so the second one silently disappeared.
      */
+    /**
+     * Settles the voice-edited turn in flight as a final segment (voice-edit mode only). Called when the
+     * turn ends and again when the session closes, so a turn that was finished but never acknowledged is
+     * still handed over. The raw fallback is dropped whenever edited text exists for the same audio.
+     */
+    private fun flushModelTurn() {
+        if (!voiceEdit || modelTurnText.isEmpty()) return
+        val text = modelTurnText.toString().trim()
+        modelTurnText.setLength(0)
+        if (text.isEmpty()) return
+        settledInputText.setLength(0)
+        pendingInterim = ""
+        audioSinceFinal = false
+        coveredBytes = (fedAudioBytes - coverageLagBytes).coerceAtLeast(0L)
+        callbacks.onFinalSegment(text)
+    }
+
     private fun emitFinal(chunk: String) {
         pendingInterim = ""
         audioSinceFinal = false
@@ -747,6 +870,16 @@ private class GeminiRealtimeSession(
             put("model", "models/$model")
             putJsonObject("generationConfig") {
                 put("responseModalities", buildJsonArray { add("TEXT") })
+            }
+            // Voice-edit mode (Gboard Rambler parity): the cleanup rules ride along as the session's
+            // system instruction, so every turn comes back already cleaned up and the caller commits it
+            // as-is — no second model call after the stop. Absent from a plain transcription session.
+            if (voiceEdit) {
+                putJsonObject("systemInstruction") {
+                    putJsonArray("parts") {
+                        add(buildJsonObject { put("text", editInstruction) })
+                    }
+                }
             }
             // Google's own client (Robin, the in-app Gemini conversation code) runs its voice turns with
             // activity detection tuned for reflex speed: speech start committed almost immediately, and
@@ -828,6 +961,17 @@ private class GeminiRealtimeSession(
         if (done) return
         done = true
         audioGate.close()
+        // Voice-edit mode: settle the turn still in flight (the closing turn is often never acknowledged),
+        // and fall back to the raw words for that audio if the model produced none — a transcription-only
+        // model ignoring the instruction must still yield a transcript.
+        if (voiceEdit) {
+            if (modelTurnText.isNotEmpty()) {
+                flushModelTurn()
+            } else if (settledInputText.isNotEmpty()) {
+                callbacks.onFinalSegment(settledInputText.toString())
+                settledInputText.setLength(0)
+            }
+        }
         // Settled text was already handed over segment by segment, so nothing is repeated here. What can
         // still be outstanding is a hypothesis the server never got to confirm — the last words of a
         // dictation that ended on the closing socket. Keep them: heard-but-unconfirmed beats dropped.

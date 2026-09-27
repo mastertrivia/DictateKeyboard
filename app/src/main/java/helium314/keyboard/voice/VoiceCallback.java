@@ -7,6 +7,13 @@ public interface VoiceCallback {
     /** Commit stable/final text into the editor. (was b(String, float)) */
     void commitText(String text, float confidence);
 
+    /**
+     * A fresh dictation segment is starting (new recognizer generation): any text the user made
+     * permanent since the last one — a keyboard touch committing the grey region, plus manual
+     * typing — is settled and must not be revised or removed by the new segment.
+     */
+    void onNewVoiceSegment();
+
     /** "About to reconnect" status. (was c()) */
     void onAboutToReconnect();
 

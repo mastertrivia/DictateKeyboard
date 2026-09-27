@@ -1035,6 +1035,41 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
             key = "dictate__auto_formatting_enabled",
             default = false,
         )
+
+        /**
+         * Gboard "Rambler" parity: run the extracted Rambler cleanup pass (disfluency removal, spoken
+         * self-corrections, spelled-out words, app-aware punctuation, Hinglish romanisation) over every
+         * transcript. Default OFF because it is an extra model round-trip, i.e. added latency; when on it
+         * reuses the same rewording account/model as the auto-formatting step. See [RamblerDefaults].
+         */
+        val ramblerCleanupEnabled = boolean(
+            key = "dictate__rambler_cleanup_enabled",
+            default = false,
+        )
+
+        /**
+         * Gboard Rambler parity (architecture): run the realtime session as a **voice editor** when the
+         * selected model can carry an instruction, so recognition and cleanup happen in one stream and the
+         * transcript arrives already polished — no second model call after the stop.
+         *
+         * Only Gemini Live supports it today; dedicated transcription models are excluded automatically
+         * (they have no room for an instruction). On by default because it is strictly cheaper: on a model
+         * that can honour it, it replaces the extra cleanup call rather than adding one.
+         */
+        val realtimeVoiceEdit = boolean(
+            key = "dictate__realtime_voice_edit",
+            default = true,
+        )
+
+        /**
+         * Gboard "Rambler" parity: recognise the built-in dictation voice commands ("send", "clear",
+         * "clear all") in a finished transcript. The patterns are anchored, so only an utterance that is
+         * *exactly* the command word is treated as a command. Default ON to match Rambler.
+         */
+        val voiceCommandsEnabled = boolean(
+            key = "dictate__voice_commands_enabled",
+            default = true,
+        )
     }
 
     /**

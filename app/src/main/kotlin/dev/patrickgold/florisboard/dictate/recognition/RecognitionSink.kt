@@ -38,6 +38,13 @@ class RecognitionSink : DictationSink {
 
     override fun deleteLastText(text: String): Boolean = false
 
+    // The system voice-input path has no field of its own, so Rambler's "send"/"clear" commands have
+    // nothing to act on. Returning false keeps the caller's promise — the transcript is still delivered
+    // to the calling app — instead of silently swallowing an utterance.
+    override fun performSendCommand(): Boolean = false
+
+    override fun deleteCommandText(clearAll: Boolean): Boolean = false
+
     override fun setDictationPreview(newText: String, prevText: String) {
         RecognitionBridge.deliverPartial(newText)
     }

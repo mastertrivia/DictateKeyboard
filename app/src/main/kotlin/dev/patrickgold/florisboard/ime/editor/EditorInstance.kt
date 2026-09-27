@@ -442,6 +442,7 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
     fun replaceTextBeforeCursor(deleteBefore: Int, text: String): Boolean {
         val ic = currentInputConnection() ?: return false
         ic.beginBatchEdit()
+        if (composingRegionExternallyOwned) notifyComposingConsumed()
         ic.finishComposingText()
         if (deleteBefore > 0) ic.deleteSurroundingText(deleteBefore, 0)
         if (text.isNotEmpty()) ic.commitText(text, 1)

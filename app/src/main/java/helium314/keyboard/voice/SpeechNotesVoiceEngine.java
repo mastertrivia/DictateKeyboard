@@ -212,6 +212,18 @@ public class SpeechNotesVoiceEngine implements VoiceCallback {
 
     // -- VoiceCallback implementation (was the Speechkeys implements c.c.a.a methods) --
 
+    /** A new segment begins: the host re-bases its text accounting (see VoiceCallback). */
+    @Override
+    public void onNewVoiceSegment() {
+        if (host != null) {
+            try {
+                host.beginNewVoiceSegment();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
     /** Commit stable/final text with boundary processing. (was Speechkeys.b) */
     @Override
     public void commitText(String str, float f) {
