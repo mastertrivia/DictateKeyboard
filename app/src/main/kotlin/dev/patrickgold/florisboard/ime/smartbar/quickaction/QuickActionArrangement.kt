@@ -95,16 +95,29 @@ data class QuickActionArrangement(
                 // and during a selection, not mid-word.
                 QuickAction.InsertKey(TextKeyData.DICTATE_REINSERT),
                 QuickAction.InsertKey(TextKeyData.IME_UI_MODE_CLIPBOARD),
+                // On-device translation (issue #424). Third, ahead of GIF: it is the start of an errand
+                // like the two before it, nobody looks for it in a keyboard until they see it there, and
+                // Gboard keeps its translate button in the visible bar — which is where people switching
+                // from it will look.
+                QuickAction.InsertKey(TextKeyData.TRANSLATE),
                 // GIF search panel (KLIPY). In the bar by default rather than waiting to be dragged there:
                 // it is one of the few actions people go looking for, and unlike the split or language
                 // actions it is never greyed out — without an API key the panel itself says so.
                 QuickAction.InsertKey(TextKeyData.IME_UI_MODE_GIF),
-                QuickAction.InsertKey(TextKeyData.UNDO),
-                // The last of the visible actions. A keyboard with this much behind it — the provider,
-                // the key, the prompts, the languages — needs a door of its own; without one the way in
-                // is hunting for the app icon in the launcher, which is a long walk from the field the
-                // user is standing in.
+                // A keyboard with this much behind it — the provider, the key, the prompts, the languages
+                // — needs a door of its own; without one the way in is hunting for the app icon in the
+                // launcher, which is a long walk from the field the user is standing in. Fifth, after GIF:
+                // somebody who wants the settings goes looking for them, and on a 360 dp phone this is the
+                // first tile of the overflow grid, one tap further.
                 QuickAction.InsertKey(TextKeyData.SETTINGS),
+                // First of the overflow grid rather than in the bar (#424 moved it out). The actions row is
+                // on screen when the field is idle; while typing, the strip shows suggestions — so Undo was
+                // rarely there at the moment it was wanted, and one tap into the grid costs little more.
+                QuickAction.InsertKey(TextKeyData.UNDO),
+                // Which provider hears the dictation (issue #431). The dictation loop's own, so at the head of
+                // the grid — but in the grid and not the bar, because most people have one provider set up
+                // and would be giving a slot to a list of one.
+                QuickAction.InsertKey(TextKeyData.DICTATE_SWITCH_PROVIDER),
                 // --- Everything else that inserts something -----------------------------------------
                 // The text editing panel (issue #386) — cursor pad, select, clipboard. First tile of the
                 // overflow grid rather than a slot in the bar: it is the umbrella over fourteen of the
@@ -172,8 +185,7 @@ data class QuickActionArrangement(
         // arrangement so they don't linger as "!! invalid !!". -245 = the old autocorrect-toggle
         // placeholder (autocorrect is now fully automatic). -27/-28 = the line-start/line-end buttons
         // that existed for a day between two commits of #335 before they became field-start/field-end;
-        // they never reached a release, but a debug arrangement can still carry them. -229 = the
-        // scan-text panel opener, removed together with the OCR feature.
+        // they never reached a release, but a debug arrangement can still carry them.
         private val REMOVED_ACTION_CODES = setOf(-245, -27, -28, -229)
 
         override fun deserialize(value: String): QuickActionArrangement {

@@ -19,6 +19,8 @@ package dev.patrickgold.florisboard.ime.keyboard
 import android.content.Context
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Numbers
+import androidx.compose.material.icons.outlined.CloudSync
+import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.material.icons.outlined.Gif
 import androidx.compose.material.icons.automirrored.filled.ArrowRightAlt
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
@@ -338,6 +340,9 @@ fun ComputingEvaluator.computeImageVector(data: KeyData): ImageVector? {
         KeyCode.IME_UI_MODE_EDITING -> {
             Icons.Default.EditNote
         }
+        KeyCode.TRANSLATE -> {
+            Icons.Outlined.Translate
+        }
         KeyCode.IME_UI_MODE_DICTATE -> {
             when (dev.patrickgold.florisboard.dictate.DictateController.state.value) {
                 // While recording: a "send" arrow for batch (tapping submits the recording), but a stop
@@ -377,6 +382,11 @@ fun ComputingEvaluator.computeImageVector(data: KeyData): ImageVector? {
         KeyCode.DICTATE_REINSERT -> {
             // Re-inserts the last successful dictation; a history glyph signals "bring the last one back".
             Icons.Default.History
+        }
+        KeyCode.DICTATE_SWITCH_PROVIDER -> {
+            // The transcription provider picker (issue #431): a cloud with the swap arrows, the glyph the
+            // request itself sketched.
+            Icons.Outlined.CloudSync
         }
         KeyCode.LANGUAGE_SWITCH -> {
             Icons.Default.Language

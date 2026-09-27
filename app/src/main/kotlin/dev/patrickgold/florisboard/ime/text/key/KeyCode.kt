@@ -115,8 +115,16 @@ object KeyCode {
     const val LANGUAGE_SWITCH =             -227
     const val SHOW_SUBTYPE_PICKER =         -228
 
+    // -229 was Scan Text (issue #390). This fork does not ship ML Kit OCR; the code is in
+    // QuickActionArrangement.REMOVED_ACTION_CODES so stored arrangements drop it.
+    // Opens or closes the on-device translate bar (issue #424).
+    const val TRANSLATE =                   -230
+
     const val IME_SHOW_UI =                 -231
     const val IME_HIDE_UI =                 -232
+    // Dictate: opens the transcription provider picker over the keyboard (issue #431). -233 is the first
+    // free number after the -211…-230 block, which is full.
+    const val DICTATE_SWITCH_PROVIDER =     -233
 
     const val TOGGLE_SMARTBAR_VISIBILITY =  -241
     const val TOGGLE_ACTIONS_OVERFLOW =     -242

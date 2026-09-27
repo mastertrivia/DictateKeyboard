@@ -95,10 +95,12 @@ import dev.patrickgold.florisboard.dictate.provider.LocalModelManager
 import dev.patrickgold.florisboard.dictate.provider.OpenAiCompatibleClient
 import dev.patrickgold.florisboard.dictate.provider.ProviderAccount
 import dev.patrickgold.florisboard.dictate.provider.ProviderAccounts
+import dev.patrickgold.florisboard.dictate.provider.ProviderListing
 import dev.patrickgold.florisboard.dictate.provider.ProviderPreset
 import dev.patrickgold.florisboard.dictate.provider.ProviderRegion
 import dev.patrickgold.florisboard.dictate.provider.ProviderRegistry
 import dev.patrickgold.florisboard.dictate.provider.TranscriptionApi
+import dev.patrickgold.florisboard.dictate.provider.chatModelFor
 import dev.patrickgold.florisboard.dictate.provider.singleCallApplies
 import dev.patrickgold.florisboard.lib.compose.FlorisHyperlinkText
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
@@ -149,9 +151,12 @@ fun DictateProvidersScreen() = FlorisScreen {
 
     content {
         val navController = LocalNavController.current
+        val context = LocalContext.current
         val accounts by prefs.dictate.providerAccounts.collectAsState()
         val activeTranscriptionId by prefs.dictate.transcriptionProviderId.collectAsState()
+        val activeRewordingId by prefs.dictate.rewordingProviderId.collectAsState()
         val scope = rememberCoroutineScope()
+        val isInstalled: (String) -> Boolean = { LocalModelManager.isInstalled(context, it) }
 
         // The provider currently being edited in the dialog (null = closed).
         var editingId by remember { mutableStateOf<String?>(null) }
@@ -196,18 +201,12 @@ fun DictateProvidersScreen() = FlorisScreen {
             // Custom picker (issue #104): the transcription provider list, plus an offline-fallback
             // checkbox as an extra item at the bottom of the same dialog (hidden when the chosen
             // provider is already the on-device one, where a fallback makes no sense).
+            // Both pickers offer only what can do the job right now, plus the current choice (see
+            // [ProviderListing.isPickable]); everything else is set up through "Add a provider" first,
+            // which the pickers link to. Offering every preset meant offering the chance to pick one
+            // that could only answer "no API key" at the moment of dictating.
             TranscriptionProviderPreference(
-                entries = buildList {
-                    ProviderRegistry.presets
-                        .filter { it.capabilities.transcription }
-                        // Basic voice typing (the phone's own recognizer) first — the instant, free,
-                        // zero-setup option — then on-device (offline), then the cloud providers.
-                        .sortedByDescending { it.transcriptionApi == TranscriptionApi.LOCAL_ONDEVICE ||
-                            it.transcriptionApi == TranscriptionApi.BASIC_RECOGNITION_SERVICE }
-                        .sortedBy { if (it.transcriptionApi == TranscriptionApi.BASIC_RECOGNITION_SERVICE) 0 else 1 }
-                        .forEach { add(it.id to it.displayName) }
-                    customAccounts.forEach { add(it.providerId to customLabel(it)) }
-                },
+                entries = ProviderListing.transcriptionChoices(accounts, activeTranscriptionId, isInstalled),
             )
             // When the active transcription provider runs single-call multimodal (#130), rewording happens
             // inside that one call, so the rewording provider here is currently unused — surfaced as a
@@ -216,8 +215,9 @@ fun DictateProvidersScreen() = FlorisScreen {
                 entries = buildList {
                     ProviderRegistry.presets
                         .filter { it.capabilities.chat }
+                        .filter { ProviderListing.isPickable(it, accounts, activeRewordingId, isInstalled) }
                         .forEach { add(it.id to it.displayName) }
-                    customAccounts.forEach { add(it.providerId to customLabel(it)) }
+                    customAccounts.forEach { add(it.providerId to ProviderListing.customLabel(it)) }
                 },
                 showInfo = accounts.getOrEmpty(activeTranscriptionId).transcriptionViaChat,
             )
@@ -226,13 +226,21 @@ fun DictateProvidersScreen() = FlorisScreen {
         PreferenceGroup(title = stringRes(R.string.dictate__providers_manage_group)) {
             val keySet = stringRes(R.string.dictate__providers_status_key_set)
             val noKey = stringRes(R.string.dictate__providers_status_no_key)
+            val activeIds = setOf(activeTranscriptionId, activeRewordingId)
 
-            // Basic voice typing first (the phone's own recognizer), then on-device (offline), then
-            // the cloud providers in registry order — same ranking as the picker above.
+            // The user's own providers only, with on-device and Dictate Cloud always among them (see
+            // [ProviderListing.isListed]); the other presets wait behind "Add a provider" at the end.
+            // On-device first, above the cloud providers like OpenAI (issue #228); the rest keep their
+            // registry display order (sortedByDescending is stable).
             val orderedPresets = ProviderRegistry.presets
-                .sortedByDescending { it.transcriptionApi == TranscriptionApi.LOCAL_ONDEVICE ||
-                    it.transcriptionApi == TranscriptionApi.BASIC_RECOGNITION_SERVICE }
-                .sortedBy { if (it.transcriptionApi == TranscriptionApi.BASIC_RECOGNITION_SERVICE) 0 else 1 }
+                .filter { ProviderListing.isListed(it, accounts, activeIds, isInstalled) }
+                .sortedByDescending { it.transcriptionApi == TranscriptionApi.LOCAL_ONDEVICE }
+            fun roles(id: String): (@Composable () -> Unit)? =
+                if (id in activeIds) {
+                    { ActiveRoleIcons(id, activeTranscriptionId, activeRewordingId) }
+                } else {
+                    null
+                }
             val cloudAccount = accounts.getOrEmpty(ProviderRegistry.CLOUD.id)
             val cloudNoCredit = stringRes(R.string.dictate__cloud_row_summary_none)
             val cloudBalance = stringRes(
@@ -251,6 +259,7 @@ fun DictateProvidersScreen() = FlorisScreen {
                         modifier = Modifier.settingsSearchAnchor("dictate__cloud_title"),
                         title = preset.displayName,
                         summary = if (cloudAccount.hasWallet) cloudBalance else cloudNoCredit,
+                        trailing = roles(preset.id),
                         onClick = { navController.navigate(Routes.Settings.DictateCloud) },
                     )
                     return@forEach
@@ -259,7 +268,8 @@ fun DictateProvidersScreen() = FlorisScreen {
                 Preference(
                     icon = providerIcon(preset.id),
                     title = preset.displayName,
-                    summary = providerSummary(preset, account, keySet, noKey),
+                    summary = providerSummary(preset, account, noKey),
+                    trailing = roles(preset.id),
                     onClick = { editingId = preset.id },
                 )
             }
@@ -267,22 +277,24 @@ fun DictateProvidersScreen() = FlorisScreen {
             customAccounts.forEach { account ->
                 Preference(
                     icon = Icons.Default.Dns,
-                    title = customLabel(account),
+                    title = ProviderListing.customLabel(account),
                     summary = if (account.hasKey || account.customBaseUrl.isNotBlank()) {
                         account.customBaseUrl.ifBlank { keySet }
                     } else {
                         stringRes(R.string.dictate__providers_status_unconfigured)
                     },
+                    trailing = roles(account.providerId),
                     onClick = { editingId = account.providerId },
                 )
             }
 
+            // Every other preset, and a server of one's own, one screen further (see
+            // [DictateAddProviderScreen]).
             Preference(
                 icon = Icons.Default.Add,
-                modifier = Modifier.settingsSearchAnchor("dictate__providers_add_custom"),
-                title = stringRes(R.string.dictate__providers_add_custom),
-                summary = stringRes(R.string.dictate__providers_add_custom_summary),
-                onClick = { editingId = ProviderAccount.newCustomId() },
+                modifier = Modifier.settingsSearchAnchor("dictate__providers_add"),
+                title = stringRes(R.string.dictate__providers_add),
+                onClick = { navController.navigate(Routes.Settings.DictateProvidersAdd) },
             )
         }
 
@@ -373,6 +385,7 @@ fun DictateProvidersScreen() = FlorisScreen {
 @Composable
 private fun RewordingProviderPreference(entries: List<Pair<String, String>>, showInfo: Boolean) {
     val prefs by FlorisPreferenceStore
+    val navController = LocalNavController.current
     val scope = rememberCoroutineScope()
     val selectedId by prefs.dictate.rewordingProviderId.collectAsState()
     var open by remember { mutableStateOf(false) }
@@ -431,6 +444,10 @@ private fun RewordingProviderPreference(entries: List<Pair<String, String>>, sho
                         Text(label, modifier = Modifier.padding(start = 8.dp))
                     }
                 }
+                AddProviderPickerRow(onClick = {
+                    open = false
+                    navController.navigate(Routes.Settings.DictateProvidersAdd)
+                })
             }
         }
     }
@@ -457,6 +474,7 @@ private fun RewordingProviderPreference(entries: List<Pair<String, String>>, sho
 @Composable
 private fun TranscriptionProviderPreference(entries: List<Pair<String, String>>) {
     val prefs by FlorisPreferenceStore
+    val navController = LocalNavController.current
     val scope = rememberCoroutineScope()
     val selectedId by prefs.dictate.transcriptionProviderId.collectAsState()
     val fallbackEnabled by prefs.dictate.localFallbackEnabled.collectAsState()
@@ -474,9 +492,7 @@ private fun TranscriptionProviderPreference(entries: List<Pair<String, String>>)
         var sel by remember { mutableStateOf(selectedId) }
         var fb by remember { mutableStateOf(fallbackEnabled) }
         val selectionIsLocal =
-            ProviderRegistry.byId(sel)?.transcriptionApi?.let {
-                it == TranscriptionApi.LOCAL_ONDEVICE || it == TranscriptionApi.BASIC_RECOGNITION_SERVICE
-            } == true
+            ProviderRegistry.byId(sel)?.transcriptionApi == TranscriptionApi.LOCAL_ONDEVICE
         JetPrefAlertDialog(
             title = stringRes(R.string.dictate__providers_active_transcription),
             confirmLabel = stringRes(R.string.action__ok),
@@ -511,6 +527,10 @@ private fun TranscriptionProviderPreference(entries: List<Pair<String, String>>)
                             Text(label, modifier = Modifier.padding(start = 8.dp))
                         }
                     }
+                    AddProviderPickerRow(onClick = {
+                        open = false
+                        navController.navigate(Routes.Settings.DictateProvidersAdd)
+                    })
                 }
                 // Extra item at the bottom: offline fallback (only when the choice isn't already local).
                 if (!selectionIsLocal) {
@@ -538,22 +558,82 @@ private fun TranscriptionProviderPreference(entries: List<Pair<String, String>>)
     }
 }
 
-/** Label for a custom endpoint: its user-given name, or a generic fallback. */
-private fun customLabel(account: ProviderAccount): String =
-    account.displayName.ifBlank { "Custom server" }
+/**
+ * The job icons at the end of a provider row: a microphone where it transcribes, the rewording icon where
+ * it rewords — the same two icons the active-provider rows at the top of the screen carry, so the pair
+ * reads as a pointer back up there. Nothing at all on a provider that is set up but not in use.
+ */
+@Composable
+private fun ActiveRoleIcons(id: String, transcriptionId: String, rewordingId: String) {
+    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        val tint = MaterialTheme.colorScheme.onSurfaceVariant
+        if (id == transcriptionId) {
+            Icon(
+                imageVector = Icons.Default.Mic,
+                contentDescription = stringRes(R.string.dictate__providers_active_transcription),
+                modifier = Modifier.size(20.dp),
+                tint = tint,
+            )
+        }
+        if (id == rewordingId) {
+            Icon(
+                imageVector = Icons.Default.SmartToy,
+                contentDescription = stringRes(R.string.dictate__providers_active_rewording),
+                modifier = Modifier.size(20.dp),
+                tint = tint,
+            )
+        }
+    }
+}
 
-/** One-line status for a built-in provider row: key state + its capabilities. */
+/**
+ * The "Add a provider" entry at the foot of both active-provider pickers, which since those pickers stopped
+ * offering unconfigured presets is the way to one that is not set up yet. Indented to line up with the
+ * radio buttons above it.
+ */
+@Composable
+private fun AddProviderPickerRow(onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = Icons.Default.Add,
+            contentDescription = null,
+            modifier = Modifier.padding(horizontal = 12.dp),
+        )
+        Text(stringRes(R.string.dictate__providers_add), modifier = Modifier.padding(start = 8.dp))
+    }
+}
+
+/** What a provider does, for rows that say nothing more specific: transcription (and realtime), rewording. */
+@Composable
+internal fun providerCapabilities(preset: ProviderPreset): String = buildList {
+    if (preset.capabilities.transcription) {
+        // Note streaming support (issue #128) right on the transcription capability.
+        val stt = stringRes(R.string.dictate__providers_cap_stt)
+        add(if (preset.supportsRealtime) "$stt (+ Realtime)" else stt)
+    }
+    if (preset.capabilities.chat) add(stringRes(R.string.dictate__providers_cap_chat))
+}.joinToString(", ")
+
+/**
+ * One-line status for a built-in provider row on the providers screen.
+ *
+ * Every row there is a provider the user has — or the active one, or one of the two pinned — so "key set"
+ * would be said of nearly all of them and tell nobody anything. The row names the models it will use
+ * instead, which is the thing people come back to look up; the missing key is still said outright, because
+ * that is the row somebody has to fix. Capabilities remain the fallback for a provider with no model to name.
+ */
 @Composable
 private fun providerSummary(
     preset: ProviderPreset,
     account: ProviderAccount?,
-    keySet: String,
     noKey: String,
 ): String {
-    if (preset.transcriptionApi == TranscriptionApi.BASIC_RECOGNITION_SERVICE) {
-        // Basic voice typing has no key and no model — say what it is instead of "No key ·".
-        return basicSummary
-    }
     if (preset.transcriptionApi == TranscriptionApi.LOCAL_ONDEVICE) {
         // On-device provider: surface the active downloaded models instead of an API-key state. There can
         // be two — a one-shot and a live/streaming one (#233) — and both are worth showing, otherwise the
@@ -573,21 +653,18 @@ private fun providerSummary(
             names.joinToString(" · ")
         }
     }
-    val caps = buildList {
+    val stored = account ?: ProviderAccount(providerId = preset.id)
+    if (stored.requiresCredential && !stored.hasKey) return noKey
+    // Resolved the way a dictation resolves them: an empty field is the preset default showing through,
+    // and the rewording model follows the merged single-call field when that is on (#313).
+    val models = buildList {
         if (preset.capabilities.transcription) {
-            // Note streaming support (issue #128) right on the transcription capability.
-            val stt = stringRes(R.string.dictate__providers_cap_stt)
-            add(if (preset.supportsRealtime) "$stt (+ Realtime)" else stt)
+            add(stored.transcriptionModel.ifBlank { preset.defaultTranscriptionModel.orEmpty() })
         }
-        if (preset.capabilities.chat) add(stringRes(R.string.dictate__providers_cap_chat))
-    }.joinToString(", ")
-    val keyState = if (account?.hasKey == true) keySet else noKey
-    return "$keyState · $caps"
+        if (preset.capabilities.chat) add(chatModelFor(stored, preset, fallback = ""))
+    }.filter { it.isNotBlank() }.distinct()
+    return models.joinToString(" · ").ifBlank { providerCapabilities(preset) }
 }
-
-/** One-line status for the Basic voice typing row: there is nothing to set up. */
-private val basicSummary: String
-    @Composable get() = stringRes(R.string.dictate__basic_provider_summary)
 
 /**
  * Multi-field editor for a single provider. Built-in providers ([preset] != null) expose only the key
@@ -611,7 +688,7 @@ private const val AZURE_PORTAL_URL = "https://portal.azure.com/"
 private const val AZURE_GUIDE_URL = "https://learn.microsoft.com/azure/ai-services/speech-service/mai-transcribe"
 
 @Composable
-private fun ProviderEditorDialog(
+internal fun ProviderEditorDialog(
     preset: ProviderPreset?,
     account: ProviderAccount,
     onDismiss: () -> Unit,
@@ -775,15 +852,7 @@ private fun ProviderEditorDialog(
         onDismiss = onDismiss,
         onNeutral = { onDelete?.invoke() },
     ) {
-        if (preset?.transcriptionApi == TranscriptionApi.BASIC_RECOGNITION_SERVICE) {
-            // Basic voice typing: nothing to configure — no key, no model, no URL. The body is the
-            // explanation alone, so the dialog cannot be mistaken for a half-loaded editor.
-            Text(
-                text = stringRes(R.string.dictate__basic_provider_note),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        } else if (preset?.transcriptionApi == TranscriptionApi.LOCAL_ONDEVICE) {
+        if (preset?.transcriptionApi == TranscriptionApi.LOCAL_ONDEVICE) {
             // On-device provider: no key/remote model — manage downloadable models instead (#104).
             // Two independent picks (#233): the one-shot model lives in `transcriptionModel`, the live
             // streaming one in `realtimeModel` — which is otherwise unused for this provider and means

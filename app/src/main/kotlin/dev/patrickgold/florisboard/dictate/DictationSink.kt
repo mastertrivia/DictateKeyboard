@@ -17,6 +17,7 @@ import dev.patrickgold.florisboard.FlorisImeService
 import dev.patrickgold.florisboard.dictate.data.prompts.RamblerDefaults
 import dev.patrickgold.florisboard.editorInstance
 import dev.patrickgold.florisboard.ime.editor.ImeOptions
+import dev.patrickgold.florisboard.ime.keyboard.KeyboardManager
 import dev.patrickgold.florisboard.ime.text.key.KeyCode
 import dev.patrickgold.florisboard.ime.text.key.KeyType
 import dev.patrickgold.florisboard.ime.text.keyboard.TextKeyData
@@ -170,17 +171,36 @@ internal object DictationPreviewState {
 class ImeDictationSink(context: Context) : DictationSink {
     private val appContext = context.applicationContext
     private val editorInstance by appContext.editorInstance()
+    private val keyboardManager by appContext.keyboardManager()
+
+    /**
+     * The keyboard's own field that has the keys (issue #424) — the translate bar or a search. The
+     * keyboard writes where it types: while such a field is open, dictation, a live preview and a prompt
+     * go into it, exactly as the keys do, and the app's field is left alone.
+     */
+    private fun field(): KeyboardManager.InternalField? = keyboardManager.activeInternalField()
 
     override fun commitText(text: String, verify: Boolean): Boolean {
+        field()?.let { field ->
+            keyboardManager.fieldText(field)?.let { keyboardManager.setFieldText(field, it.insert(text)) }
+            keyboardManager.reevaluateInputShiftState()
+            return true
+        }
         editorInstance.commitText(text)
         return true // the keyboard writes through its own InputConnection; this never silently no-ops
     }
 
-    override fun selectedText(): String = editorInstance.activeContent.selectedText
+    override fun selectedText(): String =
+        field()?.let { keyboardManager.fieldText(it)?.selectedText.orEmpty() } ?: editorInstance.activeContent.selectedText
 
-    override fun fullText(): String = editorInstance.activeContent.text
+    override fun fullText(): String =
+        field()?.let { keyboardManager.fieldText(it)?.text.orEmpty() } ?: editorInstance.activeContent.text
 
     override fun selectAll() {
+        field()?.let { field ->
+            keyboardManager.fieldText(field)?.let { keyboardManager.setFieldText(field, it.selectAll()) }
+            return
+        }
         editorInstance.performClipboardSelectAll()
     }
 
@@ -195,6 +215,12 @@ class ImeDictationSink(context: Context) : DictationSink {
 
     override fun deleteLastText(text: String): Boolean {
         if (text.isEmpty()) return false
+        field()?.let { field ->
+            val current = keyboardManager.fieldText(field) ?: return false
+            if (!current.text.substring(0, current.cursor).endsWith(text)) return false
+            keyboardManager.setFieldText(field, current.replaceBeforeCursor(text.length, ""))
+            return true
+        }
         // Only undo when the characters right before the cursor are exactly what we inserted.
         if (!editorInstance.activeContent.textBeforeSelection.endsWith(text)) return false
         val keyboardManager by appContext.keyboardManager()
@@ -224,9 +250,22 @@ class ImeDictationSink(context: Context) : DictationSink {
         return deleteLastText(sentence)
     }
 
-    override fun setDictationPreview(newText: String, prevText: String) = applyDictationDiff(prevText, newText)
+    override fun setDictationPreview(newText: String, prevText: String) {
+        val surface = previewSurface(prevText)
+        if (surface is PreviewSurface.Field) {
+            applyFieldDiff(surface.field, prevText, newText)
+        } else {
+            applyDictationDiff(if (surface == PreviewSurface.AppFresh) "" else prevText, newText)
+        }
+    }
 
     override fun commitDictationFinal(finalText: String, prevText: String): Boolean {
+        val surface = previewSurface(prevText)
+        activePreview = null
+        if (surface is PreviewSurface.Field) {
+            applyFieldDiff(surface.field, prevText, finalText)
+            return true
+        }
         // Finalize the grey temporary preview (see [applyDictationDiff]): with the transcript living in
         // the composing region, one commitText call both ends the region and writes the finished text —
         // commitText *replaces* the composing region by contract, so no diff arithmetic is needed here
@@ -256,13 +295,20 @@ class ImeDictationSink(context: Context) : DictationSink {
             if (tail.isNotEmpty()) editorInstance.replaceTextBeforeCursor(0, tail)
             return true
         }
-        if (finalText == prevText) return true
-        val cp = prevText.commonPrefixWith(finalText).length
-        editorInstance.replaceTextBeforeCursor(prevText.length - cp, finalText.substring(cp))
+        val shown = if (surface == PreviewSurface.AppFresh) "" else prevText
+        if (shown == finalText) return true
+        val cp = shown.commonPrefixWith(finalText).length
+        editorInstance.replaceTextBeforeCursor(shown.length - cp, finalText.substring(cp))
         return true
     }
 
     override fun clearDictationPreview(prevText: String) {
+        val surface = previewSurface(prevText)
+        activePreview = null
+        if (surface is PreviewSurface.Field) {
+            if (prevText.isNotEmpty()) applyFieldDiff(surface.field, prevText, "")
+            return
+        }
         // Cancel the composing region wholesale: setComposingText("") removes the grey preview from
         // the field in one batch (per-character deletes ANR and can kill the keyboard on a long
         // dictation). When no region is live, fall back to the atomic batch delete as before.
@@ -275,9 +321,36 @@ class ImeDictationSink(context: Context) : DictationSink {
         releaseComposingOwnership()
         // Text a keyboard touch already committed is the user's own now — a cancel must not eat it.
         // Only a preview we still hold unseen (hidden-preview mode) is removed wholesale.
+        if (surface == PreviewSurface.AppFresh) return
         if (DictationPreviewState.committedBase.isEmpty() && prevText.isNotEmpty()) {
             editorInstance.replaceTextBeforeCursor(prevText.length, "")
         }
+    }
+
+    /**
+     * Where the running live preview is being shown. Decided when it starts and kept until it ends, so a
+     * field opened or closed mid-dictation never has the preview's diff applied to text it was not
+     * written into: that would delete the user's own words. A preview whose field closed under it carries
+     * on in the app as if it had just started there ([PreviewSurface.AppFresh]).
+     */
+    private fun previewSurface(prevText: String): PreviewSurface {
+        val current = activePreview
+        val surface = when {
+            prevText.isEmpty() || current == null -> field()?.let { PreviewSurface.Field(it) } ?: PreviewSurface.App
+            current is PreviewSurface.Field && keyboardManager.fieldText(current.field) == null -> PreviewSurface.AppFresh
+            else -> current
+        }
+        activePreview = if (surface == PreviewSurface.AppFresh) PreviewSurface.App else surface
+        return surface
+    }
+
+    /** The preview's diff applied to the tail of a field's text in front of its cursor. */
+    private fun applyFieldDiff(field: KeyboardManager.InternalField, old: String, new: String) {
+        val current = keyboardManager.fieldText(field) ?: return
+        val shown = if (current.text.substring(0, current.cursor).endsWith(old)) old else ""
+        if (shown == new) return
+        val cp = shown.commonPrefixWith(new).length
+        keyboardManager.setFieldText(field, current.replaceBeforeCursor(shown.length - cp, new.substring(cp)))
     }
 
     /**
@@ -364,7 +437,17 @@ class ImeDictationSink(context: Context) : DictationSink {
         return grey
     }
 
+    private sealed interface PreviewSurface {
+        data object App : PreviewSurface
+        /** The preview's field closed under it: the app has none of it yet. */
+        data object AppFresh : PreviewSurface
+        data class Field(val field: KeyboardManager.InternalField) : PreviewSurface
+    }
+
     private companion object {
+        /** The live preview's surface; a sink is created per call, so it lives here (see [previewSurface]). */
+        @Volatile private var activePreview: PreviewSurface? = null
+
         /** Synthetic Enter key dispatched for auto-enter; reuses the keyboard's full enter logic. */
         private val EnterKeyData =
             TextKeyData(type = KeyType.ENTER_EDITING, code = KeyCode.ENTER, label = "enter")
