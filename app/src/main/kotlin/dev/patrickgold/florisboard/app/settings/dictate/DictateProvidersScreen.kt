@@ -234,7 +234,12 @@ fun DictateProvidersScreen() = FlorisScreen {
             // registry display order (sortedByDescending is stable).
             val orderedPresets = ProviderRegistry.presets
                 .filter { ProviderListing.isListed(it, accounts, activeIds, isInstalled) }
-                .sortedByDescending { it.transcriptionApi == TranscriptionApi.LOCAL_ONDEVICE }
+                .sortedWith(
+                    compareBy(
+                        { it.transcriptionApi != TranscriptionApi.BASIC_RECOGNITION_SERVICE },
+                        { it.transcriptionApi != TranscriptionApi.LOCAL_ONDEVICE },
+                    ),
+                )
             fun roles(id: String): (@Composable () -> Unit)? =
                 if (id in activeIds) {
                     { ActiveRoleIcons(id, activeTranscriptionId, activeRewordingId) }

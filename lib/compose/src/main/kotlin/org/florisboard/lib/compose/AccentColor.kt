@@ -27,7 +27,7 @@ import androidx.compose.ui.graphics.luminance
  * accent, paint it at full opacity and pick the content colour with this.
  *
  * Low-opacity accent is still right for things drawn **over** content that must remain visible through
- * them — a highlight wash behind text, a waveform's envelope.
+ * them — a highlight wash behind text, the region overlays on a scanned photo, a waveform's envelope.
  * The distinction is whether the colour is the surface or a veil over one.
  */
 fun Color.onAccent(): Color = if (luminance() > 0.5f) Color.Black else Color.White

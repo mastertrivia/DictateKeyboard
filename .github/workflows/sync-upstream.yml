@@ -5,7 +5,7 @@ name: Sync upstream
 # Automatic syncing does NOT happen here anymore. The "Build APK" workflow now
 # merges each official upstream RELEASE TAG into main immediately before it
 # builds, so the fork advances exactly when upstream releases - and the fork's
-# permanent exclusions (arm64-v8a only, no Scan Text / ML Kit OCR) survive the
+# permanent exclusion (arm64-v8a only) survives the
 # merge. See .github/workflows/build-apk.yml.
 #
 # IMPORTANT - this workflow NEVER builds an APK.

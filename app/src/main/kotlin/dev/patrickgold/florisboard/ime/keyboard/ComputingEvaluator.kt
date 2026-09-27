@@ -20,6 +20,7 @@ import android.content.Context
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Numbers
 import androidx.compose.material.icons.outlined.CloudSync
+import androidx.compose.material.icons.outlined.DocumentScanner
 import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.material.icons.outlined.Gif
 import androidx.compose.material.icons.automirrored.filled.ArrowRightAlt
@@ -339,6 +340,9 @@ fun ComputingEvaluator.computeImageVector(data: KeyData): ImageVector? {
         }
         KeyCode.IME_UI_MODE_EDITING -> {
             Icons.Default.EditNote
+        }
+        KeyCode.IME_UI_MODE_SCAN -> {
+            Icons.Outlined.DocumentScanner
         }
         KeyCode.TRANSLATE -> {
             Icons.Outlined.Translate

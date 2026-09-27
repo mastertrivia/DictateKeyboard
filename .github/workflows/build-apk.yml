@@ -14,9 +14,8 @@ name: Build APK
 # How the correct source is chosen:
 #   1. The workflow fetches the EXACT commit the upstream release tag points to,
 #      then merges it INTO this fork's main branch. main carries the fork's
-#      permanent exclusions (arm64-v8a only, no Google ML Kit / "Scan Text" OCR),
-#      so merging is what keeps those exclusions in every future release build
-#      while still picking up the official source and its version.
+#      permanent exclusion (arm64-v8a only). Scan Text / ML Kit OCR is upstream
+#      product and is kept. Merging picks up the official source and its version.
 #   2. Two small fork-only tweaks are then re-applied on top so the code still
 #      builds on GitHub's ubuntu-latest runners. Those tweaks live as plain
 #      patches in .github/ci-patches/ and are applied with `git apply --3way`
@@ -25,11 +24,10 @@ name: Build APK
 #        - app/build.gradle.kts -> the :app lint disable mirroring :wear
 #   3. projectVersionName/projectVersionCode come from main after the merge,
 #      which is exactly what upstream declared for the release.
-#   4. If upstream edits the same lines the fork's exclusions own, the merge
-#      stops with a conflict and the run FAILS loudly - it never silently drops
-#      the exclusions or ships OCR again. An "Enforce fork exclusions" source
-#      guard and an APK-content guard additionally fail the build if either
-#      exclusion is ever missing, even when the merge itself was clean.
+#   4. If upstream edits the same lines the fork's arm64 exclusion owns, the
+#      merge stops with a conflict and the run FAILS loudly. An "Enforce fork
+#      exclusions" source guard and an APK-content guard fail the build if a
+#      non-arm64 ABI is ever shipped.
 #
 # Trigger model:
 #   - workflow_dispatch with an upstream_release_tag  -> build that exact tag.
@@ -311,16 +309,15 @@ jobs:
             TAG_COMMIT=$(git rev-parse "refs/tags/upstream/${RELEASE_TAG}^{commit}")
 
             # Sync before build: merge the release INTO main so the fork's permanent
-            # exclusions (arm64-v8a only, no Scan Text / ML Kit OCR) survive, and so
-            # the official version is picked up from the tag. A conflict means
-            # upstream touched the code the exclusions own; fail loudly rather than
-            # silently dropping them or shipping OCR again.
+            # arm64-v8a-only exclusion survives, and so the official version is
+            # picked up from the tag. A conflict means upstream touched the ABI
+            # filter; fail loudly rather than silently shipping extra ABIs.
             git fetch -q origin main
             git checkout -q -B main origin/main
             echo "Merging upstream ${RELEASE_TAG} (${TAG_COMMIT}) into main ..."
             if ! git merge --no-edit "$TAG_COMMIT"; then
               echo "::error::Merge conflict syncing upstream ${RELEASE_TAG} into main."
-              echo "Upstream changed code the fork's exclusions own (arm64-v8a only, no Scan Text OCR)."
+              echo "Upstream changed code the fork's arm64-v8a-only exclusion owns."
               echo "Resolve the conflict, push main, then re-run this workflow with force=true."
               exit 1
             fi
@@ -393,29 +390,18 @@ jobs:
             echo "Update-continuity check OK: versionCode ${VC} > ${PREV_MAX_CODE:-<no prior processed code>}."
           fi
 
-      # Permanent fork exclusions, asserted before compile. Applies to every
-      # build including UNRELEASED source_ref runs: arm64-v8a only, no Scan Text.
+      # Permanent fork exclusion, asserted before compile. Applies to every
+      # build including UNRELEASED source_ref runs: arm64-v8a only.
       - name: Enforce fork exclusions
         if: steps.determine.outputs.should_build == 'true'
         shell: bash
         run: |
           set -euo pipefail
-          fail=0
           if ! grep -q 'abiFilters += listOf("arm64-v8a")' app/build.gradle.kts; then
             echo "::error::app/build.gradle.kts no longer restricts the build to arm64-v8a."
-            fail=1
+            exit 1
           fi
-          if grep -rn -iE 'mlkit|text-recognition' gradle/libs.versions.toml app/build.gradle.kts; then
-            echo "::error::The ML Kit OCR dependency reappeared."
-            fail=1
-          fi
-          if [ -d app/src/main/kotlin/dev/patrickgold/florisboard/dictate/scan ] \
-             || [ -d lib/dictate-core/src/main/kotlin/dev/patrickgold/florisboard/dictate/scan ]; then
-            echo "::error::The Scan Text OCR sources reappeared."
-            fail=1
-          fi
-          [ "$fail" -eq 0 ] || exit 1
-          echo "Fork exclusions intact: arm64-v8a only, no Scan Text OCR."
+          echo "Fork exclusion intact: arm64-v8a only."
 
       - name: Set up Android SDK components
         if: steps.determine.outputs.should_build == 'true'
@@ -543,19 +529,15 @@ jobs:
           echo "APK_SIZE=$(stat -c %s "$APK")" >> "$GITHUB_ENV"
           echo "APK_VERSION=$(jq -r '.elements[0].versionName' "$APK_DIR/output-metadata.json")" >> "$GITHUB_ENV"
 
-          # Artifact-level exclusions guard: whatever the source, the shipped APK
-          # must carry arm64-v8a native libraries only and no ML Kit OCR pipeline.
+          # Artifact-level exclusion guard: whatever the source, the shipped APK
+          # must carry arm64-v8a native libraries only.
           LIBS=$(unzip -Z1 "$APK" | grep '^lib/' || true)
           BAD_ABIS=$(printf '%s\n' "$LIBS" | cut -d/ -f2 | sort -u | grep -v '^arm64-v8a$' || true)
           if [ -n "$BAD_ABIS" ]; then
             echo "::error::APK contains non-arm64-v8a native libraries: $(printf '%s' "$BAD_ABIS" | tr '\n' ' ')"
             exit 1
           fi
-          if printf '%s\n' "$LIBS" | grep -qi 'mlkit'; then
-            echo "::error::APK still packages the ML Kit OCR pipeline."
-            exit 1
-          fi
-          echo "Artifact exclusions verified: only arm64-v8a native libs, no ML Kit OCR."
+          echo "Artifact exclusion verified: only arm64-v8a native libs."
 
           # The upstream tag being built must be the version actually shipped.
           # (Unreleased ref builds have no tag version to compare against.)

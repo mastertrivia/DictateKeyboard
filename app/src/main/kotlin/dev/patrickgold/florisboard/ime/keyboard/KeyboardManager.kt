@@ -1938,6 +1938,13 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
                 closeInternalFields()
                 activeState.imeUiMode = ImeUiMode.EDITING
             }
+            // Opens the scan panel (issue #390). Nothing is captured here — the panel is the surface that
+            // asks for a photo, so that opening it from an old session shows what was already recognised
+            // instead of firing the camera at whoever only wanted to look.
+            KeyCode.IME_UI_MODE_SCAN -> {
+                closeInternalFields()
+                activeState.imeUiMode = ImeUiMode.SCAN
+            }
             // The translate bar (issue #424). A toggle: the button stays in the Smartbar below the bar.
             KeyCode.TRANSLATE -> toggleTranslate()
             KeyCode.IME_UI_MODE_DICTATE -> dev.patrickgold.florisboard.dictate.DictateController.onMicClick(appContext)

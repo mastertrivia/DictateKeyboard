@@ -115,9 +115,13 @@ object KeyCode {
     const val LANGUAGE_SWITCH =             -227
     const val SHOW_SUBTYPE_PICKER =         -228
 
-    // -229 was Scan Text (issue #390). This fork does not ship ML Kit OCR; the code is in
-    // QuickActionArrangement.REMOVED_ACTION_CODES so stored arrangements drop it.
-    // Opens or closes the on-device translate bar (issue #424).
+    // Opens the scan panel: photograph printed text and tap the part of it to insert (issue #390).
+    // Out of the -211…-220 run of panel openers because that run is full; -229 and -230 were the two
+    // free numbers left in this block. Not -245, which is in QuickActionArrangement.REMOVED_ACTION_CODES
+    // and would be stripped out of every stored arrangement.
+    const val IME_UI_MODE_SCAN =            -229
+    // Opens or closes the on-device translate bar (issue #424). -230 is the last free number of this block,
+    // see IME_UI_MODE_SCAN above.
     const val TRANSLATE =                   -230
 
     const val IME_SHOW_UI =                 -231

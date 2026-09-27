@@ -846,7 +846,9 @@ object ProviderRegistry {
     )
 
     /**
-     * On-device, fully offline transcription (issue #104). No network, no API key. Handled by
+     * Phone SpeechRecognizer transcription (Basic Voice Typing). No network, no API key.
+     * Routed by the dictation flow, never sent through the HTTP client.
+     */
     val BASIC = ProviderPreset(
         id = "basic",
         displayName = "Basic Voice Typing",

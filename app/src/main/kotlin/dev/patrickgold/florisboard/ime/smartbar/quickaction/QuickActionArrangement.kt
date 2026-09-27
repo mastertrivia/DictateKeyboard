@@ -104,9 +104,13 @@ data class QuickActionArrangement(
                 // it is one of the few actions people go looking for, and unlike the split or language
                 // actions it is never greyed out — without an API key the panel itself says so.
                 QuickAction.InsertKey(TextKeyData.IME_UI_MODE_GIF),
+                // Scan text (issue #390): camera → recognised lines → the one you tap. Fifth, ahead of
+                // Settings, for discovery rather than frequency: it is the feature nobody guesses a keyboard
+                // has, so it only gets found where it is seen — and five is what a 360 dp phone shows.
+                QuickAction.InsertKey(TextKeyData.IME_UI_MODE_SCAN),
                 // A keyboard with this much behind it — the provider, the key, the prompts, the languages
                 // — needs a door of its own; without one the way in is hunting for the app icon in the
-                // launcher, which is a long walk from the field the user is standing in. Fifth, after GIF:
+                // launcher, which is a long walk from the field the user is standing in. Sixth, after Scan:
                 // somebody who wants the settings goes looking for them, and on a 360 dp phone this is the
                 // first tile of the overflow grid, one tap further.
                 QuickAction.InsertKey(TextKeyData.SETTINGS),
@@ -186,7 +190,7 @@ data class QuickActionArrangement(
         // placeholder (autocorrect is now fully automatic). -27/-28 = the line-start/line-end buttons
         // that existed for a day between two commits of #335 before they became field-start/field-end;
         // they never reached a release, but a debug arrangement can still carry them.
-        private val REMOVED_ACTION_CODES = setOf(-245, -27, -28, -229)
+        private val REMOVED_ACTION_CODES = setOf(-245, -27, -28)
 
         override fun deserialize(value: String): QuickActionArrangement {
             val raw: QuickActionArrangement = QuickActionJsonConfig.decodeFromString(value)

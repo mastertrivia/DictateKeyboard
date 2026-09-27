@@ -33,8 +33,18 @@ class ProviderListingTest {
             .map { it.id }
 
     @Test
-    fun `a fresh install lists the two pinned providers and nothing else`() {
-        assertEquals(listOf(ProviderRegistry.CLOUD.id, ProviderRegistry.LOCAL.id), listed(accountsOf()))
+    fun `a fresh install lists the pinned providers and nothing else`() {
+        assertEquals(
+            listOf(ProviderRegistry.BASIC.id, ProviderRegistry.CLOUD.id, ProviderRegistry.LOCAL.id),
+            listed(accountsOf()),
+        )
+    }
+
+    @Test
+    fun `Basic Voice Typing is always set up and pickable`() {
+        val basic = ProviderRegistry.BASIC
+        assertTrue(ProviderListing.isSetUp(basic, accountsOf(), nothingInstalled))
+        assertTrue(ProviderListing.isPickable(basic, accountsOf(), selectedId = "", nothingInstalled))
     }
 
     @Test
@@ -95,9 +105,10 @@ class ProviderListingTest {
 
     // Issue #431: the keyboard's picker and the settings dialog offer one and the same list.
     @Test
-    fun `the transcription choices are the pickable ones, on-device first, own endpoints last`() {
+    fun `the transcription choices are the pickable ones, Basic then on-device first, own endpoints last`() {
         val groq = ProviderRegistry.GROQ.id
         val local = ProviderRegistry.LOCAL
+        val basic = ProviderRegistry.BASIC
         val accounts = accountsOf(
             ProviderAccount(providerId = groq, apiKey = "gsk_x"),
             ProviderAccount(providerId = "custom:b", displayName = "Zeta box"),
@@ -107,10 +118,10 @@ class ProviderListingTest {
             it == local.defaultTranscriptionModel
         }
         assertEquals(
-            listOf(local.id, groq, "custom:a", "custom:b"),
+            listOf(basic.id, local.id, groq, "custom:a", "custom:b"),
             choices.map { it.first },
         )
-        assertEquals(local.displayName, choices.first().second)
+        assertEquals(basic.displayName, choices.first().second)
         // A provider that could only answer "no API key" is not on offer, and neither is a rewording-only one.
         assertFalse(choices.any { it.first == ProviderRegistry.OPENAI.id })
         assertFalse(choices.any { it.first == ProviderRegistry.ANTHROPIC.id })

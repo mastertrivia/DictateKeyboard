@@ -41,6 +41,7 @@ Upstream files this feature touches:
 - `lib/dictate-core/.../provider/ProviderConfig.kt` (`BASIC_RECOGNITION_SERVICE`)
 - `lib/dictate-core/.../provider/ProviderRegistry.kt` (preset `basic`, first)
 - `lib/dictate-core/.../provider/OpenAiCompatibleClient.kt` (defensive branches)
+- `app/.../dictate/provider/ProviderListing.kt` (always listed and pickable)
 - `app/.../dictate/DictateController.kt` (mic start/stop/cancel routing)
 - `app/.../dictate/DictationSink.kt` (grey composing preview)
 - `app/.../settings/dictate/DictateProvidersScreen.kt`
@@ -63,24 +64,28 @@ only the uncovered tail instead of re-uploading the whole recording.
 
 Docs: `STAGE2_REALTIME_PARITY.md`
 
-### 3. Cloud admin list (ZIP)
+### 3. Composing ownership + Rambler / voice-command extras
 
-Slow-request marking on the cloud admin request list, as shipped in the ZIP.
+Grey composing preview ownership so keyboard keypresses cannot bake partials, plus
+optional Rambler cleanup / voice-edit / voice-command prefs.
 
-- `cloud/src/admin/index.ts`
-- `cloud/src/admin/page.ts`
-- `cloud/src/admin/tax.ts`
-- `cloud/src/notify/rules.ts`
+Docs: `BUGFIX_COMPOSING_OWNERSHIP.md`, `RAMBLER_PARITY_IMPLEMENTATION.md`
 
-## Not custom (upstream v6.3.0 product)
+## Not custom (upstream product)
 
-The ZIP is based on upstream **v6.3.0**. These are upstream, not fork exclusions:
+These are DevEmperor's keyboard/product features. They stay on `main` from
+`upstream/main`. Older zip edits that duplicated them are **not** applied:
 
 - Scan Text / ML Kit OCR (`dictate/scan`, `libs.mlkit.text.recognition`)
-- Native ABIs: `arm64-v8a`, `armeabi-v7a`, `x86_64`
+- Keyboard / IME / Smartbar / emoji / dictionary work after the zip snapshot
+- Space-bar provider switch, follow-keyboard language, and related UI
 
-Older fork commits that stripped OCR / restricted to arm64-only are historical.
-`main` now follows the ZIP, which includes those upstream features.
+The zip is older. Keyboard features in it that the developer already shipped are
+ignored so they cannot conflict.
+
+## Fork-only build constraint
+
+- Native ABI: `arm64-v8a` only
 
 ## Git layout
 
@@ -88,6 +93,7 @@ Older fork commits that stripped OCR / restricted to arm64-only are historical.
 |---|---|
 | `upstream/main` | DevEmperor/DictateKeyboard |
 | `origin/main` | This application: upstream + custom layer |
+| `260927-feat-user-zip3-full` | Parked older zip overlay (includes developer overlaps; not built) |
 | `[CUSTOM] ...` commits | Identifiable custom work |
 
 CI: `.github/workflows/build-apk.yml` can build `main` via `workflow_dispatch`
