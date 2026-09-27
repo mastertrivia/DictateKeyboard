@@ -2471,9 +2471,9 @@
     <string name="dictate__auto_formatting_title" comment="Setting: turn spoken formatting cues into Markdown">Auto-formatting</string>
     <string name="dictate__auto_formatting_summary" comment="Summary for the auto-formatting setting">Turn spoken formatting cues into Markdown (headings, lists, …)</string>
     <string name="dictate__rambler_cleanup_title" comment="Toggle title for Gboard Rambler-style transcript polishing">Rambler-style cleanup</string>
-    <string name="dictate__rambler_cleanup_summary" comment="Toggle description for the Rambler-style cleanup pass">Remove filler words, apply spoken corrections and polish punctuation like Google Keyboard's Rambler. Adds one extra model pass per dictation.</string>
+    <string name="dictate__rambler_cleanup_summary" comment="Toggle description for the Rambler-style cleanup pass">Remove filler words, apply spoken corrections and polish punctuation like Google Keyboard\'s Rambler. Adds one extra model pass per dictation.</string>
     <string name="dictate__realtime_voice_edit_title" comment="Toggle title for the one-stream Rambler-style realtime session">Voice-edit live session</string>
-    <string name="dictate__realtime_voice_edit_summary" comment="Toggle description for the one-stream realtime session">Polish the text inside the live stream instead of a separate pass after you stop — one request, like Google Keyboard's Rambler. Needs a conversational live model (a transcription-only model is skipped automatically).</string>
+    <string name="dictate__realtime_voice_edit_summary" comment="Toggle description for the one-stream realtime session">Polish the text inside the live stream instead of a separate pass after you stop — one request, like Google Keyboard\'s Rambler. Needs a conversational live model (a transcription-only model is skipped automatically).</string>
     <string name="dictate__voice_commands_title" comment="Toggle title for dictation voice commands">Voice commands</string>
     <string name="dictate__voice_commands_summary" comment="Toggle description for dictation voice commands">Say \"send\", \"clear\" or \"clear all\" to control the text field instead of typing it</string>
     <string name="dictate__system_prompt_title" comment="Setting: base instruction sent with every rewording request">Rewording instruction</string>
