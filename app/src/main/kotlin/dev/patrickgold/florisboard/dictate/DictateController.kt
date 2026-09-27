@@ -2405,7 +2405,7 @@ object DictateController {
         // anything about them is worth warming.
         if (account.apiKey.isBlank() && !preset.isCustom) return
         if (!preset.supportsRealtime) return
-        val api = preset.realtimeApi
+        val api = preset.realtimeApi ?: return
         val now = SystemClock.elapsedRealtime()
         if (now - lastRealtimeWarmUpAtMs in 0 until REALTIME_WARM_UP_THROTTLE_MS) return
         lastRealtimeWarmUpAtMs = now

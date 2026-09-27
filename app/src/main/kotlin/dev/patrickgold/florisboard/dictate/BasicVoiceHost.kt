@@ -57,7 +57,7 @@ class BasicVoiceHost(
      * is NOT part of the new segment. Reset the accounting so the new grey region starts after it
      * and the next cancel/stop can only ever remove what this new segment itself wrote.
      */
-    fun beginNewVoiceSegment() {
+    override fun beginNewVoiceSegment() {
         sessionText.setLength(0)
         composingLen = 0
     }
