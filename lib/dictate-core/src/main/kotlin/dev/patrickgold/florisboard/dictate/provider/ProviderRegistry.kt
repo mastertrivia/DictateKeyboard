@@ -847,6 +847,18 @@ object ProviderRegistry {
 
     /**
      * On-device, fully offline transcription (issue #104). No network, no API key. Handled by
+    val BASIC = ProviderPreset(
+        id = "basic",
+        displayName = "Basic Voice Typing",
+        baseUrl = "",
+        capabilities = STT_ONLY,
+        transcriptionApi = TranscriptionApi.BASIC_RECOGNITION_SERVICE,
+        supportsDynamicModels = false,
+        apiKeyUrl = null,
+    )
+
+    /**
+     * On-device, fully offline transcription (issue #104). No network, no API key. Handled by
      * [LocalTranscriptionProvider] (sherpa-onnx + a bundled Whisper model), not by the HTTP client –
      * [TranscriptionApi.LOCAL_ONDEVICE] marks it so the dictation flow routes there. The model id is the
      * name of an installed model directory; models are downloaded on demand (the catalog is fixed, not
@@ -867,7 +879,7 @@ object ProviderRegistry {
 
     /** All built-in presets in display order. The custom option is added by the UI on top of these. */
     val presets: List<ProviderPreset> = listOf(
-        CLOUD, OPENAI, GROQ, OPENROUTER, GEMINI, ANTHROPIC, TOGETHER, DEEPINFRA, MISTRAL, SONIOX,
+        BASIC, CLOUD, OPENAI, GROQ, OPENROUTER, GEMINI, ANTHROPIC, TOGETHER, DEEPINFRA, MISTRAL, SONIOX,
         ELEVENLABS, DEEPGRAM, ASSEMBLYAI, AZURE, XAI, DEEPSEEK, SILICONFLOW, SCALEWAY, OVHCLOUD,
         OLLAMA, LOCAL,
     )
