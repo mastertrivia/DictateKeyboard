@@ -1,3 +1,14 @@
+// Google Live Transcribe engine — the IME-side glue, sibling of SpeechNotesVoiceEngine.java.
+//
+// Kept as its own file for the same reason LiveTranscribeSession.java is: SpeechNotesVoiceEngine.java
+// stays byte-identical to the engine Basic voice typing has always shipped. The difference here is which
+// controller is constructed — LiveTranscribeSession (on-device first, recognizer-side formatting) instead
+// of VoiceController — and, because of that, where the session reports that it is over: the restart loop,
+// the grey composing text, the watchdog, the wake lock, the Bluetooth SCO manager and the tonal feedback
+// are identical, but IDLE now arrives from onSessionFinished() rather than from stop(), so that a stop can
+// wait for the recognizer's final hypothesis before the session is torn down. See stop().
+//
+// Original header of the file this was derived from follows.
 // Ported from SpeechNotes' Speechkeys.java — the IME-side glue of the voice engine.
 // Every voice-related behavior from the original IME is recreated here:
 //   - b()  -> commitText with boundary processing
@@ -24,12 +35,16 @@ import android.view.inputmethod.InputConnection;
 import androidx.core.content.ContextCompat;
 
 /**
- * The Speech Notes voice engine, hosted through {@link VoiceEngineHost} (was the voice parts of
- * Speechkeys.java; HeliBoard's LatinIME was the reference host). Everything below the host seam —
- * the recognizer restart loop, the grey composing text, the watchdog, the Bluetooth SCO manager —
- * is unchanged.
+ * Google Live Transcribe's engine glue, hosted through {@link VoiceEngineHost}.
+ *
+ * Derived from {@link SpeechNotesVoiceEngine} (itself the voice parts of Speechkeys.java, with
+ * HeliBoard's LatinIME as the reference host) and identical to it below the host seam — the recognizer
+ * restart loop, the grey composing text, the watchdog, the Bluetooth SCO manager — except that it drives
+ * {@link LiveTranscribeSession} and defers its IDLE report to
+ * {@link LiveTranscribeSession#stopListening()} completing. See the file header and
+ * {@link #stop()}.
  */
-public class SpeechNotesVoiceEngine implements VoiceCallback {
+public class LiveTranscribeEngine implements VoiceCallback {
 
     private static final long WATCHDOG_MILLIS = 60000L;
     private static final long WATCHDOG_TICK = 30000L;
@@ -38,7 +53,7 @@ public class SpeechNotesVoiceEngine implements VoiceCallback {
 
     private final Context context;
     private final VoiceEngineHost host;
-    private final VoiceController controller;
+    private final LiveTranscribeSession controller;
     private final BluetoothScoManager bluetoothSco;
     private final CountDownTimer watchdog;
     private PowerManager.WakeLock wakeLock;
@@ -55,10 +70,10 @@ public class SpeechNotesVoiceEngine implements VoiceCallback {
     /** Current recognition language. (was Speechkeys.t) */
     private String language = "en-US";
 
-    public SpeechNotesVoiceEngine(Context context, VoiceEngineHost host) {
+    public LiveTranscribeEngine(Context context, VoiceEngineHost host) {
         this.context = context;
         this.host = host;
-        // Build the BT SCO manager first: VoiceController's constructor can fire
+        // Build the BT SCO manager first: LiveTranscribeSession's constructor can fire
         // onError (e.g. no speech service on the device) which calls stop() on
         // this engine, and stop() touches bluetoothSco. Ordering it first makes
         // that path a safe no-op (started == false) instead of an NPE.
@@ -81,7 +96,7 @@ public class SpeechNotesVoiceEngine implements VoiceCallback {
                 stop();
             }
         };
-        this.controller = new VoiceController(context, this, language, Boolean.TRUE);
+        this.controller = new LiveTranscribeSession(context, this, language, Boolean.TRUE);
         this.watchdog = new CountDownTimer(WATCHDOG_MILLIS, WATCHDOG_TICK) { // was Speechkeys$a
             @Override
             public void onTick(long millisUntilFinished) {
@@ -134,29 +149,54 @@ public class SpeechNotesVoiceEngine implements VoiceCallback {
         }
     }
 
-    /** Full stop: BT SCO + controller + watchdog + wake lock. (was Speechkeys.Z) */
+    /**
+     * Full stop: BT SCO + controller + watchdog + wake lock. (was Speechkeys.Z)
+     *
+     * The one place this differs from {@link SpeechNotesVoiceEngine}, and deliberately: the session's
+     * stop now writes its text after waiting a bounded time for the recognizer's final hypothesis (see
+     * {@link LiveTranscribeSession#stopListening()}), so IDLE must not be reported here — reporting it
+     * now would tear the session down (the host releases composing ownership and drops the engine on
+     * IDLE) and the final words would be written into a session nobody owns. IDLE moves to
+     * {@link #onSessionFinished()}, which the session calls once its text is in.
+     */
     public synchronized void stop() {
-        // Null-safe: VoiceController's constructor can call onError (no speech
+        // Null-safe: LiveTranscribeSession's constructor can call onError (no speech
         // service) which stops this engine while controller/bluetoothSco are
         // still being initialized.
         if (bluetoothSco != null)
             bluetoothSco.stop();
-        if (controller != null && controller.isListening()) {
-            controller.stopListening();
-        }
         if (watchdog != null)
             watchdog.cancel();
-        if (wakeLock != null && wakeLock.isHeld()) {
-            wakeLock.release();
+        boolean finalizing = false;
+        if (controller != null) {
+            if (controller.isListening()) {
+                finalizing = controller.stopListening();
+                if (finalizing) {
+                    // The microphone is closed but the session is still waiting for its final text. Say so:
+                    // leaving the listening state up would claim the recognizer is still hearing, when the
+                    // only thing left happening is the closing words being written.
+                    host.onVoiceEngineClosing();
+                }
+            } else if (controller.isStopping()) {
+                // A closing session that nobody is going to wait for any more — a cancel, or a second
+                // stop. Resolve it now rather than leaving the wake lock held for a session the caller
+                // has already abandoned.
+                controller.finishStopNow();
+            }
         }
-        final boolean wasReady = sessionReachedReady;
-        sessionReachedReady = false;
-        setVoiceUiState(VoiceUiState.IDLE, false, wasReady);
+        if (!finalizing) {
+            if (wakeLock != null && wakeLock.isHeld()) {
+                wakeLock.release();
+            }
+            final boolean wasReady = sessionReachedReady;
+            sessionReachedReady = false;
+            setVoiceUiState(VoiceUiState.IDLE, false, wasReady);
+        }
     }
 
-    /** Stop if currently listening. (was the check inside Speechkeys.onFinishInput) */
+    /** Stop if currently listening, or if a previous stop is still writing its final text. */
     public void stopIfListening() {
-        if (controller.isListening()) {
+        if (controller.isListening() || controller.isStopping()) {
             stop();
         }
     }
@@ -296,7 +336,7 @@ public class SpeechNotesVoiceEngine implements VoiceCallback {
                 false, false);
     }
 
-    /** Only VoiceController.onReadyForSpeech reaches this callback. */
+    /** Only LiveTranscribeSession.onReadyForSpeech reaches this callback. */
     @Override
     public void onListening() {
         final boolean playStartTone = !sessionReachedReady;
@@ -307,8 +347,25 @@ public class SpeechNotesVoiceEngine implements VoiceCallback {
     /** Error: log and do a full stop. (was Speechkeys.onError) */
     @Override
     public void onError(int i) {
-        VoiceController.errorString(i);
+        LiveTranscribeSession.errorString(i);
         stop();
+    }
+
+    /**
+     * The session has written its final text and is over: report IDLE, which is what tears the engine
+     * down in the host. This is the deferred half of {@link #stop()} — see the note there.
+     */
+    @Override
+    public void onSessionFinished() {
+        if (watchdog != null) {
+            watchdog.cancel();
+        }
+        if (wakeLock != null && wakeLock.isHeld()) {
+            wakeLock.release();
+        }
+        final boolean wasReady = sessionReachedReady;
+        sessionReachedReady = false;
+        setVoiceUiState(VoiceUiState.IDLE, false, wasReady);
     }
 
     /**

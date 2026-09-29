@@ -161,6 +161,20 @@ enum class TranscriptionApi {
      * there instead of ever building an HTTP client.
      */
     BASIC_RECOGNITION_SERVICE,
+
+    /**
+     * Google Live Transcribe: the same system SpeechRecognition pathway as
+     * [BASIC_RECOGNITION_SERVICE], driven with the intent the installed Live Transcribe app itself
+     * builds (decompiled from
+     * `com/google/audio/hearing/visualization/accessibility/asr/offline/SodaSpeechSession.java`).
+     *
+     * It is a distinct value rather than a flag on the basic one so that the two remain separately
+     * selectable providers — Basic voice typing keeps the phone's default recognizer request exactly as
+     * it has always been, and this one asks the same service for the on-device model plus recognizer-side
+     * text formatting and end-pointing events. No HTTP either way; the dictation flow routes both to the
+     * ported `helium314.keyboard.voice` engines instead of building a client.
+     */
+    LIVE_TRANSCRIBE_SERVICE,
 }
 
 /**

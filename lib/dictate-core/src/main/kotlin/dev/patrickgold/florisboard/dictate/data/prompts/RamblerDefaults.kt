@@ -231,6 +231,10 @@ object RamblerDefaults {
      * @param packageName   the target app's package name, used for `{APP_INFO}`.
      * @param personalDictionary  the user's custom words; omitted when empty (Zero Speech Policy block).
      * @param customRules   user-defined rules; omitted when empty.
+     * @param customInstruction the user's own instruction ("translate to English", "write it simply").
+     *      It is layered on top of Rambler's rules **inside this same prompt**, so every model that goes
+     *      through the cleanup pass gets it in the one request it was already making — never as a second
+     *      call. Null/blank omits the block.
      */
     fun buildCleanupPrompt(
         transcript: String,
@@ -239,6 +243,7 @@ object RamblerDefaults {
         packageName: String? = null,
         personalDictionary: List<String> = emptyList(),
         customRules: String? = null,
+        customInstruction: String? = null,
     ): String {
         val languages = enabledLanguages.filter { it.isNotBlank() }.joinToString(", ")
         val header = CLEANUP_HEADER.replace("{ENABLED_LANGUAGES}", languages)
@@ -270,13 +275,19 @@ object RamblerDefaults {
 
         // Gboard appends the context blocks to the template and inlines the text last, so the blocks end
         // up immediately before the <CURRENT_TEXT> marker. Mirror that ordering exactly.
+        // The user's own instruction, layered ON TOP of the verbatim Rambler rules (never instead of
+        // them). Placed immediately before <CURRENT_TEXT> so it is the last thing the model reads, which
+        // is the position these instruction-following models weigh most.
+        val instructionSection = customInstruction?.takeIf { it.isNotBlank() }?.let {
+            "\n<user_instruction>\n" + it.trim() + "\n</user_instruction>\n"
+        }.orEmpty()
         val footer = CLEANUP_FOOTER.replace("{CURRENT_TEXT}", transcript)
         val currentIdx = footer.indexOf("<CURRENT_TEXT>")
         val assembled = if (currentIdx < 0) {
-            footer
+            instructionSection + footer
         } else {
             footer.substring(0, currentIdx) + appSection + dictionarySection + rulesSection +
-                footer.substring(currentIdx)
+                instructionSection + footer.substring(currentIdx)
         }
         return header + instructions + assembled
     }
@@ -295,6 +306,9 @@ object RamblerDefaults {
      * @param appLabel/packageName the target app, for the app-aware punctuation rule.
      * @param personalDictionary the user's custom words.
      * @param customRules user-defined rules, when the caller has any.
+     * @param customInstruction the user's own free-form instruction for this dictation ("translate to
+     *      English", "write it simply", "remove fillers"), applied **inside the same stream** so the
+     *      result needs no second model call. Null/blank omits the block entirely.
      */
     fun buildVoiceEditInstruction(
         enabledLanguages: List<String> = emptyList(),
@@ -302,6 +316,7 @@ object RamblerDefaults {
         packageName: String? = null,
         personalDictionary: List<String> = emptyList(),
         customRules: String? = null,
+        customInstruction: String? = null,
     ): String {
         val languages = enabledLanguages.filter { it.isNotBlank() }.joinToString(", ")
         val header = CLEANUP_HEADER.replace("{ENABLED_LANGUAGES}", languages)
@@ -328,7 +343,14 @@ object RamblerDefaults {
             "explanations, no questions, no conversational replies, no restating of these rules. Apply the " +
             "cleanup rules to the words themselves and keep the result in the user's own voice.\n" +
             "</stream_instruction>\n"
-        return header + instructions + streamRule + appSection + dictionarySection + rulesSection
+        // The user's own instruction, riding along with the cleanup rules (Rambler-style voice edit). It is
+        // deliberately a sibling of <stream_instruction> and not a replacement for it: the cleanup rules
+        // still apply, and the user's instruction is layered on top, in the one stream.
+        val instructionSection = customInstruction?.takeIf { it.isNotBlank() }?.let {
+            "\n<user_instruction>\n" + it.trim() + "\n</user_instruction>\n"
+        }.orEmpty()
+        return header + instructions + streamRule + instructionSection + appSection + dictionarySection +
+            rulesSection
     }
 
     /** `"Name: <label> -- Package name: <pkg>"`, or null when neither is known (Gboard's `str2`). */

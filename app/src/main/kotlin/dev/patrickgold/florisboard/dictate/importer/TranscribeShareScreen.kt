@@ -196,9 +196,9 @@ fun TranscribeShareScreen(uris: List<Uri>, onClose: () -> Unit) {
         val account = ImportTranscriber.accountFor(prefs)
         val preset = ImportTranscriber.presetFor(account)
         refreshProvider()
-        if (preset.transcriptionApi == TranscriptionApi.BASIC_RECOGNITION_SERVICE) {
-            // Basic voice typing is live-mic only — refuse before the file is touched, same
-            // place (and same shape) as the missing-key check below.
+        if (ProviderRegistry.isSystemSpeechApi(preset.transcriptionApi)) {
+            // Basic voice typing and Google Live Transcribe are live-mic only — refuse before the file is
+            // touched, same place (and same shape) as the missing-key check below.
             busy = false
             error = context.getString(R.string.dictate__basic_file_import_unsupported)
             return

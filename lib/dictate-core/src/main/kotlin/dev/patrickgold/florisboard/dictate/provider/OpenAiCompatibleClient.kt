@@ -24,7 +24,6 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.contentOrNull
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.Credentials
@@ -234,8 +233,9 @@ class OpenAiCompatibleClient(
         TranscriptionApi.LOCAL_ONDEVICE -> error("LOCAL_ONDEVICE is handled by LocalTranscriptionProvider")
         // Basic voice typing never uses this HTTP client either; the dictation flow routes it to the
         // ported SpeechRecognizer engine before a client is ever constructed.
-        TranscriptionApi.BASIC_RECOGNITION_SERVICE ->
-            error("BASIC_RECOGNITION_SERVICE is handled by the system SpeechRecognizer engine")
+        TranscriptionApi.BASIC_RECOGNITION_SERVICE,
+        TranscriptionApi.LIVE_TRANSCRIBE_SERVICE ->
+            error("BASIC/LIVE_TRANSCRIBE recognition is handled by the system SpeechRecognizer engine")
     }
 
     override suspend fun transcribe(request: TranscriptionRequest): TranscriptionResult =
@@ -1129,7 +1129,8 @@ class OpenAiCompatibleClient(
                 executeForBody(request, maxRetries = 1)
                 return ConnectionCheck(scope)
             }
-            TranscriptionApi.BASIC_RECOGNITION_SERVICE -> return ConnectionCheck(scope)
+            TranscriptionApi.BASIC_RECOGNITION_SERVICE,
+            TranscriptionApi.LIVE_TRANSCRIBE_SERVICE -> return ConnectionCheck(scope)
             else -> return ConnectionCheck(scope, liveModelCount = listModels().size)
         }
     }
@@ -1297,20 +1298,12 @@ class OpenAiCompatibleClient(
 
     /**
      * Extracts the error detail from a non-2xx body. Tries the OpenAI-style `{ "error": { … } }` envelope
-     * first, then falls back to Soniox's flat `{ error_type, message, status_code }` shape — which also
-     * reads Scaleway's gateway errors, flat with a `message` of their own; null if the body is neither
-     * (e.g. plain-text gateways).
+     * first, then falls back to Soniox's flat `{ error_type, message, status_code }` shape; null if the body
+     * is neither (e.g. plain-text gateways).
      */
     private fun parseError(body: String): ErrorBodyDto? {
-        // The envelope is read field by field rather than into a typed class. Scaleway's model server puts
-        // the HTTP status in `code` as a number (#423), and a String-typed field refused the whole envelope
-        // over it — so the user was shown the raw JSON instead of the provider's sentence, and the sentence
-        // that said "file size" never reached the classifier as one.
-        runCatching { (json.parseToJsonElement(body) as? JsonObject)?.get("error") as? JsonObject }
-            .getOrNull()?.let { error ->
-                fun field(name: String) = (error[name] as? JsonPrimitive)?.contentOrNull
-                return ErrorBodyDto(message = field("message"), code = field("code"), type = field("type"))
-            }
+        runCatching { json.decodeFromString(ErrorEnvelopeDto.serializer(), body).error }
+            .getOrNull()?.let { return it }
         return runCatching {
             val soniox = json.decodeFromString(SonioxErrorDto.serializer(), body)
             if (soniox.message.isNullOrBlank() && soniox.errorType.isNullOrBlank()) {
@@ -1779,10 +1772,14 @@ class OpenAiCompatibleClient(
         val message: String? = null,
     )
 
+    @Serializable
+    private data class ErrorEnvelopeDto(val error: ErrorBodyDto? = null)
+
+    @Serializable
     private data class ErrorBodyDto(
         val message: String? = null,
         // OpenAI-style machine-readable hints (e.g. code = "invalid_api_key", type = "insufficient_quota").
-        // Whatever primitive the provider sent, as text — Scaleway's `400` arrives here as "400".
+        // Decoded as strings; providers that send a non-string code simply fall back to status/keywords.
         val code: String? = null,
         val type: String? = null,
     )

@@ -39,8 +39,9 @@ object PhoneTranscriber {
         val id = prefs.dictate.transcriptionProviderId.get()
         val account = prefs.dictate.providerAccounts.get().getOrEmpty(id)
         val preset = presetFor(account)
-        if (preset.transcriptionApi == TranscriptionApi.BASIC_RECOGNITION_SERVICE) {
-            // Basic voice typing is live-mic only; the watch bridge has no file path for it.
+        if (ProviderRegistry.isSystemSpeechApi(preset.transcriptionApi)) {
+            // Basic voice typing and Google Live Transcribe are live-mic only; the watch bridge has no
+            // file path for either.
             // An empty transcript keeps the watch UI honest without inventing text.
             return ""
         }

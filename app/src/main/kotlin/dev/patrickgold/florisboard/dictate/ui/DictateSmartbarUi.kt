@@ -115,6 +115,7 @@ import dev.patrickgold.florisboard.app.FlorisPreferenceStore
 import dev.patrickgold.florisboard.dictate.DictateController
 import dev.patrickgold.florisboard.dictate.DictateLanguages
 import dev.patrickgold.florisboard.dictate.DictateRecordingAnimation
+import dev.patrickgold.florisboard.dictate.LiveVoicePhase
 import dev.patrickgold.florisboard.dictate.PushToTalkPhase
 import dev.patrickgold.florisboard.dictate.provider.DictateApiException
 import dev.patrickgold.florisboard.ime.keyboard.FlorisImeSizing
@@ -140,9 +141,27 @@ private val RecordingRed = Color(0xFFE53935)
  *   button. The sticky mic (rendered by the Smartbar) stops the recording and starts transcribing.
  * - Transcribing: a spinning icon + label, or a retry indicator while a transient failure is retried.
  * - Error: the error message, auto-cleared after a few seconds.
+ * - Live (a realtime/streaming or system-engine dictation, and only while
+ *   `dictate__live_voice_indicator` is on): the live indicator instead of all of the above — one state word
+ *   in the middle, the state as a picture on the mic key, and the cross that gives up on the wait. See
+ *   [LiveVoiceBar]. Nothing here is paused or timed, so the recording chrome would be describing a
+ *   dictation that is not happening.
  */
 @Composable
 fun DictateSmartbarUi(state: DictateController.UiState, modifier: Modifier = Modifier) {
+    val live by DictateController.liveVoicePhase.collectFlowAsState()
+    val livePhase = live
+    // Push-to-talk keeps the ordinary bar for the length of the gesture: the bin a held mic is thrown
+    // into lives there, and nothing may replace it while a finger is looking for it (see [RecordingContent]).
+    val ptt by DictateController.pushToTalkVisuals.collectFlowAsState()
+    // A live dictation gets its own bar. The chrome below — timer, dot, pause, language chip — describes a
+    // recording that is uploaded in one piece at the end, which is precisely what a live session is not:
+    // nothing can be paused, the elapsed time is not the waiting time, and the only control that matters is
+    // the one that gives up on the wait entirely.
+    if (livePhase != null && !ptt.micShown && state !is DictateController.UiState.Idle) {
+        LiveVoiceBar(phase = livePhase, modifier = modifier)
+        return
+    }
     val arrangement = when {
         state is DictateController.UiState.Recording -> Arrangement.SpaceBetween
         state is DictateController.UiState.Error &&
@@ -168,6 +187,42 @@ fun DictateSmartbarUi(state: DictateController.UiState, modifier: Modifier = Mod
             is DictateController.UiState.Promo -> PromoContent(state.kind, state.message)
             else -> {}
         }
+    }
+}
+
+/**
+ * What the Smartbar shows while a live dictation runs: the state in words, in the middle, and the cross
+ * that gives up on it.
+ *
+ * No symbols. The picture is on the mic key — see `LiveVoiceGlyph`, a thumb's width away and the control
+ * the user is already watching — and a loader beside a word that already says *Please wait* is one fact
+ * told twice. What this bar adds is the half a picture cannot carry: which of the states the engine is in.
+ * That is worth a whole bar during exactly the seconds a user is deciding whether the microphone is
+ * working at all.
+ *
+ * The cross sits at the far end of this row, which is the space immediately left of the mic key — so it
+ * reads as "cancel that button" rather than as punctuation on the sentence.
+ */
+@Composable
+private fun LiveVoiceBar(phase: LiveVoicePhase, modifier: Modifier) {
+    val context = LocalContext.current
+    val level by DictateController.liveVoiceLevel.collectFlowAsState()
+    SnyggRow(
+        elementName = FlorisImeUi.SmartbarSharedActionsRow.elementName,
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        LiveVoiceStatus(
+            phase = phase,
+            level = level,
+            color = LiveVoiceBlue,
+            // Fills the row so the caption can be centred in it and the cross can be pinned to its end.
+            modifier = Modifier.fillMaxSize(),
+            showBars = false,
+            onAbort = { DictateController.abortLiveDictation(context) },
+        )
     }
 }
 

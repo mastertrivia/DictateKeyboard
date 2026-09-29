@@ -33,6 +33,7 @@ import dev.patrickgold.florisboard.dictate.DictateLegacyLayout
 import dev.patrickgold.florisboard.dictate.DictatePromptsLayout
 import dev.patrickgold.florisboard.dictate.DictateRecordingAnimation
 import dev.patrickgold.florisboard.dictate.DictateReasoningEffort
+import dev.patrickgold.florisboard.dictate.DictateSystemVoiceEngine
 import dev.patrickgold.florisboard.dictate.data.mappings.DictateMappings
 import dev.patrickgold.florisboard.dictate.gif.GifContentFilter
 import dev.patrickgold.florisboard.dictate.gif.GifHistory
@@ -307,6 +308,10 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
         val transcriptionProviderId = string(
             key = "dictate__transcription_provider_id",
             default = "openai",
+        )
+        val basicVoiceEngine = enum(
+            key = "dictate__basic_voice_engine",
+            default = DictateSystemVoiceEngine.BUILT_IN,
         )
 
         // On-device offline fallback (issue #104): when the active provider is a cloud one and its call
@@ -688,6 +693,10 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
             key = "dictate__realtime_hide_preview",
             default = false,
         )
+        val liveVoiceIndicator = boolean(
+            key = "dictate__live_voice_indicator",
+            default = true,
+        )
         // --- Long-form segmented dictation (issue #170) ------------------------------------------
         // Transcribe long dictations segment-by-segment in the background while you keep talking, so you
         // don't wait for one big upload at the end. OFF by default; MANUAL shows the "Next" button, AUTO
@@ -887,6 +896,14 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
         val languageFollowsKeyboard = boolean(
             key = "dictate__language_follows_keyboard",
             default = false,
+        )
+        val realtimeLanguageLock = boolean(
+            key = "dictate__realtime_language_lock",
+            default = false,
+        )
+        val realtimeVoiceEditInstruction = string(
+            key = "dictate__realtime_voice_edit_instruction",
+            default = "",
         )
         // Guard so the one-time seeding of the device/system dictation language (added on top of the
         // default detect,en) runs only once on a fresh install. See

@@ -29,6 +29,19 @@ public interface VoiceCallback {
     /** Recognition error occurred. (was onError(int)) */
     void onError(int errorCode);
 
+    /**
+     * The session is over and its text has been written.
+     *
+     * A default method on purpose: this exists for the Live Transcribe session, whose stop waits a
+     * bounded time for the recognizer's final hypothesis before writing text, and therefore cannot
+     * report that it has finished at the moment it was asked to stop. The Speech-Notes engine finishes
+     * synchronously and reports its state the way it always has, so it needs nothing here — and adding a
+     * required method would have forced a change into a file that is kept byte-identical to the engine
+     * Basic voice typing ships.
+     */
+    default void onSessionFinished() {
+    }
+
     /** RMS level of the microphone. (was onRmsChanged(float)) */
     void onRmsChanged(float rms);
 }

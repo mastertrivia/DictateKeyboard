@@ -110,10 +110,10 @@ object ImportTranscriber {
         val appContext = context.applicationContext
         val account = accountFor(prefs)
         val preset = presetFor(account)
-        if (preset.transcriptionApi == TranscriptionApi.BASIC_RECOGNITION_SERVICE) {
-            // Basic voice typing is the live microphone only — there is no audio-file endpoint to
-            // post to and nothing to run offline. Say so instead of building an HTTP client that
-            // would have to invent a wire format that does not exist.
+        if (ProviderRegistry.isSystemSpeechApi(preset.transcriptionApi)) {
+            // Basic voice typing and Google Live Transcribe are the live microphone only — there is no
+            // audio-file endpoint to post to and nothing to run offline. Say so instead of building an
+            // HTTP client that would have to invent a wire format that does not exist.
             throw IllegalStateException(appContext.getString(R.string.dictate__basic_file_import_unsupported))
         }
         val onDevice = preset.transcriptionApi == TranscriptionApi.LOCAL_ONDEVICE

@@ -111,17 +111,7 @@ data class ProviderPreset(
      * Empty for everyone who serves the world from one address.
      */
     val regions: List<ProviderRegion> = emptyList(),
-    /**
-     * True where the provider keeps the data in the EU **by default**, in its own published words, so
-     * the "EU" filter of the add-provider list can offer it. A provider that merely *offers* an EU
-     * region says so through [regions] instead and is found by [servesFromEu] all the same.
-     */
-    val hostedInEu: Boolean = false,
-) {
-    /** Whether the audio and text can stay in the EU with this provider — by default, or by region. */
-    val servesFromEu: Boolean
-        get() = hostedInEu || regions.any { it.id == "eu" }
-}
+)
 
 /**
  * Catalog of built-in OpenAI-compatible providers plus a factory for user-defined custom endpoints.
@@ -440,10 +430,6 @@ object ProviderRegistry {
         realtimeApi = RealtimeApi.MISTRAL_VOXTRAL,
         defaultRealtimeModel = "voxtral-mini-transcribe-realtime-2602",
         curatedRealtimeModels = listOf("voxtral-mini-transcribe-realtime-2602"),
-        // "By default, your data is hosted in the European Union" (Mistral help centre, updated
-        // 2026-08-12). The same page names a separate US endpoint, which this base URL is not, and
-        // subprocessors outside the EU for some features.
-        hostedInEu = true,
     )
 
     val SONIOX = ProviderPreset(
@@ -846,8 +832,12 @@ object ProviderRegistry {
     )
 
     /**
-     * Phone SpeechRecognizer transcription (Basic Voice Typing). No network, no API key.
-     * Routed by the dictation flow, never sent through the HTTP client.
+     * Basic voice typing: the phone's own speech recognition — the same door every keyboard knocks
+     * on (Google voice typing / SODA on most devices). No network code, no key, no model: the ported
+     * helium314.keyboard.voice engine binds the system RecognitionService through
+     * android.speech.SpeechRecognizer and streams results into the field. First in the list on
+     * purpose — it is the instant, free, zero-setup option, and it is also the local reflex layer a
+     * later SODA + server stage can lean on.
      */
     val BASIC = ProviderPreset(
         id = "basic",
@@ -855,6 +845,30 @@ object ProviderRegistry {
         baseUrl = "",
         capabilities = STT_ONLY,
         transcriptionApi = TranscriptionApi.BASIC_RECOGNITION_SERVICE,
+        supportsDynamicModels = false,
+        apiKeyUrl = null,
+    )
+
+    /**
+     * Google Live Transcribe as its own provider.
+     *
+     * The installed Live Transcribe app was decompiled and it ships **no speech engine of its own**: it
+     * is a client of Android's public `SpeechRecognizer` API, which reaches the same
+     * `com.google.android.tts` Speech Services the phone's own voice typing uses. Its distinguishing
+     * parts — on-device first, recognizer-side text formatting, SODA end-pointing events, and one
+     * long-lived session that rolls over at every pause — are reproduced verbatim in
+     * `LiveTranscribeSession` / `LiveTranscribeEngine`, which is why this is a real second engine and not
+     * a renamed copy of [BASIC].
+     *
+     * Like [BASIC] it needs no key and no model: there is nothing to configure, so its settings surface
+     * is an explanation and its language follows the dictation language (or the keyboard's own).
+     */
+    val LIVE_TRANSCRIBE = ProviderPreset(
+        id = "live_transcribe",
+        displayName = "Google Live Transcribe",
+        baseUrl = "",
+        capabilities = STT_ONLY,
+        transcriptionApi = TranscriptionApi.LIVE_TRANSCRIBE_SERVICE,
         supportsDynamicModels = false,
         apiKeyUrl = null,
     )
@@ -881,10 +895,27 @@ object ProviderRegistry {
 
     /** All built-in presets in display order. The custom option is added by the UI on top of these. */
     val presets: List<ProviderPreset> = listOf(
-        BASIC, CLOUD, OPENAI, GROQ, OPENROUTER, GEMINI, ANTHROPIC, TOGETHER, DEEPINFRA, MISTRAL, SONIOX,
-        ELEVENLABS, DEEPGRAM, ASSEMBLYAI, AZURE, XAI, DEEPSEEK, SILICONFLOW, SCALEWAY, OVHCLOUD,
-        OLLAMA, LOCAL,
+        BASIC, LIVE_TRANSCRIBE, CLOUD, OPENAI, GROQ, OPENROUTER, GEMINI, ANTHROPIC, TOGETHER,
+        DEEPINFRA, MISTRAL, SONIOX, ELEVENLABS, DEEPGRAM, ASSEMBLYAI, AZURE, XAI, DEEPSEEK,
+        SILICONFLOW, SCALEWAY, OVHCLOUD, OLLAMA, LOCAL,
     )
+
+    /**
+     * The two providers served by the phone's own speech service rather than by an HTTP endpoint —
+     * Basic voice typing and Google Live Transcribe. Both are keyless and model-less, both are routed to
+     * a `helium314.keyboard.voice` engine by the dictation flow, and both therefore need the same
+     * treatment everywhere a provider is classified (routing, guards, summaries, the picker order).
+     */
+    fun isSystemSpeechApi(api: TranscriptionApi): Boolean =
+        api == TranscriptionApi.BASIC_RECOGNITION_SERVICE || api == TranscriptionApi.LIVE_TRANSCRIBE_SERVICE
+
+    /** Where a keyless, model-less system-speech provider sits in a list: Basic first, then Live Transcribe. */
+    fun systemSpeechRank(preset: ProviderPreset): Int = when (preset.transcriptionApi) {
+        TranscriptionApi.BASIC_RECOGNITION_SERVICE -> 0
+        TranscriptionApi.LIVE_TRANSCRIBE_SERVICE -> 1
+        TranscriptionApi.LOCAL_ONDEVICE -> 2
+        else -> 3
+    }
 
     fun byId(id: String): ProviderPreset? = presets.firstOrNull { it.id == id }
 
@@ -933,14 +964,6 @@ object ProviderRegistry {
      *  - ElevenLabs 3 GB, Deepgram 2 GB, AssemblyAI 2.2 GB through the upload endpoint. Far beyond
      *    anything a keyboard produces; recorded so the number is not looked up twice.
      *  - SiliconFlow 50 MB (and one hour), from its transcription API reference.
-     *  - Scaleway 25 MB for whisper-large-v3 on its serverless API (supported-models page, read
-     *    2026-09-25), and asked the same day: the "MB" is a MiB. A 25,500,044-byte WAV transcribed; one
-     *    of 26,214,444 bytes came back 400 "Maximum file size exceeded (…, value=25.000041961669922)". Its
-     *    rate limit counts audio seconds, 1800 a minute once a payment method is on file; a single upload
-     *    at this ceiling is about 820 seconds of 16 kHz WAV, so the size, not the rate, is met first.
-     *  - OVHcloud 2048 MB or three hours per request with a key (speech-to-text guide, updated
-     *    2026-05-11) — with Deepgram's, since a keyboard never gets near it. Unmeasured: the anonymous
-     *    probe is capped at 10 MB, and the app never sends without a key.
      *  - OpenRouter 25 MB for a multipart upload, added 2026-09-04 while checking #321 — it was simply
      *    missing, which meant the file-import path never split anything for it and a shared recording
      *    went out whole to be refused. Its harder limit is not a size at all: a request gets about 60
@@ -953,12 +976,12 @@ object ProviderRegistry {
      *    of the two and is the one that governs a MAI request.
      */
     fun maxUploadBytes(providerId: String): Long = when (providerId) {
-        "openai", "cloud", "groq", "openrouter", "scaleway" -> 25L * 1024 * 1024
+        "openai", "cloud", "groq", "openrouter" -> 25L * 1024 * 1024
         "gemini" -> 15L * 1024 * 1024
         "siliconflow" -> 50L * 1024 * 1024
         "azure" -> 300L * 1024 * 1024
         "elevenlabs" -> 3L * 1024 * 1024 * 1024
-        "deepgram", "ovhcloud" -> 2L * 1024 * 1024 * 1024
+        "deepgram" -> 2L * 1024 * 1024 * 1024
         "assemblyai" -> 2252L * 1024 * 1024
         else -> 0L
     }

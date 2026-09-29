@@ -153,6 +153,46 @@ object RealtimeClient {
 }
 
 /**
+ * Provider-independent coverage tracking (the Google "never re-upload covered audio" principle, stage 2).
+ *
+ * A session reports how much of the audio it was fed a *settled* transcription already covers, so a
+ * rescued stream re-transcribes only the unsettled tail instead of the whole recording — the same
+ * division of labour the decompiled Google client keeps, applied to every provider here rather than to
+ * Gemini alone. Shared so each session measures it identically.
+ *
+ * The margin is deliberately generous. Coverage is set to the audio fed as of the last final, minus
+ * [lagSeconds], because the server settles a phrase while its last moments may still be in flight.
+ * Under-estimating coverage only re-sends a little more audio (safe); over-estimating is the one error
+ * that could drop words, so the lag errs toward leaving audio covered by nothing rather than by text.
+ * Nothing having settled yet leaves coverage at zero, and [coveredSeconds] then returns null — the
+ * caller falls back to the whole recording, which is the pre-existing behaviour.
+ */
+private class RealtimeCoverage(
+    sampleRate: Int,
+    private val lagSeconds: Double = 2.0,
+) {
+    /** Mono 16-bit PCM: two bytes per sample. */
+    private val bytesPerSecond = sampleRate.toDouble() * 2.0
+
+    @Volatile private var fedBytes = 0L
+    @Volatile private var coveredBytes = 0L
+
+    /** Every byte handed to [RealtimeSession.sendAudio], whether or not a gate has released it yet. */
+    fun onAudio(len: Int) {
+        fedBytes += len
+    }
+
+    /** A settled transcription arrived: everything sent up to ~[lagSeconds] ago is now covered by text. */
+    fun onFinal() {
+        coveredBytes = (fedBytes - (lagSeconds * bytesPerSecond).toLong()).coerceAtLeast(0L)
+    }
+
+    /** Seconds of the sent stream covered by settled text, or null when nothing has settled. */
+    fun coveredSeconds(): Double? =
+        if (coveredBytes <= 0L) null else coveredBytes.coerceIn(0L, fedBytes) / bytesPerSecond
+}
+
+/**
  * OpenAI realtime transcription over `wss://api.openai.com/v1/realtime?intent=transcription`. Sends a
  * `session.update` transcription config on open, streams 24 kHz mono PCM16 as base64
  * `input_audio_buffer.append`, and turns `...input_audio_transcription.delta`/`.completed` events into
@@ -175,6 +215,8 @@ private class OpenAiRealtimeSession(
     private var ws: WebSocket? = null
     private val partial = StringBuilder()
     private val audioGate = RealtimeAudioGate()
+    /** Tail-recovery coverage (stage 2): a turn settles with `…input_audio_transcription.completed`. */
+    private val coverage = RealtimeCoverage(24_000)
     @Volatile private var committing = false
     @Volatile private var done = false
 
@@ -237,6 +279,7 @@ private class OpenAiRealtimeSession(
                 "conversation.item.input_audio_transcription.completed" -> {
                     val transcript = obj["transcript"]?.jsonPrimitive?.content ?: partial.toString()
                     partial.setLength(0)
+                    coverage.onFinal()
                     callbacks.onFinalSegment(transcript)
                     // After we asked to commit, the completed event is our cue that the final is in.
                     if (committing) finishClosed(webSocket)
@@ -287,10 +330,13 @@ private class OpenAiRealtimeSession(
     }.toString()
 
     override fun sendAudio(pcm16: ByteArray, len: Int) {
+        coverage.onAudio(len)
         audioGate.sendAudio(pcm16, len) { audio, length ->
             ws?.let { sendAudioFrame(it, audio, length) }
         }
     }
+
+    override fun coveredAudioSeconds(): Double? = coverage.coveredSeconds()
 
     private fun sendAudioFrame(socket: WebSocket, pcm16: ByteArray, len: Int) {
         val b64 = Base64.encodeToString(pcm16, 0, len, Base64.NO_WRAP)
@@ -471,6 +517,8 @@ private class AssemblyAiRealtimeSession(
 
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
     private var ws: WebSocket? = null
+    /** Tail-recovery coverage (stage 2): a turn settles when its `end_of_turn` flag is set. */
+    private val coverage = RealtimeCoverage(16_000)
     @Volatile private var done = false
 
     private companion object {
@@ -491,6 +539,7 @@ private class AssemblyAiRealtimeSession(
                     val transcript = obj["transcript"]?.jsonPrimitive?.content.orEmpty()
                     if (transcript.isBlank()) return
                     if (obj["end_of_turn"]?.jsonPrimitive?.booleanOrNull == true) {
+                        coverage.onFinal()
                         callbacks.onFinalSegment(transcript)
                     } else {
                         callbacks.onPartial(transcript)
@@ -508,8 +557,11 @@ private class AssemblyAiRealtimeSession(
     }
 
     override fun sendAudio(pcm16: ByteArray, len: Int) {
+        coverage.onAudio(len)
         runCatching { ws?.send(pcm16.toByteString(0, len)) }
     }
+
+    override fun coveredAudioSeconds(): Double? = coverage.coveredSeconds()
 
     override fun finish() {
         val socket = ws ?: return finishClosed(null)
@@ -555,6 +607,8 @@ private class ElevenLabsRealtimeSession(
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
     private var ws: WebSocket? = null
     private val audioGate = RealtimeAudioGate()
+    /** Tail-recovery coverage (stage 2): Scribe settles with `committed_transcript`. */
+    private val coverage = RealtimeCoverage(16_000)
     @Volatile private var done = false
 
     fun connect() {
@@ -578,7 +632,10 @@ private class ElevenLabsRealtimeSession(
                 )
                 "partial_transcript" -> if (body.isNotBlank()) callbacks.onPartial(body)
                 "committed_transcript", "committed_transcript_with_timestamps" ->
-                    if (body.isNotBlank()) callbacks.onFinalSegment(body)
+                    if (body.isNotBlank()) {
+                        coverage.onFinal()
+                        callbacks.onFinalSegment(body)
+                    }
             }
         }
 
@@ -590,10 +647,13 @@ private class ElevenLabsRealtimeSession(
     }
 
     override fun sendAudio(pcm16: ByteArray, len: Int) {
+        coverage.onAudio(len)
         audioGate.sendAudio(pcm16, len) { audio, length ->
             ws?.let { sendAudioFrame(it, audio, length) }
         }
     }
+
+    override fun coveredAudioSeconds(): Double? = coverage.coveredSeconds()
 
     private fun sendAudioFrame(socket: WebSocket, pcm16: ByteArray, len: Int) {
         val msg = buildJsonObject {
@@ -1104,6 +1164,8 @@ private class DeepgramRealtimeSession(
     private var ws: WebSocket? = null
     /** Latest partial, cleared when it is settled — emitted at close if nothing ever settled it. */
     @Volatile private var pending = ""
+    /** Tail-recovery coverage (stage 2): Nova settles with `is_final`, Flux with `EndOfTurn`. */
+    private val coverage = RealtimeCoverage(16_000)
     @Volatile private var done = false
 
     /** The dictation language the user pinned, or null when they left auto-detection on. */
@@ -1161,8 +1223,11 @@ private class DeepgramRealtimeSession(
     }
 
     override fun sendAudio(pcm16: ByteArray, len: Int) {
+        coverage.onAudio(len)
         runCatching { ws?.send(pcm16.toByteString(0, len)) }
     }
+
+    override fun coveredAudioSeconds(): Double? = coverage.coveredSeconds()
 
     override fun finish() {
         val socket = ws ?: return finishClosed(null)
@@ -1181,6 +1246,7 @@ private class DeepgramRealtimeSession(
         if (transcript.isBlank()) return
         if (settled) {
             pending = ""
+            coverage.onFinal()
             callbacks.onFinalSegment(transcript)
         } else {
             pending = transcript
