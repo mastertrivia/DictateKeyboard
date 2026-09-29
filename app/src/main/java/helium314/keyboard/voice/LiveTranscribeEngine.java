@@ -320,7 +320,8 @@ public class LiveTranscribeEngine implements VoiceCallback {
             return;
         }
         voiceUiState = state;
-        host.onVoiceEngineStateChanged(state, playStartTone, playStopTone);
+        SpeechNotesVoiceEngine.VoiceUiState hostState = SpeechNotesVoiceEngine.VoiceUiState.valueOf(state.name());
+        host.onVoiceEngineStateChanged(hostState, playStartTone, playStopTone);
     }
 
     /** "About to reconnect" — show a static restart acknowledgement, never bars. */
