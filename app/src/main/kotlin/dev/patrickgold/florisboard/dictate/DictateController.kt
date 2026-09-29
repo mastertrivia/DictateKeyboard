@@ -1063,10 +1063,15 @@ object DictateController {
      * invalid or missing API key, roadmap 1.12). Launched as a new task since an IME has no activity of
      * its own; clears the error afterwards so the Smartbar returns to normal.
      */
-    fun openProviderSettings(context: Context) {
+    fun setTranscriptionProvider(id: String) {
+        scope.launch { prefs.dictate.transcriptionProviderId.set(id) }
+    }
+
+    fun openProviderSettings(context: Context, addNew: Boolean = false) {
+        val route = if (addNew) "settings/dictate/providers/add" else "settings/dictate/providers"
         runCatching {
             context.startActivity(
-                Intent(Intent.ACTION_VIEW, Uri.parse("ui://florisboard/settings/dictate/providers"))
+                Intent(Intent.ACTION_VIEW, Uri.parse("ui://florisboard/$route"))
                     // BROWSABLE is required: FlorisAppActivity.onNewIntent only routes a VIEW intent to the
                     // nav-graph deep-link handler when it carries this category, otherwise it treats the
                     // intent as an extension-import and lands on the wrong screen.
@@ -1502,8 +1507,9 @@ object DictateController {
      * `activeSubtype` is the keyboard's own answer to "what language am I typing right now", which is
      * exactly what a dictation in auto mode should follow.
      */
-    private fun keyboardLanguageTag(): String? =
-        runCatching { FlorisImeService.activeSubtypeLanguageTag() }.getOrNull()
+    private fun keyboardLanguageTag(): String? = runCatching {
+        FlorisImeService.currentInputLanguageTag()
+    }.getOrNull()
 
     /**
      * Starts a basic-voice-typing session: the ported HeliBoard engine (system SpeechRecognizer)
@@ -2857,6 +2863,11 @@ object DictateController {
                 _liveVoicePhase.value = LiveVoicePhase.PLEASE_WAIT
             }
             LiveVoicePhase.SPEAK_NOW -> markLiveVoiceReady()
+            LiveVoicePhase.LISTENING -> {
+                liveVoiceReady = true
+                liveVoiceSpeaking = true
+                _liveVoicePhase.value = LiveVoicePhase.LISTENING
+            }
             LiveVoicePhase.TRANSCRIBING -> markLiveVoiceFinishing()
             // Unreachable from a system engine: it runs on this phone, so there is no connection to check.
             // Named rather than left to `else`, because a new state should force this decision to be made

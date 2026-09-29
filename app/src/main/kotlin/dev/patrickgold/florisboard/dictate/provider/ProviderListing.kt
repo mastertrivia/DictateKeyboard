@@ -30,6 +30,7 @@ object ProviderListing {
      */
     val pinnedIds: Set<String> = setOf(
         ProviderRegistry.BASIC.id,
+        ProviderRegistry.LIVE_TRANSCRIBE.id,
         ProviderRegistry.LOCAL.id,
         ProviderRegistry.CLOUD.id,
     )
@@ -139,7 +140,7 @@ object ProviderListing {
                 Filter.TRANSCRIPTION -> preset.capabilities.transcription
                 Filter.REWORDING -> preset.capabilities.chat
                 Filter.REALTIME -> preset.supportsRealtime
-                Filter.EU -> preset.servesFromEu
+                Filter.EU -> preset.id in setOf("openrouter", "mistral", "soniox", "scaleway", "ovhcloud")
             }
         }
     }

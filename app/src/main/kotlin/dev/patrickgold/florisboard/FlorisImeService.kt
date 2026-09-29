@@ -103,6 +103,10 @@ class FlorisImeService : LifecycleInputMethodService() {
             return FlorisImeServiceReference.get()?.currentInputConnection
         }
 
+        fun currentInputLanguageTag(): String? {
+            return FlorisImeServiceReference.get()?.activeInputLanguageTag()
+        }
+
         fun inputFeedbackController(): InputFeedbackController? {
             return FlorisImeServiceReference.get()?.inputFeedbackController
         }
@@ -249,6 +253,9 @@ class FlorisImeService : LifecycleInputMethodService() {
     private val keyboardManager by keyboardManager()
     private val nlpManager by nlpManager()
     private val subtypeManager by subtypeManager()
+
+    fun activeInputLanguageTag(): String? =
+        subtypeManager.activeSubtype.primaryLocale.localeTag().takeIf { it.isNotBlank() }
     private val themeManager by themeManager()
 
     val windowController = ImeWindowController(prefs, lifecycleScope)

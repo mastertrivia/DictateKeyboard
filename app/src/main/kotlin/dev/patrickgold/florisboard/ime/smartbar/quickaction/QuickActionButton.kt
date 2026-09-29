@@ -693,7 +693,6 @@ fun QuickActionButton(
                                         action = action,
                                         feedback = inputFeedbackController,
                                         holdDelayMs = PUSH_TO_TALK_HOLD_MS,
-                                        minSendMs = PUSH_TO_TALK_MIN_SEND_MS,
                                         cancelSlidePx = PUSH_TO_TALK_CANCEL_SLIDE.toPx(),
                                         lockSlidePx = PUSH_TO_TALK_LOCK_SLIDE.toPx(),
                                         commitPx = PUSH_TO_TALK_AXIS_COMMIT.toPx(),

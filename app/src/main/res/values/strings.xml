@@ -1916,6 +1916,11 @@
     <string name="dictate__status_idle" comment="Status shown on the Dictate panel when ready to record">Tap to dictate</string>
     <string name="dictate__status_recording" comment="Status shown while recording audio">Recording – tap to stop</string>
     <string name="dictate__status_transcribing" comment="Status shown while the audio is being transcribed">Transcribing…</string>
+    <string name="dictate__live_please_wait" comment="Live dictation state: the session is opening, so nothing said yet can be heard">Please wait…</string>
+    <string name="dictate__live_speak_now" comment="Live dictation state: the engine is listening and the room is quiet">Speak now</string>
+    <string name="dictate__live_listening" comment="Live dictation state: the engine is hearing speech right now">Listening…</string>
+    <string name="dictate__live_abort" comment="Content description for the cross beside the live indicator">Discard this dictation</string>
+    <string name="dictate__live_check_network" comment="Live dictation state: a cloud live model was tapped but there is no usable network">Check network…</string>
     <string name="dictate__status_transcribing_local" comment="Status shown while the on-device model is transcribing, instead of a cloud provider (issues #228/#270)">Transcribing on device…</string>
     <string name="dictate__back_to_keyboard" comment="Content description for the button that returns from the Dictate panel to the typing keyboard">Back to keyboard</string>
 
