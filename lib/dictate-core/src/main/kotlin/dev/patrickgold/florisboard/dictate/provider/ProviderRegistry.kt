@@ -749,7 +749,6 @@ object ProviderRegistry {
         ),
         // Batch only: Scaleway has no streaming transcription.
         supportsRealtime = false,
-        hostedInEu = true,
     )
 
     /**
@@ -813,7 +812,6 @@ object ProviderRegistry {
         ),
         // Batch only: the guide says streaming is "not yet supported" for transcription.
         supportsRealtime = false,
-        hostedInEu = true,
     )
 
     /**
