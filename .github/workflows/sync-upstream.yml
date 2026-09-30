@@ -1,163 +1,18 @@
-name: Sync upstream
+name: Sync upstream (retired)
 
-# Manual maintenance tool: merges upstream/main into this fork's main on demand.
-#
-# Automatic syncing does NOT happen here anymore. The "Build APK" workflow now
-# merges each official upstream RELEASE TAG into main immediately before it
-# builds, so the fork advances exactly when upstream releases - and the fork's
-# permanent exclusion (arm64-v8a only) survives the
-# merge. See .github/workflows/build-apk.yml.
-#
-# IMPORTANT - this workflow NEVER builds an APK.
-#
-# Do not use this to sync ahead of a release: pulling in post-release upstream
-# commits makes main's version differ from the release tag, and the next release
-# build's version check will then refuse to build. Let the release build sync.
-#
-# Keystore cache keep-alive is handled by the "Build APK" workflow's 4-hourly
-# schedule, which restores the shared signing-keystore cache on every run.
-#
-# If upstream ever edits the exact same lines this fork changed (gradle.properties
-# heap settings, the :app lint disable, ...), the merge stops with a conflict and
-# this run fails loudly - resolve it locally and push, or open the repo in the
-# browser and use "Sync fork".
+# Retired: merge + APK build now live in .github/workflows/build-apk.yml
+# ("Sync and Build", workflow_dispatch only). This file is kept for history.
+# No schedule and no dispatch, so it does not appear as a runnable Action.
 
 on:
-  # Manual trigger only: upstream is synced automatically by the release build,
-  # so there is deliberately no schedule. The fork advances only when upstream
-  # publishes an official release.
-  workflow_dispatch:
-    inputs:
-      upstream_repo:
-        description: 'Repository to sync from (owner/name)'
-        required: false
-        default: 'DevEmperor/DictateKeyboard'
-        type: string
-      upstream_branch:
-        description: 'Branch to sync from'
-        required: false
-        default: 'main'
-        type: string
-
-permissions:
-  contents: write
-  actions: write
-
-concurrency:
-  # Share the release build's group so a manual sync can never race the merge the
-  # release build performs on main.
-  group: build-apk
-  cancel-in-progress: false
+  push:
+    branches:
+      - __retired-do-not-use-sync-upstream__
 
 jobs:
-  sync:
+  retired:
+    if: false
     runs-on: ubuntu-latest
-    env:
-      # SHA-256 of the pinned CI signing certificate. A daily identity check
-      # below fails loudly if the cached keystore ever drifts, long before the
-      # next release build would surface it.
-      EXPECTED_CERT_SHA256: '38eb6683c0f9fde03882c176a372d5a86dee860183c785cec4b7a517f3db1520'
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      # Restore the shared CI signing keystore so this (nearly daily) run counts as
-      # an access and GitHub never evicts it. Populates it on a cold cache too.
-      - name: Restore CI signing keystore
-        id: keystore-cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.ci-signing
-          key: dictate-ci-signing-keystore-v1
-
-      # Warm/restore the keystore WITHOUT ever generating a new key. If the cache
-      # is missing and a KEYSTORE_BASE64 secret exists, recreate the keystore from
-      # the secret (same key, no rotation). If neither exists, warn loudly - the
-      # next "Build APK" run will fail until the keystore is restored, which is the
-      # intended protection against silently rotating the signing identity.
-      - name: Warm CI signing keystore
-        shell: bash
-        env:
-          KS_PASS: ${{ secrets.KEYSTORE_PASSWORD }}
-          KS_ALIAS: ${{ secrets.KEY_ALIAS }}
-        run: |
-          KEYSTORE="$HOME/.ci-signing/ci-release.jks"
-          if [ -f "$KEYSTORE" ]; then
-            echo "Using cached CI signing keystore."
-          elif [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
-            mkdir -p "$HOME/.ci-signing"
-            echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > "$KEYSTORE"
-            echo "Recreated CI signing keystore from the KEYSTORE_BASE64 secret (same key)."
-          else
-            echo "::warning::CI signing keystore not present in the Actions cache and no KEYSTORE_BASE64 secret is set."
-            echo "This does not block syncing upstream, but the next 'Build APK' run will fail until the keystore is restored (cache restore or secret). No new key is generated automatically, to avoid rotating the signing identity."
-          fi
-
-          # Daily signing-identity watchdog: when a keystore is available, make
-          # sure it is still the pinned key. A drift is a hard failure so it can
-          # never go unnoticed until the next release build.
-          if [ -f "$KEYSTORE" ]; then
-            KS_PASS="${KS_PASS:-dictate-ci-2026}"
-            KS_ALIAS="${KS_ALIAS:-dictate}"
-            KS_SHA=$(keytool -list -v -keystore "$KEYSTORE" -storepass "$KS_PASS" -alias "$KS_ALIAS" 2>/dev/null \
-              | sed -n 's/^[[:space:]]*SHA256: //p' | tr -d ' :' | tr 'A-F' 'a-f')
-            if [ -z "$KS_SHA" ]; then
-              echo "::error::Could not read the signing certificate from the cached CI keystore (wrong password/alias?)."
-              exit 1
-            fi
-            if [ "$KS_SHA" != "$EXPECTED_CERT_SHA256" ]; then
-              echo "::error::Signing identity drift detected: keystore is ${KS_SHA}, pinned expectation is ${EXPECTED_CERT_SHA256}."
-              echo "Restore the intended keystore (cache or KEYSTORE_BASE64 secret). Do not accept a changed key silently."
-              exit 1
-            fi
-            echo "Signing identity verified against pinned certificate ($KS_SHA)."
-          fi
-
-      - name: Configure git
-        shell: bash
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-      - name: Merge upstream/main and push
-        id: merge
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-          UPSTREAM_REPO: ${{ github.event.inputs.upstream_repo || 'DevEmperor/DictateKeyboard' }}
-          UPSTREAM_BRANCH: ${{ github.event.inputs.upstream_branch || 'main' }}
-        run: |
-          git remote add upstream "https://github.com/${UPSTREAM_REPO}.git"
-          git fetch upstream "${UPSTREAM_BRANCH}"
-
-          BEHIND=$(git rev-list --count "HEAD..upstream/${UPSTREAM_BRANCH}")
-          echo "Commits behind upstream (${UPSTREAM_REPO}:${UPSTREAM_BRANCH}): $BEHIND"
-
-          if [ "$BEHIND" -eq 0 ]; then
-            echo "Already up to date with upstream."
-            echo "merged=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          echo "Merging upstream/${UPSTREAM_BRANCH} into main ..."
-          if ! git merge "upstream/${UPSTREAM_BRANCH}" --no-edit; then
-            echo "::error::Merge conflict while syncing upstream. This fork's local edits collide with upstream changes. Resolve the conflict and push manually."
-            exit 1
-          fi
-
-          echo "Pushing synced main to origin ..."
-          git push origin main
-          echo "Sync complete."
-          echo "merged=true" >> "$GITHUB_OUTPUT"
-
-      # No APK build is triggered here. Sync and release builds are independent:
-      # the "Build APK" workflow reacts only to upstream release tags.
+      - name: Retired
+        run: echo "Use the Sync and Build workflow instead."

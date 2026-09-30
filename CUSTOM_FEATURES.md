@@ -96,5 +96,6 @@ ignored so they cannot conflict.
 | `260927-feat-user-zip3-full` | Parked older zip overlay (includes developer overlaps; not built) |
 | `[CUSTOM] ...` commits | Identifiable custom work |
 
-CI: `.github/workflows/build-apk.yml` can build `main` via `workflow_dispatch`
-with `source_ref=main` (unreleased APK of this application).
+CI: `.github/workflows/build-apk.yml` ("Sync and Build") is manual only: it
+merges `DevEmperor/DictateKeyboard` into fork `main`, then builds a signed
+arm64-v8a-only APK. No schedule.

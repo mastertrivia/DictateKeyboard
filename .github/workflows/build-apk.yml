@@ -1,80 +1,31 @@
-name: Build APK
+name: Sync and Build
 
-# Builds the real Dictate Keyboard Android app on GitHub's cloud runners and
-# publishes the resulting APK as a workflow artifact (optionally as a Release).
+# One click: merge DevEmperor/DictateKeyboard into this fork's main, then build
+# a signed arm64-v8a-only APK. Manual only — no schedule.
 #
-# IMPORTANT - when does this build?
-# -----------------------------------------------------------------------------
-# This workflow must ONLY run for official UPSTREAM RELEASE TAGS
-# (DevEmperor/DictateKeyboard tags like v6.1.2, v6.1.3, ...). It is deliberately
-# NOT wired to pushes to this fork's main branch, and the "Sync upstream"
-# workflow does NOT dispatch it either. Ordinary upstream commits are synced by
-# "Sync upstream" without producing any APK.
+#   1. Merge upstream/<branch> into origin/main. The fork's permanent
+#      exclusion (arm64-v8a only) and ZIP voice overlay live on main; a
+#      conflict fails the run instead of shipping extra ABIs.
+#   2. Re-apply the small CI-only patches in .github/ci-patches/ onto the
+#      working tree (not committed) so Gradle fits GitHub ubuntu-latest RAM.
+#   3. Build, verify the APK contains only arm64-v8a native libs, and sign
+#      with the pinned CI keystore (dictate-ci-signing-keystore-v1).
 #
-# How the correct source is chosen:
-#   1. The workflow fetches the EXACT commit the upstream release tag points to,
-#      then merges it INTO this fork's main branch. main carries the fork's
-#      permanent exclusion (arm64-v8a only). Scan Text / ML Kit OCR is upstream
-#      product and is kept. Merging picks up the official source and its version.
-#   2. Two small fork-only tweaks are then re-applied on top so the code still
-#      builds on GitHub's ubuntu-latest runners. Those tweaks live as plain
-#      patches in .github/ci-patches/ and are applied with `git apply --3way`
-#      (see the comments at the top of each patch):
-#        - gradle.properties  -> CI-safe Gradle/Kotlin daemon heaps
-#        - app/build.gradle.kts -> the :app lint disable mirroring :wear
-#   3. projectVersionName/projectVersionCode come from main after the merge,
-#      which is exactly what upstream declared for the release.
-#   4. If upstream edits the same lines the fork's arm64 exclusion owns, the
-#      merge stops with a conflict and the run FAILS loudly. An "Enforce fork
-#      exclusions" source guard and an APK-content guard fail the build if a
-#      non-arm64 ABI is ever shipped.
-#
-# Trigger model:
-#   - workflow_dispatch with an upstream_release_tag  -> build that exact tag.
-#   - workflow_dispatch without a tag, or the schedule -> auto-detect the
-#     oldest upstream release tag that is newer than the last processed one
-#     (floor v6.1.1) and not yet recorded in the processed list, then build it.
-#   - The processed list is kept on the ci/release-history branch in
-#     .github/upstream-app-releases-processed.txt so the same tag is never
-#     built twice; pass force=true to rebuild one anyway.
-#   - The 4-hourly schedule is the safety net that catches a release whose
-#     tag event the fork missed for any reason.
-#   - workflow_dispatch with source_ref -> UNRELEASED build of that fork ref
-#     (branch/tag/SHA). It bypasses the release list entirely and is never
-#     recorded as a processed release, so it cannot disturb official builds.
-#
-# Signing:
-#   The APK signature must be stable between builds, or Android refuses to
-#   install a newer build over an older one ("App not installed"). The signing
-#   key is generated ONCE and reused from the Actions cache
-#   (dictate-ci-signing-keystore-v1). The daily "Sync upstream" workflow keeps
-#   that cache alive so GitHub never evicts it. If the cache is ever lost the
-#   build FAILS loudly instead of silently rotating the key; the keystore can
-#   then be restored from the secret override (KEYSTORE_BASE64 + KEYSTORE_
-#   PASSWORD/KEY_ALIAS/KEY_PASSWORD) or a fresh key may be bootstrapped by
-#   setting allow_new_key_if_missing=true (deliberate key rotation only).
-#   Whatever the source of the keystore, this workflow ALWAYS checks its
-#   certificate against the pinned EXPECTED_CERT_SHA256 and fails on any
-#   deviation, so the signing identity can never drift by accident. A deliberate
-#   rotation requires the explicit allow_key_change=true input.
+# Signing identity never rotates here. Cache miss + no KEYSTORE_BASE64 secret
+# fails the job. Bypass only with allow_new_key_if_missing / allow_key_change.
 
 on:
   workflow_dispatch:
     inputs:
       upstream_repo:
-        description: 'Upstream repository (owner/name) to build from'
+        description: 'Repository to sync from (owner/name)'
         required: false
         default: 'DevEmperor/DictateKeyboard'
         type: string
-      upstream_release_tag:
-        description: 'Upstream release tag to build (e.g. v6.1.2). Empty = auto-detect the oldest unprocessed upstream release tag newer than v6.1.1'
+      upstream_branch:
+        description: 'Branch to sync from'
         required: false
-        default: ''
-        type: string
-      source_ref:
-        description: 'UNRELEASED build: build this fork ref (branch, tag or SHA) instead of an upstream release tag. Takes precedence over upstream_release_tag; never marked as a processed release.'
-        required: false
-        default: ''
+        default: 'main'
         type: string
       build_type:
         description: 'APK variant to build (release, debug or beta)'
@@ -85,13 +36,8 @@ on:
           - 'release'
           - 'debug'
           - 'beta'
-      force:
-        description: 'Rebuild even if this upstream tag was already processed'
-        type: boolean
-        required: false
-        default: false
       create_fork_release:
-        description: 'Also publish a fork GitHub Release (dictate-v<version>-ci) with the APK. Off by default: builds only upload an artifact.'
+        description: 'Also publish a fork GitHub Release with the APK. Off by default: builds only upload an artifact.'
         type: boolean
         required: false
         default: false
@@ -106,41 +52,28 @@ on:
         required: false
         default: false
 
-  schedule:
-    # Runs every 4 hours to pick up new upstream release tags (fallback if the
-    # tag event was ever missed). No-ops quickly when there is nothing new.
-    - cron: '23 0,4,8,12,16,20 * * *'
-
 permissions:
   contents: write
   actions: write
 
 concurrency:
-  # All runs of this workflow serialize so the processed-release list on
-  # ci/release-history can never be updated by two runs at once.
-  group: build-apk
+  group: sync-and-build
   cancel-in-progress: false
 
 jobs:
-  build-apk:
+  sync-and-build:
     runs-on: ubuntu-latest
     env:
       BUILD_TYPE: ${{ github.event.inputs.build_type || 'release' }}
       UPSTREAM_REPO: ${{ github.event.inputs.upstream_repo || 'DevEmperor/DictateKeyboard' }}
-      # Every upstream release tag at or below this version is considered
-      # already handled historically (fork GitHub Releases dictate-v6.0.0-ci
-      # and dictate-v6.1.1-ci cover v6.0.0 and v6.1.1). Auto-detection only
-      # considers tags STRICTLY newer than this floor.
-      FLOOR_VERSION: '6.1.1'
-      MARKER_BRANCH: ci/release-history
-      MARKER_FILE: .github/upstream-app-releases-processed.txt
-      # Expected signing certificate (SHA-256) of the CI keystore in use.
+      UPSTREAM_BRANCH: ${{ github.event.inputs.upstream_branch || 'main' }}
       EXPECTED_CERT_SHA256: '38eb6683c0f9fde03882c176a372d5a86dee860183c785cec4b7a517f3db1520'
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -148,9 +81,6 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      # Restore the shared CI signing keystore so this run counts as an access
-      # and GitHub never evicts it. Populates it on a cold cache too. Runs on
-      # every invocation (including quick no-op scans) to keep the key alive.
       - name: Restore CI signing keystore
         uses: actions/cache@v4
         with:
@@ -167,233 +97,89 @@ jobs:
           restore-keys: |
             gradle-${{ runner.os }}-
 
-      - name: Determine upstream release to build
-        id: determine
+      - name: Merge upstream into main
+        id: sync
         shell: bash
         env:
-          INPUT_TAG: ${{ github.event.inputs.upstream_release_tag }}
-          INPUT_REF: ${{ github.event.inputs.source_ref }}
-          FORCE: ${{ github.event.inputs.force }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          UPSTREAM_URL="https://github.com/${UPSTREAM_REPO}.git"
+          git remote add upstream "https://github.com/${UPSTREAM_REPO}.git" 2>/dev/null \
+            || git remote set-url upstream "https://github.com/${UPSTREAM_REPO}.git"
 
-          # Remember what upstream tags we already processed (ci/release-history
-          # branch, .github/upstream-app-releases-processed.txt).
-          PROCESSED=""
-          if git fetch -q origin "${MARKER_BRANCH}:refs/remotes/origin/${MARKER_BRANCH}" 2>/dev/null; then
-            PROCESSED=$(git show "refs/remotes/origin/${MARKER_BRANCH}:${MARKER_FILE}" 2>/dev/null \
-              | sed -n 's/^\(v[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\)[[:space:]].*/\1/p' || true)
-          fi
+          git fetch -q origin main
+          git fetch -q upstream "${UPSTREAM_BRANCH}"
+          git checkout -q -B main origin/main
 
-          newer_than() { # $1 floor, $2 candidate -> true if $2 > $1
-            [ "$1" != "$2" ] && [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | tail -n1)" = "$2" ]
-          }
+          BEHIND=$(git rev-list --count "HEAD..upstream/${UPSTREAM_BRANCH}")
+          echo "Commits behind upstream (${UPSTREAM_REPO}:${UPSTREAM_BRANCH}): $BEHIND"
 
-          RELEASE_TAG=""
-          MODE="auto"
-
-          if [ -n "$INPUT_REF" ]; then
-            # Unreleased/ad-hoc build of an arbitrary fork ref (branch/tag/SHA).
-            # This bypasses the release machinery entirely and is never recorded
-            # as a processed release, so it cannot affect the official pipeline.
-            MODE="ref"
-            echo "mode=$MODE" >> "$GITHUB_OUTPUT"
-            echo "build_ref=$INPUT_REF" >> "$GITHUB_OUTPUT"
-            echo "should_build=true" >> "$GITHUB_OUTPUT"
-            echo "Selected fork ref for an UNRELEASED build: ${INPUT_REF}"
-            exit 0
-          fi
-
-          if [ -n "$INPUT_TAG" ]; then
-            MODE="manual"
-            RELEASE_TAG="$INPUT_TAG"
+          if [ "$BEHIND" -eq 0 ]; then
+            echo "Already up to date with upstream."
+            echo "merged=false" >> "$GITHUB_OUTPUT"
           else
-            ALL_TAGS=$(git ls-remote --tags "$UPSTREAM_URL" \
-              | sed -n 's#.*refs/tags/\(v[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\)$#\1#p' \
-              | sort -V)
-            for t in $ALL_TAGS; do
-              ver="${t#v}"
-              newer_than "$FLOOR_VERSION" "$ver" || continue
-              if [ -n "$PROCESSED" ] && printf '%s\n' "$PROCESSED" | grep -qx "$t"; then
-                continue
-              fi
-              RELEASE_TAG="$t"
-              break
-            done
-          fi
-
-          if [ -z "$RELEASE_TAG" ]; then
-            echo "No unprocessed upstream release tag newer than v${FLOOR_VERSION} found; nothing to build."
-            echo "should_build=false" >> "$GITHUB_OUTPUT"
-            echo "skip_reason=no-new-release" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          case "$RELEASE_TAG" in
-            v[0-9]*.[0-9]*.[0-9]*) ;;
-            *) echo "::error::Unsupported tag format: $RELEASE_TAG (expected vX.Y.Z)"; exit 1 ;;
-          esac
-
-          # Confirm the tag really exists upstream.
-          if ! git ls-remote --exit-code --tags "$UPSTREAM_URL" "refs/tags/$RELEASE_TAG" >/dev/null 2>&1; then
-            echo "::error::Upstream tag $RELEASE_TAG not found on ${UPSTREAM_REPO}"
-            exit 1
-          fi
-
-          # Deduplicate: skip a tag we already processed (unless force).
-          if [ -n "$PROCESSED" ] && printf '%s\n' "$PROCESSED" | grep -qx "$RELEASE_TAG" \
-             && [ "$FORCE" != "true" ]; then
-            echo "Upstream tag ${RELEASE_TAG} was already processed; skipping (set force=true to rebuild)."
-            echo "should_build=false" >> "$GITHUB_OUTPUT"
-            echo "skip_reason=already-processed" >> "$GITHUB_OUTPUT"
-            echo "release_tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
-            echo "tag_version=${RELEASE_TAG#v}" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          echo "release_tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
-          echo "tag_version=${RELEASE_TAG#v}" >> "$GITHUB_OUTPUT"
-          echo "mode=$MODE" >> "$GITHUB_OUTPUT"
-          echo "should_build=true" >> "$GITHUB_OUTPUT"
-          echo "Selected upstream release: ${RELEASE_TAG} (mode: ${MODE})"
-
-      # The fork-only patches live on main; copy them aside BEFORE the working
-      # tree is switched to the release commit merged into main below.
-      - name: Stash fork-only CI patches
-        if: steps.determine.outputs.should_build == 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p /tmp/ci-patches
-          if ls .github/ci-patches/*.patch >/dev/null 2>&1; then
-            cp .github/ci-patches/*.patch /tmp/ci-patches/
-            echo "Stashed fork-only CI patches:"
-            ls -1 /tmp/ci-patches
-          else
-            echo "::warning::No fork-only CI patches found in .github/ci-patches/; building the release merged into main as-is."
-          fi
-
-      - name: Sync release into main, check it out, and apply fork patches
-        id: checkout_release
-        if: steps.determine.outputs.should_build == 'true'
-        shell: bash
-        env:
-          RELEASE_TAG: ${{ steps.determine.outputs.release_tag }}
-          BUILD_REF: ${{ steps.determine.outputs.build_ref }}
-          MODE: ${{ steps.determine.outputs.mode }}
-          FORCE: ${{ github.event.inputs.force }}
-        run: |
-          set -euo pipefail
-
-          if [ -n "${BUILD_REF:-}" ]; then
-            # UNRELEASED build: check out the requested fork ref exactly.
-            git fetch -q origin "${BUILD_REF}"
-            RELEASE_COMMIT=$(git rev-parse "FETCH_HEAD^{commit}")
-            SOURCE_LABEL="ref ${BUILD_REF}"
-            echo "release_commit=$RELEASE_COMMIT" >> "$GITHUB_OUTPUT"
-            echo "artifact_suffix=-$(printf '%s' "$BUILD_REF" | tr '/ ' '--' | tr -cd 'A-Za-z0-9._-')-$(printf '%s' "$RELEASE_COMMIT" | cut -c1-7)" >> "$GITHUB_OUTPUT"
-            echo "Checking out fork ref ${BUILD_REF} at commit ${RELEASE_COMMIT} ..."
-            git checkout -q --detach "$RELEASE_COMMIT"
-          else
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-            git remote add upstream "https://github.com/${UPSTREAM_REPO}.git" 2>/dev/null \
-              || git remote set-url upstream "https://github.com/${UPSTREAM_REPO}.git"
-
-            # Full (not shallow) fetch of the tag so the working history around the
-            # release commit is intact (some buildType suffixes query git history).
-            git fetch -q "upstream" "refs/tags/${RELEASE_TAG}:refs/tags/upstream/${RELEASE_TAG}"
-            TAG_COMMIT=$(git rev-parse "refs/tags/upstream/${RELEASE_TAG}^{commit}")
-
-            # Sync before build: merge the release INTO main so the fork's permanent
-            # arm64-v8a-only exclusion survives, and so the official version is
-            # picked up from the tag. A conflict means upstream touched the ABI
-            # filter; fail loudly rather than silently shipping extra ABIs.
-            git fetch -q origin main
-            git checkout -q -B main origin/main
-            echo "Merging upstream ${RELEASE_TAG} (${TAG_COMMIT}) into main ..."
-            if ! git merge --no-edit "$TAG_COMMIT"; then
-              echo "::error::Merge conflict syncing upstream ${RELEASE_TAG} into main."
-              echo "Upstream changed code the fork's arm64-v8a-only exclusion owns."
-              echo "Resolve the conflict, push main, then re-run this workflow with force=true."
+            echo "Merging upstream/${UPSTREAM_BRANCH} into main ..."
+            if ! git merge --no-edit "upstream/${UPSTREAM_BRANCH}"; then
+              echo "::error::Merge conflict syncing upstream ${UPSTREAM_REPO}:${UPSTREAM_BRANCH} into main."
+              echo "Upstream changed code the fork's arm64-v8a-only exclusion or ZIP overlay owns."
+              echo "Resolve the conflict, push main, then re-run this workflow."
               exit 1
             fi
-            git push -q origin main
-            RELEASE_COMMIT=$(git rev-parse HEAD)
-            SOURCE_LABEL="upstream tag ${RELEASE_TAG} merged into main"
-            echo "release_commit=$RELEASE_COMMIT" >> "$GITHUB_OUTPUT"
-            echo "artifact_suffix=" >> "$GITHUB_OUTPUT"
-
-            echo "Synced ${SOURCE_LABEL} at commit ${RELEASE_COMMIT}."
+            git push origin main
+            echo "merged=true" >> "$GITHUB_OUTPUT"
+            echo "Synced upstream/${UPSTREAM_BRANCH} into main."
           fi
 
-          if ls /tmp/ci-patches/*.patch >/dev/null 2>&1; then
-            for p in /tmp/ci-patches/*.patch; do
-              # A fork-only patch may become unnecessary once upstream itself
-              # ships the equivalent change (so it would no longer apply to the
-              # tag). Detect that case explicitly and skip the patch instead of
-              # failing the build:
-              #   01-gradle-properties-heaps.patch -> upstream adopted CI-safe heaps
-              #   02-app-build-lint.patch          -> upstream fixed the lint check in app/lint.xml
-              base=$(basename "$p")
-              if [ "$base" = "01-gradle-properties-heaps.patch" ] \
-                 && grep -q '^kotlin.daemon.jvmargs=-Xmx' gradle.properties; then
-                echo "Skipping $base: this tag already uses CI-safe daemon heaps."
-                continue
-              fi
-              if [ "$base" = "02-app-build-lint.patch" ] \
-                 && grep -q 'InvalidFragmentVersionForActivityResult' app/lint.xml; then
-                echo "Skipping $base: this tag already handles the lint check in app/lint.xml."
-                continue
-              fi
-              if ! git apply --3way --whitespace=nowarn "$p"; then
-                echo "::error::Fork-only CI patch $p no longer applies cleanly to ${SOURCE_LABEL}."
-                echo "The fork's CI tweaks (gradle.properties daemon heaps, :app lint disable) must be refreshed against this upstream release."
-                exit 1
-              fi
-            done
-            echo "Applied fork-only CI patches on top of ${SOURCE_LABEL}."
-          fi
+          RELEASE_COMMIT=$(git rev-parse HEAD)
+          echo "release_commit=$RELEASE_COMMIT" >> "$GITHUB_OUTPUT"
+          echo "Working tree at main (${RELEASE_COMMIT})."
 
-          # Surface the version the tag itself declares.
+      - name: Apply fork-only CI patches
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! ls .github/ci-patches/*.patch >/dev/null 2>&1; then
+            echo "No fork-only CI patches found; building main as-is."
+            exit 0
+          fi
+          for p in .github/ci-patches/*.patch; do
+            base=$(basename "$p")
+            if [ "$base" = "01-gradle-properties-heaps.patch" ] \
+               && grep -q '^kotlin.daemon.jvmargs=-Xmx' gradle.properties; then
+              echo "Skipping $base: tree already uses CI-safe daemon heaps."
+              continue
+            fi
+            if [ "$base" = "02-app-build-lint.patch" ] \
+               && grep -q 'InvalidFragmentVersionForActivityResult' app/lint.xml; then
+              echo "Skipping $base: tree already handles the lint check in app/lint.xml."
+              continue
+            fi
+            if ! git apply --3way --whitespace=nowarn "$p"; then
+              echo "::error::Fork-only CI patch $p no longer applies cleanly to main."
+              echo "Refresh .github/ci-patches/ against current main."
+              exit 1
+            fi
+            echo "Applied $base (working tree only, not committed)."
+          done
+
+      - name: Read version
+        shell: bash
+        run: |
+          set -euo pipefail
           VN=$(sed -n 's/^projectVersionName=//p' gradle.properties)
           VC=$(sed -n 's/^projectVersionCode=//p' gradle.properties)
           echo "VERSION_NAME=$VN" >> "$GITHUB_ENV"
           echo "VERSION_CODE=$VC" >> "$GITHUB_ENV"
-          echo "Working tree now at ${SOURCE_LABEL} (${RELEASE_COMMIT}), declaring versionName=${VN} versionCode=${VC}"
-
+          echo "Declaring versionName=${VN} versionCode=${VC}"
           if ! printf '%s' "$VC" | grep -qE '^[0-9]+$'; then
-            echo "::error::Could not read a numeric projectVersionCode from the ${SOURCE_LABEL} gradle.properties (got '${VC}')."
+            echo "::error::Could not read a numeric projectVersionCode from gradle.properties (got '${VC}')."
             exit 1
           fi
 
-          if [ -n "${BUILD_REF:-}" ]; then
-            # Unreleased ref builds are not releases: the marker/versionCode
-            # monotonicity contract does not apply. Just report what it declares.
-            echo "Unreleased ref build: skipping the release versionCode monotonicity check (declared versionCode ${VC})."
-          else
-            # Update-continuity guard: an APK only installs OVER an existing
-            # install when its versionCode is >= the installed one (and it is
-            # signed by the same key, checked later). Refuse to ship a release
-            # whose versionCode is not strictly greater than every release we have
-            # already processed, so a downgrade/duplicate can never silently happen.
-            PREV_MAX_CODE=$(git show "refs/remotes/origin/${MARKER_BRANCH}:${MARKER_FILE}" 2>/dev/null \
-              | awk 'NF>=3 && $3 ~ /^[0-9]+$/ {print $3}' | sort -n | tail -1 || true)
-            if [ -n "$PREV_MAX_CODE" ] && [ "${FORCE:-false}" != "true" ] && [ "$VC" -le "$PREV_MAX_CODE" ]; then
-              echo "::error::versionCode ${VC} for ${SOURCE_LABEL} is not greater than the highest already-processed versionCode ${PREV_MAX_CODE}."
-              echo "Existing installs would not accept this as an update. Set force=true only if you really mean to publish a non-increasing versionCode."
-              exit 1
-            fi
-            echo "Update-continuity check OK: versionCode ${VC} > ${PREV_MAX_CODE:-<no prior processed code>}."
-          fi
-
-      # Permanent fork exclusion, asserted before compile. Applies to every
-      # build including UNRELEASED source_ref runs: arm64-v8a only.
       - name: Enforce fork exclusions
-        if: steps.determine.outputs.should_build == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -404,7 +190,6 @@ jobs:
           echo "Fork exclusion intact: arm64-v8a only."
 
       - name: Set up Android SDK components
-        if: steps.determine.outputs.should_build == 'true'
         shell: bash
         run: |
           SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
@@ -418,23 +203,14 @@ jobs:
           "$SDKMANAGER" --list_installed
 
       - name: Fetch sherpa-onnx native libraries
-        if: steps.determine.outputs.should_build == 'true'
         shell: bash
         run: bash tools/fetch-sherpa-onnx.sh
 
       - name: Build Bergamot native library
-        if: steps.determine.outputs.should_build == 'true'
         shell: bash
         run: bash tools/bergamot/build-android.sh arm64-v8a
 
-      # The APK signature must be stable between builds, or Android refuses to
-      # install a newer build over an older one ("App not installed"). The key
-      # lives in the Actions cache and is kept alive by the daily Sync workflow.
-      # If the keystore is missing this step FAILS instead of silently rotating
-      # the key. Restore it either via the KEYSTORE_BASE64 secret override or by
-      # running the "Backup signing keystore" workflow after setting secrets.
       - name: Configure release signing
-        if: steps.determine.outputs.should_build == 'true'
         shell: bash
         env:
           KS_PASS: ${{ secrets.KEYSTORE_PASSWORD }}
@@ -443,6 +219,7 @@ jobs:
           ALLOW_NEW_KEY: ${{ github.event.inputs.allow_new_key_if_missing }}
           ALLOW_KEY_CHANGE: ${{ github.event.inputs.allow_key_change }}
         run: |
+          set -euo pipefail
           KS_PASS="${KS_PASS:-dictate-ci-2026}"
           KS_ALIAS="${KS_ALIAS:-dictate}"
           KS_KEY_PASS="${KS_KEY_PASS:-$KS_PASS}"
@@ -476,12 +253,6 @@ jobs:
           EOF
           echo "Wrote keystore.properties for release signing."
 
-          # Pin the signing identity BEFORE spending time on the build. Whatever
-          # the keystore source (cache or KEYSTORE_BASE64 secret), its
-          # certificate MUST equal EXPECTED_CERT_SHA256, otherwise every future
-          # APK would fail to install over the ones users already have. An
-          # operator can only bypass this with the explicit allow_key_change
-          # input, which is reserved for a deliberate key rotation.
           if [ "$BUILD_TYPE" != "debug" ] && [ "$ALLOW_KEY_CHANGE" != "true" ]; then
             KS_SHA=$(keytool -list -v -keystore "$KEYSTORE" -storepass "$KS_PASS" -alias "$KS_ALIAS" 2>/dev/null \
               | sed -n 's/^[[:space:]]*SHA256: //p' | tr -d ' :' | tr 'A-F' 'a-f')
@@ -499,7 +270,6 @@ jobs:
           fi
 
       - name: Build APK
-        if: steps.determine.outputs.should_build == 'true'
         shell: bash
         run: |
           case "$BUILD_TYPE" in
@@ -511,13 +281,11 @@ jobs:
 
       - name: Verify APK
         id: verify
-        if: steps.determine.outputs.should_build == 'true'
         shell: bash
         env:
-          RELEASE_TAG: ${{ steps.determine.outputs.release_tag }}
-          TAG_VERSION: ${{ steps.determine.outputs.tag_version }}
           ALLOW_KEY_CHANGE: ${{ github.event.inputs.allow_key_change }}
         run: |
+          set -euo pipefail
           APK_DIR="app/build/outputs/apk/$BUILD_TYPE"
           ls -la "$APK_DIR"
           APK="$(ls "$APK_DIR"/*.apk | head -1)"
@@ -529,8 +297,6 @@ jobs:
           echo "APK_SIZE=$(stat -c %s "$APK")" >> "$GITHUB_ENV"
           echo "APK_VERSION=$(jq -r '.elements[0].versionName' "$APK_DIR/output-metadata.json")" >> "$GITHUB_ENV"
 
-          # Artifact-level exclusion guard: whatever the source, the shipped APK
-          # must carry arm64-v8a native libraries only.
           LIBS=$(unzip -Z1 "$APK" | grep '^lib/' || true)
           BAD_ABIS=$(printf '%s\n' "$LIBS" | cut -d/ -f2 | sort -u | grep -v '^arm64-v8a$' || true)
           if [ -n "$BAD_ABIS" ]; then
@@ -539,17 +305,6 @@ jobs:
           fi
           echo "Artifact exclusion verified: only arm64-v8a native libs."
 
-          # The upstream tag being built must be the version actually shipped.
-          # (Unreleased ref builds have no tag version to compare against.)
-          if [ -n "$TAG_VERSION" ] && [ "$BUILD_TYPE" = "release" ] && [ "$TAG_VERSION" != "$(jq -r '.elements[0].versionName' "$APK_DIR/output-metadata.json")" ]; then
-            echo "::error::Version mismatch: building upstream ${RELEASE_TAG} but the APK reports versionName $(jq -r '.elements[0].versionName' "$APK_DIR/output-metadata.json"). Expected ${TAG_VERSION}."
-            exit 1
-          fi
-
-          # Signing checks apply to release/beta (debug APKs use the Android
-          # debug key). The APK must be signed by the keystore we configured,
-          # and (when no secret override is in play) that keystore must still be
-          # the stable CI key - any deviation fails the build loudly.
           if [ "$BUILD_TYPE" != "debug" ]; then
             APKSIGNER="$(ls "$ANDROID_HOME"/build-tools/*/apksigner 2>/dev/null | sort -V | tail -1)"
             [ -n "$APKSIGNER" ] || { echo "::error::apksigner not found"; exit 1; }
@@ -586,35 +341,25 @@ jobs:
           fi
 
       - name: Upload APK artifact
-        if: steps.determine.outputs.should_build == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: dictate-keyboard-${{ env.APK_VERSION }}-${{ env.BUILD_TYPE }}${{ steps.checkout_release.outputs.artifact_suffix }}
+          name: dictate-keyboard-${{ env.APK_VERSION }}-${{ env.BUILD_TYPE }}
           path: app/build/outputs/apk/${{ env.BUILD_TYPE }}/*.apk
           if-no-files-found: error
           retention-days: 30
 
-      # Opt-in only: by default builds upload an artifact and nothing else.
       - name: Create fork GitHub Release
-        if: github.event_name == 'workflow_dispatch' && inputs.create_fork_release == true && steps.determine.outputs.should_build == 'true' && env.BUILD_TYPE == 'release'
+        if: github.event.inputs.create_fork_release == 'true' && env.BUILD_TYPE == 'release'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ steps.determine.outputs.release_tag }}
-          BUILD_REF: ${{ steps.determine.outputs.build_ref }}
-          RELEASE_COMMIT: ${{ steps.checkout_release.outputs.release_commit }}
+          RELEASE_COMMIT: ${{ steps.sync.outputs.release_commit }}
         run: |
+          set -euo pipefail
           SHORT="${RELEASE_COMMIT:0:7}"
-          if [ -n "${BUILD_REF:-}" ]; then
-            REF_SLUG=$(printf '%s' "$BUILD_REF" | tr '/ ' '--' | tr -cd 'A-Za-z0-9._-')
-            RELEASE_NAME="dictate-${REF_SLUG}-${SHORT}-ci"
-            TITLE="Dictate Keyboard v${APK_VERSION} (UNRELEASED build from ${BUILD_REF} @ ${SHORT})"
-            NOTES="UNRELEASED CI build from fork ref \`${BUILD_REF}\` (commit \`${RELEASE_COMMIT:-${GITHUB_SHA}}\`), with the fork's CI build patches applied. This is NOT an official upstream release. Artifact: \`${APK}\`, size: ${APK_SIZE} bytes, versionCode: ${VERSION_CODE}."
-          else
-            RELEASE_NAME="dictate-v${APK_VERSION}-ci"
-            TITLE="Dictate Keyboard v${APK_VERSION} (CI build from upstream ${RELEASE_TAG})"
-            NOTES="Built from the exact upstream release tag \`${RELEASE_TAG}\` (commit \`${RELEASE_COMMIT:-${GITHUB_SHA}}\`), with only the fork's CI build patches applied. Artifact: \`${APK}\`, size: ${APK_SIZE} bytes, versionCode: ${VERSION_CODE}."
-          fi
+          RELEASE_NAME="dictate-v${APK_VERSION}-ci"
+          TITLE="Dictate Keyboard v${APK_VERSION} (CI build from main @ ${SHORT})"
+          NOTES="Built from fork main after syncing \`${UPSTREAM_REPO}:${UPSTREAM_BRANCH}\` (commit \`${RELEASE_COMMIT:-${GITHUB_SHA}}\`). Artifact: \`${APK}\`, size: ${APK_SIZE} bytes, versionCode: ${VERSION_CODE}. arm64-v8a only."
           if gh release view "$RELEASE_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo "::warning::Fork release ${RELEASE_NAME} already exists; skipping creation."
             exit 0
@@ -626,96 +371,22 @@ jobs:
             --notes "$NOTES"
           echo "Created fork release ${RELEASE_NAME}."
 
-      # Record this upstream release tag as processed so it is never built
-      # twice. State is stored on the ci/release-history branch, one line per
-      # release as "<tag> <commit> <versionCode> <timestamp>". Appends are
-      # performed from the freshest remote base each attempt, so concurrent
-      # runs merge cleanly (each appends its own line after fast-forwarding).
-      - name: Mark upstream release as processed
-        if: steps.determine.outputs.should_build == 'true' && steps.determine.outputs.mode != 'ref'
-        shell: bash
-        env:
-          RELEASE_TAG: ${{ steps.determine.outputs.release_tag }}
-          RELEASE_COMMIT: ${{ steps.checkout_release.outputs.release_commit }}
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-          PUSHED=0
-          for attempt in 1 2 3 4 5; do
-            # Start from the freshest remote tip of the marker branch. -f
-            # discards the fork-patch modifications still present in the work
-            # tree from the build checkout; switching branches while they are
-            # dirty would otherwise abort with "local changes would be
-            # overwritten". The build is already finished at this point.
-            if git fetch -q origin "${MARKER_BRANCH}:refs/remotes/origin/${MARKER_BRANCH}" 2>/dev/null \
-               && git rev-parse -q --verify "refs/remotes/origin/${MARKER_BRANCH}" >/dev/null; then
-              git checkout -q -f -B "${MARKER_BRANCH}" "refs/remotes/origin/${MARKER_BRANCH}"
-            else
-              git checkout -q --orphan "${MARKER_BRANCH}"
-              git rm -rfq --cached . 2>/dev/null || true
-            fi
-
-            mkdir -p ".github"
-            TMP=$(mktemp)
-            : > "$TMP"
-            if [ -f "${MARKER_FILE}" ]; then
-              grep -v "^${RELEASE_TAG}[[:space:]]" "${MARKER_FILE}" > "$TMP" || true
-            fi
-            echo "${RELEASE_TAG} ${RELEASE_COMMIT:-unknown} ${VERSION_CODE:-0} $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$TMP"
-            sort -V -u -o "$TMP" "$TMP"
-            mv "$TMP" "${MARKER_FILE}"
-
-            git add "${MARKER_FILE}"
-            if git diff --cached --quiet; then
-              echo "Marker already up to date."
-            else
-              git commit -q -m "ci: mark upstream ${RELEASE_TAG} as processed"
-            fi
-
-            if git push -q origin "${MARKER_BRANCH}"; then
-              echo "Pushed ${RELEASE_TAG} to ${MARKER_BRANCH} (attempt ${attempt})."
-              PUSHED=1
-              break
-            fi
-            echo "Marker push failed (attempt ${attempt}); fetching newer base and retrying ..."
-          done
-
-          if [ "$PUSHED" -ne 1 ]; then
-            echo "::error::Could not push processed-release marker to ${MARKER_BRANCH} after retries."
-            exit 1
-          fi
-
       - name: Build summary
+        if: always()
         shell: bash
         env:
-          RELEASE_TAG: ${{ steps.determine.outputs.release_tag }}
-          TAG_VERSION: ${{ steps.determine.outputs.tag_version }}
-          BUILD_REF: ${{ steps.determine.outputs.build_ref }}
-          MODE: ${{ steps.determine.outputs.mode }}
-          SKIP_REASON: ${{ steps.determine.outputs.skip_reason }}
-          SHOULD_BUILD: ${{ steps.determine.outputs.should_build }}
-          RELEASE_COMMIT: ${{ steps.checkout_release.outputs.release_commit }}
+          RELEASE_COMMIT: ${{ steps.sync.outputs.release_commit }}
+          MERGED: ${{ steps.sync.outputs.merged }}
         run: |
-          cat >> "$GITHUB_STEP_SUMMARY" <<'EOF'
-          ## Build outcome
+          cat >> "$GITHUB_STEP_SUMMARY" <<EOF
+          ## Sync and Build
 
           | Item | Value |
           |---|---|
+          | Upstream | \`${UPSTREAM_REPO}:${UPSTREAM_BRANCH}\` |
+          | Merged | ${MERGED:-unknown} |
+          | Source commit | \`${RELEASE_COMMIT:-n/a}\` |
+          | Version | v${APK_VERSION:-n/a} (versionCode ${VERSION_CODE:-n/a}) |
+          | APK | \`${APK:-n/a}\` (${APK_SIZE:-n/a} bytes) |
+          | Build type | ${BUILD_TYPE} |
           EOF
-          if [ "$SHOULD_BUILD" = "true" ]; then
-            if [ -n "${BUILD_REF:-}" ]; then
-              printf '| Source ref (UNRELEASED) | %s |\n' "${BUILD_REF}" >> "$GITHUB_STEP_SUMMARY"
-            else
-              printf '| Upstream release | %s |\n' "${RELEASE_TAG}" >> "$GITHUB_STEP_SUMMARY"
-            fi
-            printf '| Source commit | `%s` |\n' "${RELEASE_COMMIT}" >> "$GITHUB_STEP_SUMMARY"
-            printf '| Version | v%s (versionCode %s) |\n' "${APK_VERSION}" "${VERSION_CODE}" >> "$GITHUB_STEP_SUMMARY"
-            printf '| APK | `%s` (%s bytes) |\n' "${APK}" "${APK_SIZE}" >> "$GITHUB_STEP_SUMMARY"
-            printf '| Build type | %s |\n' "${BUILD_TYPE}" >> "$GITHUB_STEP_SUMMARY"
-            echo "Built ${BUILD_REF:-upstream ${RELEASE_TAG}} (${RELEASE_COMMIT}) -> ${APK} v${APK_VERSION}"
-          else
-            printf '| Outcome | skipped (%s) |\n' "${SKIP_REASON:-unknown}" >> "$GITHUB_STEP_SUMMARY"
-            echo "Nothing built (${SKIP_REASON:-unknown})."
-          fi
