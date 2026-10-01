@@ -428,6 +428,8 @@
     <string name="pref__correction__auto_capitalization__summary" comment="Preference summary">Capitaliser les mots en fonction du contexte de saisie actuel</string>
     <string name="pref__correction__auto_space_punctuation__label" comment="Preference title">Espace automatique après ponctuation</string>
     <string name="pref__correction__auto_space_punctuation__summary" comment="Preference summary">Insère automatiquement un espace après la ponctuation</string>
+    <string name="pref__correction__tighten_punctuation_spacing__label" comment="Preference title">Resserrer la ponctuation</string>
+    <string name="pref__correction__tighten_punctuation_spacing__summary" comment="Preference summary">Supprime l\'espace tapé avant un point ou une virgule</string>
     <string name="pref__correction__remember_caps_lock_state__label" comment="Preference title">Se souvenir de l\'état de verrouillage des majuscules</string>
     <string name="pref__correction__remember_caps_lock_state__summary" comment="Preference summary">Le verrouillage des majuscules reste activé lorsque l\'on passe à un autre champ de texte</string>
     <string name="pref__correction__double_space_period__label" comment="Preference title">Double appui sur la barre d’espace</string>
@@ -666,6 +668,7 @@
     <string name="pref__clipboard__trim_on_copy__label" comment="Preference title, keep short">Rogner à la copie</string>
     <string name="pref__clipboard__trim_on_copy__summary" comment="Preference summary, keep short (one line)">Supprime espaces et sauts de ligne aux extrémités</string>
     <string name="pref__clipboard__suggestion_enabled__summary" comment="Preference summary">Suggérer le contenu précédemment copié</string>
+    <string name="pref__clipboard__suggestion_show_extracted__label" comment="Preference title (switch) in the group Clipboard suggestions, keep short (one line): whether the links, email addresses and phone numbers found inside a copied text are also offered as suggestions of their own, next to the whole text">Liens, e-mails et numéros</string>
     <string name="pref__clipboard__suggestion_timeout__label" comment="Preference title; Translators: This should form a sentence together with `pref__clipboard__suggestion_timeout__summary` and is the first part">Limiter les suggestions du presse-papier à</string>
     <string name="pref__clipboard__suggestion_timeout__summary" comment="Preference summary; Translators: This should form a sentence together with `pref__clipboard__suggestion_timeout__label` and is the second part">Éléments copiés durant les {v} dernières sec</string>
     <string name="pref__clipboard__group_clipboard_history__label">Historique du presse-papiers</string>
@@ -1103,10 +1106,16 @@
     <string name="dictate__floating_button_disclosure_continue">Ouvrir les paramètres</string>
     <string name="dictate__floating_button_mic_title">Accès au microphone</string>
     <string name="dictate__floating_button_mic_summary">Nécessaire pour enregistrer votre voix · touchez pour autoriser</string>
-    <string name="dictate__floating_button_show_with_keyboard_title">Afficher avec le clavier Dictate</string>
-    <string name="dictate__floating_button_show_with_keyboard_summary_on">Le bouton apparaît aussi lorsque le clavier Dictate est actif.</string>
-    <string name="dictate__floating_button_show_with_keyboard_summary_off">Masqué lorsque le clavier Dictate est actif, car il possède déjà une touche micro.</string>
+    <string name="dictate__floating_button_show_when_title">Quand l’afficher</string>
+    <string name="dictate__floating_button_show_when_field">Dès qu’un champ de texte est sélectionné</string>
+    <string name="dictate__floating_button_show_when_keyboard">Uniquement avec le clavier ouvert</string>
+    <string name="dictate__floating_button_show_when_dictate_keyboard">Aussi avec le clavier Dictate</string>
     <string name="dictate__action_continue_recording">Continuer l’enregistrement</string>
+    <string name="dictate__a11y_mic_hold_local">Transcrire sur l’appareil</string>
+    <string name="smartbar__a11y_show_actions">Afficher les actions</string>
+    <string name="smartbar__a11y_show_suggestions">Afficher les suggestions</string>
+    <string name="smartbar__a11y_show_more_actions">Afficher plus d’actions</string>
+    <string name="smartbar__a11y_hide_more_actions">Masquer les actions supplémentaires</string>
     <string name="dictate__floating_button_auto_dim_summary_off">Reste toujours entièrement visible.</string>
     <string name="dictate__floating_button_auto_dim_summary_on">Se réduit à un petit point après quelques secondes ; touchez pour rétablir.</string>
     <string name="dictate__floating_button_auto_dim_title">Estomper au repos</string>
@@ -1398,9 +1407,10 @@
     <string name="dictate__languages_title">Langues de transcription</string>
     <string name="dictate__languages_summary">Choisissez les langues dans lesquelles vous dictez. Basculez rapidement entre elles depuis la barre d\'enregistrement.</string>
     <string name="dictate__language_detect">Détecter automatiquement</string>
+    <string name="dictate__languages_selected_title">Langues sélectionnées</string>
     <string name="dictate__languages_active_title">Langue active</string>
     <string name="dictate__languages_follow_keyboard">Suivre la langue du clavier</string>
-    <string name="dictate__languages_follow_keyboard_summary">Change aussi la dictée si la langue est cochée ci-dessous</string>
+    <string name="dictate__languages_follow_keyboard_summary">Change aussi la dictée si la langue est sélectionnée</string>
     <string name="quick_action__dictate_switch_provider">Fournisseur de transcription</string>
     <string name="quick_action__dictate_switch_provider__tooltip">Changer de fournisseur de transcription</string>
     <string name="enum__space_bar_mode__transcription_provider">Fournisseur de transcription</string>

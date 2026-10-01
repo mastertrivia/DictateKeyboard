@@ -382,6 +382,8 @@
     <string name="pref__correction__auto_capitalization__summary" comment="Preference summary">استخدام الأحرف الكبيرة في الكلمات على حسب سياق نص الإدخال الحالي</string>
     <string name="pref__correction__auto_space_punctuation__label" comment="Preference title">مسافة تلقائية بعد علامات الترقيم</string>
     <string name="pref__correction__auto_space_punctuation__summary" comment="Preference summary">وضع بشكل تلقائي مسافة بعد علامات الترقيم</string>
+    <string name="pref__correction__tighten_punctuation_spacing__label" comment="Preference title">إزالة المسافة قبل علامات الترقيم</string>
+    <string name="pref__correction__tighten_punctuation_spacing__summary" comment="Preference summary">حذف المسافة المكتوبة قبل . , ? !</string>
     <string name="pref__correction__remember_caps_lock_state__label" comment="Preference title">تذكر حالة زر الأحرف الكبيرة</string>
     <string name="pref__correction__remember_caps_lock_state__summary" comment="Preference summary">يضل وضع الأحرف الكبيرة قيد التشغيل عند الإنتقال إلى حقل نصي آخر</string>
     <string name="pref__correction__double_space_period__label" comment="Preference title">نقر مزدوج على مفتاح المسافة</string>
@@ -618,6 +620,7 @@
     <string name="pref__clipboard__trim_on_copy__label" comment="Preference title, keep short">اقتصاص عند النسخ</string>
     <string name="pref__clipboard__trim_on_copy__summary" comment="Preference summary, keep short (one line)">إزالة المسافات وفواصل الأسطر من الطرفين</string>
     <string name="pref__clipboard__suggestion_enabled__summary" comment="Preference summary">اقتراح المحتويات المنسوخة في سجل الحافظة</string>
+    <string name="pref__clipboard__suggestion_show_extracted__label" comment="Preference title (switch) in the group Clipboard suggestions, keep short (one line): whether the links, email addresses and phone numbers found inside a copied text are also offered as suggestions of their own, next to the whole text">الروابط والبريد الإلكتروني والأرقام</string>
     <string name="pref__clipboard__suggestion_timeout__label" comment="Preference title; Translators: This should form a sentence together with `pref__clipboard__suggestion_timeout__summary` and is the first part">تحديد حجم مخصص لاقتراحات الحافظة إلى</string>
     <string name="pref__clipboard__suggestion_timeout__summary" comment="Preference summary; Translators: This should form a sentence together with `pref__clipboard__suggestion_timeout__label` and is the second part">العناصر التي تم نسخها خلال آخر {v}</string>
     <string name="pref__clipboard__group_clipboard_history__label">سجل الحافظة</string>
@@ -1083,10 +1086,16 @@
     <string name="dictate__floating_button_disclosure_continue">فتح الإعدادات</string>
     <string name="dictate__floating_button_mic_title">الوصول إلى الميكروفون</string>
     <string name="dictate__floating_button_mic_summary">مطلوب لتسجيل صوتك · اضغط للمنح</string>
-    <string name="dictate__floating_button_show_with_keyboard_title">الإظهار مع لوحة مفاتيح Dictate</string>
-    <string name="dictate__floating_button_show_with_keyboard_summary_on">يظهر الزر أيضًا أثناء نشاط لوحة مفاتيح Dictate.</string>
-    <string name="dictate__floating_button_show_with_keyboard_summary_off">مخفي أثناء نشاط لوحة مفاتيح Dictate، لأنها تحتوي بالفعل على زر ميكروفون.</string>
+    <string name="dictate__floating_button_show_when_title">متى يظهر</string>
+    <string name="dictate__floating_button_show_when_field">بمجرد تحديد حقل نصي</string>
+    <string name="dictate__floating_button_show_when_keyboard">فقط عند فتح لوحة المفاتيح</string>
+    <string name="dictate__floating_button_show_when_dictate_keyboard">مع لوحة مفاتيح Dictate أيضًا</string>
     <string name="dictate__action_continue_recording">متابعة التسجيل</string>
+    <string name="dictate__a11y_mic_hold_local">تفريغ على الجهاز</string>
+    <string name="smartbar__a11y_show_actions">إظهار الإجراءات</string>
+    <string name="smartbar__a11y_show_suggestions">إظهار الاقتراحات</string>
+    <string name="smartbar__a11y_show_more_actions">إظهار المزيد من الإجراءات</string>
+    <string name="smartbar__a11y_hide_more_actions">إخفاء الإجراءات الإضافية</string>
     <string name="dictate__floating_button_auto_dim_summary_off">يظل مرئيًا بالكامل دائمًا.</string>
     <string name="dictate__floating_button_auto_dim_summary_on">يتقلص إلى نقطة صغيرة بعد بضع ثوانٍ؛ انقر لاستعادته.</string>
     <string name="dictate__floating_button_auto_dim_title">تعتيم عند الخمول</string>
@@ -1378,9 +1387,10 @@
     <string name="dictate__languages_title">لغات التفريغ النصي</string>
     <string name="dictate__languages_summary">اختر اللغات التي تُملي بها. بدّل بينها بسرعة من شريط التسجيل.</string>
     <string name="dictate__language_detect">الكشف تلقائيًا</string>
+    <string name="dictate__languages_selected_title">اللغات المحدّدة</string>
     <string name="dictate__languages_active_title">اللغة النشطة</string>
     <string name="dictate__languages_follow_keyboard">اتّباع لغة لوحة المفاتيح</string>
-    <string name="dictate__languages_follow_keyboard_summary">يبدّل لغة الإملاء أيضًا إذا كانت اللغة محدّدة أدناه</string>
+    <string name="dictate__languages_follow_keyboard_summary">يبدّل لغة الإملاء أيضًا إذا كانت اللغة محدّدة</string>
     <string name="quick_action__dictate_switch_provider">مزوّد التفريغ النصي</string>
     <string name="quick_action__dictate_switch_provider__tooltip">تبديل مزوّد التفريغ النصي</string>
     <string name="enum__space_bar_mode__transcription_provider">مزوّد التفريغ النصي</string>

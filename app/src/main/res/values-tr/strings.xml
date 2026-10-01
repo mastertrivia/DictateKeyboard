@@ -491,6 +491,8 @@
     <string name="pref__correction__auto_capitalization__summary" comment="Preference summary">Mevcut giriş bağlamına göre kelimeleri büyük harfle yaz</string>
     <string name="pref__correction__auto_space_punctuation__label" comment="Preference title">Noktalama işaretlerinden sonra otomatik boşluk</string>
     <string name="pref__correction__auto_space_punctuation__summary" comment="Preference summary">Bir noktalama işaretinden sonra otomatik olarak boşluk ekler</string>
+    <string name="pref__correction__tighten_punctuation_spacing__label" comment="Preference title">Noktalama işaretlerinden önceki boşluğu sil</string>
+    <string name="pref__correction__tighten_punctuation_spacing__summary" comment="Preference summary">Bir . , ? ! işaretinden önce yazılan boşluğu kaldırır</string>
     <string name="pref__correction__remember_caps_lock_state__label" comment="Preference title">Caps lock durumunu hatırla</string>
     <string name="pref__correction__remember_caps_lock_state__summary" comment="Preference summary">Başka bir metin alanına geçerken caps lock açık kalır</string>
     <string name="pref__correction__double_space_period__label" comment="Preference title">Boşluk çubuğuna çift dokunma</string>
@@ -733,6 +735,7 @@
     <string name="pref__clipboard__trim_on_copy__label" comment="Preference title, keep short">Kopyalarken kırp</string>
     <string name="pref__clipboard__trim_on_copy__summary" comment="Preference summary, keep short (one line)">Baştaki ve sondaki boşlukları ve satır sonlarını siler</string>
     <string name="pref__clipboard__suggestion_enabled__summary" comment="Preference summary">Daha önce kopyalanan pano içeriğini öner</string>
+    <string name="pref__clipboard__suggestion_show_extracted__label" comment="Preference title (switch) in the group Clipboard suggestions, keep short (one line): whether the links, email addresses and phone numbers found inside a copied text are also offered as suggestions of their own, next to the whole text">Bağlantılar, e-postalar, numaralar</string>
     <string name="pref__clipboard__num_history_grid_columns__label">Izgara sütun sayısı</string>
     <string name="pref__clipboard__suggestion_timeout__label" comment="Preference title; Translators: This should form a sentence together with `pref__clipboard__suggestion_timeout__summary` and is the first part">Pano önerilerini şununla sınırla</string>
     <string name="pref__clipboard__suggestion_timeout__summary" comment="Preference summary; Translators: This should form a sentence together with `pref__clipboard__suggestion_timeout__label` and is the second part">Son {v} saniye içinde kopyalanan ögeler</string>
@@ -1204,10 +1207,16 @@
     <string name="dictate__floating_button_disclosure_continue">Ayarları aç</string>
     <string name="dictate__floating_button_mic_title">Mikrofon erişimi</string>
     <string name="dictate__floating_button_mic_summary">Sesinizi kaydetmek için gerekli · izin vermek için dokunun</string>
-    <string name="dictate__floating_button_show_with_keyboard_title">Dictate klavyesiyle göster</string>
-    <string name="dictate__floating_button_show_with_keyboard_summary_on">Düğme, Dictate klavyesi etkinken de görünür.</string>
-    <string name="dictate__floating_button_show_with_keyboard_summary_off">Dictate klavyesi etkinken gizlenir, çünkü onda zaten bir mikrofon tuşu var.</string>
+    <string name="dictate__floating_button_show_when_title">Ne zaman gösterilsin</string>
+    <string name="dictate__floating_button_show_when_field">Bir metin alanı seçilir seçilmez</string>
+    <string name="dictate__floating_button_show_when_keyboard">Yalnızca klavye açıkken</string>
+    <string name="dictate__floating_button_show_when_dictate_keyboard">Dictate klavyesiyle de</string>
     <string name="dictate__action_continue_recording">Kaydı sürdür</string>
+    <string name="dictate__a11y_mic_hold_local">Cihazda yazıya dök</string>
+    <string name="smartbar__a11y_show_actions">Eylemleri göster</string>
+    <string name="smartbar__a11y_show_suggestions">Önerileri göster</string>
+    <string name="smartbar__a11y_show_more_actions">Daha fazla eylem göster</string>
+    <string name="smartbar__a11y_hide_more_actions">Ek eylemleri gizle</string>
     <string name="dictate__floating_button_auto_dim_summary_off">Her zaman tam görünür kalır.</string>
     <string name="dictate__floating_button_auto_dim_summary_on">Birkaç saniye sonra küçük bir noktaya küçülür; geri getirmek için dokunun.</string>
     <string name="dictate__floating_button_auto_dim_title">Boştayken soluklaştır</string>
@@ -1499,9 +1508,10 @@
     <string name="dictate__languages_title">Yazıya dökme dilleri</string>
     <string name="dictate__languages_summary">Dikte ettiğiniz dilleri seçin. Kayıt çubuğundan aralarında hızlıca geçiş yapın.</string>
     <string name="dictate__language_detect">Otomatik algıla</string>
+    <string name="dictate__languages_selected_title">Seçili diller</string>
     <string name="dictate__languages_active_title">Etkin dil</string>
     <string name="dictate__languages_follow_keyboard">Klavye dilini takip et</string>
-    <string name="dictate__languages_follow_keyboard_summary">Dil aşağıda işaretliyse dikte dili de değişir</string>
+    <string name="dictate__languages_follow_keyboard_summary">Dil seçiliyse dikte dili de değişir</string>
     <string name="quick_action__dictate_switch_provider">Yazıya dökme sağlayıcısı</string>
     <string name="quick_action__dictate_switch_provider__tooltip">Yazıya dökme sağlayıcısını değiştir</string>
     <string name="enum__space_bar_mode__transcription_provider">Yazıya dökme sağlayıcısı</string>

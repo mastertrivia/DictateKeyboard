@@ -452,6 +452,8 @@
     <string name="pref__correction__auto_capitalization__summary" comment="Preference summary">Pārveidot vārdu sākumburtus par lielajiem, balstoties uz pašreizējo ievades kopumu</string>
     <string name="pref__correction__auto_space_punctuation__label" comment="Preference title">Automātiska atstarpe pēc pieturzīmes</string>
     <string name="pref__correction__auto_space_punctuation__summary" comment="Preference summary">Automātiski ievietot atstarpi pēc pieturzīmes</string>
+    <string name="pref__correction__tighten_punctuation_spacing__label" comment="Preference title">Bez atstarpes pirms pieturzīmes</string>
+    <string name="pref__correction__tighten_punctuation_spacing__summary" comment="Preference summary">Noņemt atstarpi, kas ierakstīta pirms . , ? !</string>
     <string name="pref__correction__remember_caps_lock_state__label" comment="Preference title">Atcerēties burtslēga stāvokli</string>
     <string name="pref__correction__remember_caps_lock_state__summary" comment="Preference summary">Burtslēgs paliks ieslēgts pēc pārvietošanās uz citu ievades lauku</string>
     <string name="pref__correction__double_space_period__label" comment="Preference title">Dubultpieskāriens atstarpes taustiņam</string>
@@ -697,6 +699,7 @@
     <string name="pref__clipboard__trim_on_copy__label" comment="Preference title, keep short">Apgriezt kopējot</string>
     <string name="pref__clipboard__trim_on_copy__summary" comment="Preference summary, keep short (one line)">Noņem atstarpes un rindu pārtraukumus galos</string>
     <string name="pref__clipboard__suggestion_enabled__summary" comment="Preference summary">Ieteikt iepriekš starpliktuvē ievietotu saturu</string>
+    <string name="pref__clipboard__suggestion_show_extracted__label" comment="Preference title (switch) in the group Clipboard suggestions, keep short (one line): whether the links, email addresses and phone numbers found inside a copied text are also offered as suggestions of their own, next to the whole text">Saites, e-pasti un numuri</string>
     <string name="pref__clipboard__num_history_grid_columns__label">Režģa sleju skaits</string>
     <string name="pref__clipboard__suggestion_timeout__label" comment="Preference title; Translators: This should form a sentence together with `pref__clipboard__suggestion_timeout__summary` and is the first part">Ierobežot starpliktuves ieteikumus līdz</string>
     <string name="pref__clipboard__suggestion_timeout__summary" comment="Preference summary; Translators: This should form a sentence together with `pref__clipboard__suggestion_timeout__label` and is the second part">Vienumi ievietoti starpliktuvē pēdējās {v} s</string>
@@ -1170,10 +1173,16 @@
     <string name="dictate__floating_button_disclosure_continue">Atvērt iestatījumus</string>
     <string name="dictate__floating_button_mic_title">Mikrofona piekļuve</string>
     <string name="dictate__floating_button_mic_summary">Nepieciešama jūsu balss ierakstīšanai · pieskarieties, lai piešķirtu</string>
-    <string name="dictate__floating_button_show_with_keyboard_title">Rādīt ar Dictate tastatūru</string>
-    <string name="dictate__floating_button_show_with_keyboard_summary_on">Poga parādās arī tad, kad ir aktīva Dictate tastatūra.</string>
-    <string name="dictate__floating_button_show_with_keyboard_summary_off">Paslēpta, kamēr ir aktīva Dictate tastatūra, jo tai jau ir mikrofona taustiņš.</string>
+    <string name="dictate__floating_button_show_when_title">Kad rādīt</string>
+    <string name="dictate__floating_button_show_when_field">Tiklīdz ir atlasīts teksta lauks</string>
+    <string name="dictate__floating_button_show_when_keyboard">Tikai ar atvērtu tastatūru</string>
+    <string name="dictate__floating_button_show_when_dictate_keyboard">Arī ar Dictate tastatūru</string>
     <string name="dictate__action_continue_recording">Turpināt ierakstu</string>
+    <string name="dictate__a11y_mic_hold_local">Transkribēt ierīcē</string>
+    <string name="smartbar__a11y_show_actions">Rādīt darbības</string>
+    <string name="smartbar__a11y_show_suggestions">Rādīt ieteikumus</string>
+    <string name="smartbar__a11y_show_more_actions">Rādīt vairāk darbību</string>
+    <string name="smartbar__a11y_hide_more_actions">Paslēpt papildu darbības</string>
     <string name="dictate__floating_button_auto_dim_summary_off">Vienmēr paliek pilnībā redzams.</string>
     <string name="dictate__floating_button_auto_dim_summary_on">Pēc dažām sekundēm sarūk līdz mazam punktam; pieskarieties, lai atjaunotu.</string>
     <string name="dictate__floating_button_auto_dim_title">Aptumšot dīkstāvē</string>
@@ -1465,9 +1474,10 @@
     <string name="dictate__languages_title">Transkribēšanas valodas</string>
     <string name="dictate__languages_summary">Izvēlieties valodas, kurās diktējat. Ātri pārslēdzieties starp tām no ierakstīšanas joslas.</string>
     <string name="dictate__language_detect">Noteikt automātiski</string>
+    <string name="dictate__languages_selected_title">Atlasītās valodas</string>
     <string name="dictate__languages_active_title">Aktīvā valoda</string>
     <string name="dictate__languages_follow_keyboard">Sekot tastatūras valodai</string>
-    <string name="dictate__languages_follow_keyboard_summary">Maina arī diktēšanas valodu, ja tā ir atzīmēta zemāk</string>
+    <string name="dictate__languages_follow_keyboard_summary">Maina arī diktēšanas valodu, ja tā ir atlasīta</string>
     <string name="quick_action__dictate_switch_provider">Transkribēšanas pakalpojuma sniedzējs</string>
     <string name="quick_action__dictate_switch_provider__tooltip">Mainīt transkribēšanas pakalpojuma sniedzēju</string>
     <string name="enum__space_bar_mode__transcription_provider">Transkribēšanas pakalpojuma sniedzējs</string>

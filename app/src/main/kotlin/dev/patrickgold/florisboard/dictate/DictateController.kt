@@ -92,6 +92,7 @@ import dev.patrickgold.florisboard.ime.text.key.KeyVariation
 import dev.patrickgold.florisboard.keyboardManager
 import dev.patrickgold.florisboard.lib.util.AppVersionUtils
 import dev.patrickgold.florisboard.lib.util.VersionName
+import org.florisboard.lib.kotlin.curlyFormat
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.withTimeoutOrNull
@@ -559,6 +560,18 @@ object DictateController {
     // Haptic feedback (#166) fires on dictation state transitions. Started lazily on the first dictation
     // (so we have an application context for the vibrator), then it observes for the whole process life.
     private var hapticObserverStarted = false
+
+    /**
+     * Whether the tap that drove this transition has already produced a buzz of its own — the floating
+     * button's own haptic, or the keyboard's ordinary key feedback. Read at the moment of the
+     * transition, so a user who turns either off starts getting the dictation buzz instead.
+     */
+    private fun pressAlreadyBuzzed(): Boolean = when (outputTarget) {
+        OutputTarget.OVERLAY -> prefs.dictate.floatingButtonHaptic.get()
+        OutputTarget.IME -> prefs.inputFeedback.hapticEnabled.get()
+        OutputTarget.RECOGNITION_SERVICE -> false
+    }
+
     private fun ensureHapticObserver(context: Context) {
         if (hapticObserverStarted) return
         hapticObserverStarted = true
@@ -570,24 +583,60 @@ object DictateController {
             var prev: UiState = initial
             _state.collect { new ->
                 when {
-                    // Record started — skipped for the floating button when its own tap already buzzed
-                    // (no double buzz); a resend enters at Transcribing so it never matches here.
-                    new is UiState.Recording && prev !is UiState.Recording -> {
-                        val buttonAlreadyBuzzed = outputTarget == OutputTarget.OVERLAY &&
-                            prefs.dictate.floatingButtonHaptic.get()
-                        if (!buttonAlreadyBuzzed) DictateHaptics.short(appContext)
+                    // Record started/stopped — but only when the press that did it did not already
+                    // buzz. The floating button buzzes on its own tap; on the keyboard the mic is an
+                    // ordinary key and the normal key feedback fires for it. Buzzing again a few
+                    // milliseconds later is not a second signal, it is a stutter, and it was the one
+                    // thing people noticed about this feature. The floating button was already spared;
+                    // the keyboard was not, which is why starting a dictation there buzzed twice.
+                    //
+                    // What is left is what the feature is actually for: the two signals that arrive
+                    // while nobody is touching anything (see below). A push-to-talk release loses its
+                    // buzz to this rule, which is the accepted cost — the finger was on the button.
+                    //
+                    // A resend enters at Transcribing, so neither branch matches for it.
+                    //
+                    // A screen reader's double-tap is no key press and buzzes nothing of ours, and for
+                    // its user this buzz is the only sign the recording really started (#159).
+                    (new is UiState.Recording && prev !is UiState.Recording) ||
+                        (prev is UiState.Recording && new is UiState.Transcribing) -> {
+                        if (DictateAccessibility.isScreenReaderOn(appContext) || !pressAlreadyBuzzed()) {
+                            DictateHaptics.short(appContext)
+                        }
                     }
-                    // Record stopped → transcribing (a resend is Idle→Transcribing and is ignored).
-                    prev is UiState.Recording && new is UiState.Transcribing -> DictateHaptics.short(appContext)
                     // Transcription ready (heading to commit/idle or on to a rewording pass) — not on failure.
                     prev is UiState.Transcribing && (new is UiState.Idle || new is UiState.Rewording) ->
                         DictateHaptics.double(appContext)
                     // Rewording / LLM prompt applied.
                     prev is UiState.Rewording && new is UiState.Idle -> DictateHaptics.medium(appContext)
                 }
+                announceTransition(appContext, prev, new)
                 prev = new
             }
         }
+    }
+
+    /**
+     * The spoken half of the transitions above, for a screen reader (issue #159): the waits and whatever
+     * went wrong. Never the way into a recording — see [DictateAccessibility] — and never the finished
+     * text, which the screen reader already reads out as it lands in the field.
+     */
+    private fun announceTransition(context: Context, prev: UiState, new: UiState) {
+        val text = when {
+            // A retry, and the hand-over to the on-device model (#270), are news of their own.
+            new is UiState.Transcribing && (prev !is UiState.Transcribing ||
+                prev.attempt != new.attempt || prev.onDevice != new.onDevice) -> when {
+                new.attempt > 1 ->
+                    context.getString(R.string.dictate__status_retrying).curlyFormat("attempt" to new.attempt)
+                new.onDevice -> context.getString(R.string.dictate__status_transcribing_local)
+                else -> context.getString(R.string.dictate__status_transcribing)
+            }
+            new is UiState.Rewording && new != prev ->
+                new.label.ifBlank { context.getString(R.string.dictate__status_rewording) }
+            new is UiState.Error && new != prev -> new.message
+            else -> null
+        } ?: return
+        DictateAccessibility.announce(context, text)
     }
 
     /**
@@ -1621,6 +1670,10 @@ object DictateController {
      */
     private fun startRecording(context: Context, seedAccumulatedMs: Long = 0L) {
         if (_state.value is UiState.Recording) return
+        val appContext = context.applicationContext
+        // Before the credential check, not after: a missing key on the very first dictation is an error
+        // a screen reader has to speak (#159), and the observer only hears what happens once it runs.
+        ensureHapticObserver(appContext)
         if (refuseIfNoCredential(context)) return
         // The instant the microphone was asked for, before anything is acquired or decided. Every
         // millisecond between this and the recorder's own start is audio the user spoke into nothing, so
@@ -1633,8 +1686,6 @@ object DictateController {
             discardRetainedAudio()
             discardCarryOver()
         }
-        val appContext = context.applicationContext
-        ensureHapticObserver(appContext)
         // A rewording server that has to be woken (#189) gets the length of this dictation to do it in.
         if (rewordingWillFollow()) warmUpRewordingServer()
         startJob = scope.launch {

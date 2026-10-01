@@ -96,6 +96,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
@@ -107,6 +109,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
+import androidx.compose.ui.window.PopupProperties
 import dev.patrickgold.florisboard.FlorisImeService
 import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
@@ -554,7 +557,12 @@ private fun LegacyLanguageKey(modifier: Modifier) {
                 Text(active.shortCode, color = fg, fontWeight = FontWeight.SemiBold)
             }
         }
-        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+        // Not focusable, like the Smartbar chip's menu: a focusable one hides the keyboard (#284).
+        DropdownMenu(
+            expanded = menuOpen,
+            onDismissRequest = { menuOpen = false },
+            properties = PopupProperties(focusable = false),
+        ) {
             selection.forEach { lang ->
                 DropdownMenuItem(
                     text = {
@@ -606,6 +614,17 @@ private fun LegacyRecordRow(
     }
     // Realtime streaming (#128): tapping the record button ends the live stream — hint that with a send glyph.
     val realtime = recording != null && DictateController.isRealtimeRecording()
+    // What a screen reader reads for the record key (#159). Its visible text is the timer while recording
+    // and the status while busy, neither of which says what a tap does. Stop and cancel are named as on the
+    // Smartbar mic.
+    val recordA11yName = stringRes(
+        when {
+            recording != null -> R.string.dictate__legacy_stop
+            busy -> R.string.action__cancel
+            else -> R.string.dictate__legacy_record
+        },
+    )
+    val recordA11yHoldName = stringRes(R.string.dictate__import_menu)
 
     Row(
         modifier = modifier,
@@ -678,11 +697,13 @@ private fun LegacyRecordRow(
                         Modifier.combinedClickable(
                             interactionSource = interaction,
                             indication = ripple(),
+                            onLongClickLabel = recordA11yHoldName,
                             onClick = { feedback.keyPress(); DictateController.onMicClick(context) },
                             onLongClick = { feedback.keyPress(); DictateController.startFileTranscription(context) },
                         )
                     },
-                ),
+                )
+                .semantics { contentDescription = recordA11yName },
             contentAlignment = Alignment.Center,
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {

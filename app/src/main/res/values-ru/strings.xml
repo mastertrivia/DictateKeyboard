@@ -494,6 +494,8 @@
     <string name="pref__correction__auto_capitalization__summary" comment="Preference summary">Использовать заглавные буквы в зависимости от текущего контекста ввода</string>
     <string name="pref__correction__auto_space_punctuation__label" comment="Preference title">Пробел после знаков препинания</string>
     <string name="pref__correction__auto_space_punctuation__summary" comment="Preference summary">Автоматически вставлять пробел после знака препинания</string>
+    <string name="pref__correction__tighten_punctuation_spacing__label" comment="Preference title">Без пробела перед знаками препинания</string>
+    <string name="pref__correction__tighten_punctuation_spacing__summary" comment="Preference summary">Удалять пробел, набранный перед . , ? !</string>
     <string name="pref__correction__remember_caps_lock_state__label" comment="Preference title">Запоминать состояние Caps Lock</string>
     <string name="pref__correction__remember_caps_lock_state__summary" comment="Preference summary">Caps Lock будет оставаться при переходе на другое текстовое поле</string>
     <string name="pref__correction__double_space_period__label" comment="Preference title">Двойное нажатие пробела</string>
@@ -739,6 +741,7 @@
     <string name="pref__clipboard__trim_on_copy__label" comment="Preference title, keep short">Обрезать при копировании</string>
     <string name="pref__clipboard__trim_on_copy__summary" comment="Preference summary, keep short (one line)">Убирает пробелы и переносы по краям</string>
     <string name="pref__clipboard__suggestion_enabled__summary" comment="Preference summary">Предлагать ранее скопированное содержимое буфера обмена</string>
+    <string name="pref__clipboard__suggestion_show_extracted__label" comment="Preference title (switch) in the group Clipboard suggestions, keep short (one line): whether the links, email addresses and phone numbers found inside a copied text are also offered as suggestions of their own, next to the whole text">Ссылки, почта и номера</string>
     <string name="pref__clipboard__num_history_grid_columns__label">Количество столбцов в сетке</string>
     <string name="pref__clipboard__suggestion_timeout__label" comment="Preference title; Translators: This should form a sentence together with `pref__clipboard__suggestion_timeout__summary` and is the first part">Ограничить предложения буфера обмена до</string>
     <string name="pref__clipboard__suggestion_timeout__summary" comment="Preference summary; Translators: This should form a sentence together with `pref__clipboard__suggestion_timeout__label` and is the second part">Элементы, скопированные за последние {v} с</string>
@@ -1231,10 +1234,16 @@
     <string name="dictate__floating_button_disclosure_continue">Открыть настройки</string>
     <string name="dictate__floating_button_mic_title">Доступ к микрофону</string>
     <string name="dictate__floating_button_mic_summary">Нужен для записи вашего голоса · нажмите, чтобы предоставить</string>
-    <string name="dictate__floating_button_show_with_keyboard_title">Показывать с клавиатурой Dictate</string>
-    <string name="dictate__floating_button_show_with_keyboard_summary_on">Кнопка также появляется, когда активна клавиатура Dictate.</string>
-    <string name="dictate__floating_button_show_with_keyboard_summary_off">Скрыта, когда активна клавиатура Dictate, так как у неё уже есть кнопка микрофона.</string>
+    <string name="dictate__floating_button_show_when_title">Когда показывать</string>
+    <string name="dictate__floating_button_show_when_field">Как только выбрано текстовое поле</string>
+    <string name="dictate__floating_button_show_when_keyboard">Только при открытой клавиатуре</string>
+    <string name="dictate__floating_button_show_when_dictate_keyboard">И с клавиатурой Dictate</string>
     <string name="dictate__action_continue_recording">Продолжить запись</string>
+    <string name="dictate__a11y_mic_hold_local">Транскрибировать на устройстве</string>
+    <string name="smartbar__a11y_show_actions">Показать действия</string>
+    <string name="smartbar__a11y_show_suggestions">Показать подсказки</string>
+    <string name="smartbar__a11y_show_more_actions">Показать больше действий</string>
+    <string name="smartbar__a11y_hide_more_actions">Скрыть дополнительные действия</string>
     <string name="dictate__floating_button_auto_dim_summary_off">Всегда полностью виден.</string>
     <string name="dictate__floating_button_auto_dim_summary_on">Через несколько секунд сжимается в маленькую точку; коснитесь, чтобы восстановить.</string>
     <string name="dictate__floating_button_auto_dim_title">Затухать при бездействии</string>
@@ -1526,9 +1535,10 @@
     <string name="dictate__languages_title">Языки транскрибирования</string>
     <string name="dictate__languages_summary">Выберите языки, на которых вы диктуете. Быстро переключайтесь между ними на панели записи.</string>
     <string name="dictate__language_detect">Определять автоматически</string>
+    <string name="dictate__languages_selected_title">Выбранные языки</string>
     <string name="dictate__languages_active_title">Активный язык</string>
     <string name="dictate__languages_follow_keyboard">Следовать языку клавиатуры</string>
-    <string name="dictate__languages_follow_keyboard_summary">Меняет и язык диктовки, если он отмечен ниже</string>
+    <string name="dictate__languages_follow_keyboard_summary">Меняет и язык диктовки, если он выбран</string>
     <string name="quick_action__dictate_switch_provider">Поставщик транскрибирования</string>
     <string name="quick_action__dictate_switch_provider__tooltip">Сменить поставщика транскрибирования</string>
     <string name="enum__space_bar_mode__transcription_provider">Поставщик транскрибирования</string>

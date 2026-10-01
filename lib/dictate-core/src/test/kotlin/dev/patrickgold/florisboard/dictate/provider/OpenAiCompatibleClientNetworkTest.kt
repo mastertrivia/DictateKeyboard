@@ -13,6 +13,8 @@ package dev.patrickgold.florisboard.dictate.provider
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.inspectors.forAll
+import io.kotest.matchers.collections.shouldNotContain
+import io.kotest.matchers.ints.shouldBeLessThan
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.string.shouldNotContain
@@ -516,6 +518,78 @@ class OpenAiCompatibleClientNetworkTest : FunSpec({
         }
     }
 
+    // Issue #416: a refusal whose wording matches no keyword is UNKNOWN, and UNKNOWN used to be retried —
+    // three more sends, three seconds apart, before the error the first answer already held. The body is
+    // the shape of such a refusal, not a recorded one. The queued answer behind it is what a retry would
+    // have received, so a regression shows up as a success rather than as a hang.
+    test("a refused request is named at once, not sent four times") {
+        MockWebServer().use { server ->
+            server.enqueue(
+                MockResponse().setResponseCode(400).setBody(
+                    """{"error":{"message":"The model `llama-3.1-8b-instant` has been decommissioned and """ +
+                        """is no longer supported.","type":"invalid_request_error","code":"model_decommissioned"}}""",
+                ),
+            )
+            server.enqueue(
+                MockResponse().setResponseCode(200).setBody("""{"choices":[{"message":{"content":"Hallo."}}]}"""),
+            )
+            val client = OpenAiCompatibleClient(
+                ProviderConfig(baseUrl = server.url("/v1/").toString(), apiKey = "test"),
+            )
+
+            val error = shouldThrow<DictateApiException> {
+                client.complete(ChatRequest.ofUser("llama-3.1-8b-instant", "Fix my typos"))
+            }
+
+            error.kind shouldBe DictateApiException.Kind.UNKNOWN
+            error.message.orEmpty() shouldContain "decommissioned"
+            server.requestCount shouldBe 1
+        }
+    }
+
+    // The reasoning-effort fallback sat behind the same retries: a model that will not take the field was
+    // asked four times *with* it before anything asked without it (#416).
+    test("a model that will not take reasoning_effort is asked again without it straight away") {
+        MockWebServer().use { server ->
+            server.enqueue(
+                MockResponse().setResponseCode(400).setBody(
+                    """{"error":{"message":"`reasoning_effort` is not supported with this model",""" +
+                        """"type":"invalid_request_error"}}""",
+                ),
+            )
+            server.enqueue(
+                MockResponse().setResponseCode(200).setBody("""{"choices":[{"message":{"content":"Hallo."}}]}"""),
+            )
+            val client = OpenAiCompatibleClient(
+                ProviderConfig(baseUrl = server.url("/v1/").toString(), apiKey = "test"),
+            )
+
+            val result = client.complete(
+                ChatRequest.ofUser("some/non-thinker", "Fix my typos", reasoningEffort = "minimal"),
+            )
+
+            result.text shouldBe "Hallo."
+            server.takeRequest().body.readUtf8() shouldContain "\"reasoning_effort\":\"minimal\""
+            server.takeRequest().body.readUtf8() shouldNotContain "reasoning_effort"
+            server.requestCount shouldBe 2
+        }
+    }
+
+    test("only a refusal loses its retries; a busy server, a lost connection and a 408 keep them") {
+        fun http(status: Int) = DictateApiException.fromHttp(status, "Something went wrong")
+
+        http(400).isRetryable shouldBe false
+        http(404).isRetryable shouldBe false
+        http(408).isRetryable shouldBe true
+        http(425).isRetryable shouldBe true
+        http(500).isRetryable shouldBe true
+        http(503).isRetryable shouldBe true
+        DictateApiException(DictateApiException.Kind.NETWORK, "reset").isRetryable shouldBe true
+        DictateApiException(DictateApiException.Kind.TIMEOUT, "timeout").isRetryable shouldBe true
+        // The resend chip still reads the kind: a resend the user taps is theirs to try, not a loop of ours.
+        http(400).kind.isRetryable shouldBe true
+    }
+
     // --- Azure Speech / MAI-Transcribe (issue #349) ---
 
     test("Azure carries every option in the definition part, with MAI switched on") {
@@ -718,6 +792,358 @@ class OpenAiCompatibleClientNetworkTest : FunSpec({
         // ends in a stop, which is why the rule asks for the space rather than the stop alone.
         listOf("DevEmperor", "FlorisBoard", "Dr.", "z.B.", "Anna-Lena Müller").forAll {
             OpenAiCompatibleClient.afterLastSentenceEnd(it) shouldBe it
+        }
+    }
+
+    // --- Scaleway (issue #423) ---
+
+    // Both halves of Scaleway are plain OpenAI on one host, which is the whole reason the preset needed no
+    // wire format of its own. This holds it to that: the path under `/v1/`, a Bearer key, and the singular
+    // `language` that whisper-large-v3 reads.
+    test("Scaleway transcribes over plain OpenAI multipart with a Bearer key") {
+        val audio = createTempFile(suffix = ".wav").toFile().apply {
+            writeBytes("RIFF-test-audio".encodeToByteArray())
+        }
+        try {
+            MockWebServer().use { server ->
+                server.enqueue(MockResponse().setResponseCode(200).setBody("""{"text":"Guten Morgen"}"""))
+                val preset = ProviderRegistry.SCALEWAY
+                val client = OpenAiCompatibleClient.from(
+                    preset, "scw-secret", baseUrlOverride = server.url("/v1/").toString(),
+                )
+
+                val result = client.transcribe(
+                    TranscriptionRequest(audio, preset.defaultTranscriptionModel.orEmpty(), language = "de"),
+                )
+                val recorded = server.takeRequest()
+                val body = recorded.body.readUtf8()
+
+                result.text shouldBe "Guten Morgen"
+                recorded.path shouldBe "/v1/audio/transcriptions"
+                recorded.getHeader("Authorization") shouldBe "Bearer scw-secret"
+                body shouldContain "name=\"model\"\r\n\r\nwhisper-large-v3"
+                body shouldContain "name=\"language\"\r\n\r\nde"
+                body shouldNotContain "name=\"languages"
+            }
+        } finally {
+            audio.delete()
+        }
+    }
+
+    // Measured 2026-09-25 with a key on an account that had no payment method yet: the key is valid, and
+    // every request is still refused, in these words and in Scaleway's flat error shape rather than
+    // OpenAI's envelope. What has to survive is the kind — quota, not a wrong key, because the key is
+    // fine — and Scaleway's own sentence rather than the raw JSON around it.
+    test("a Scaleway account without quota reads as quota, in Scaleway's own words") {
+        MockWebServer().use { server ->
+            server.enqueue(
+                MockResponse().setResponseCode(429)
+                    .setHeader("x-ratelimit-limit-requests", "0")
+                    .setBody(
+                        """{"status":429,"error":"INSUFFICIENT QUOTA","message":"You exceeded your """ +
+                            """current quota of requests per minute. Slow down your usage or increase your """ +
+                            """quotas."}""",
+                    ),
+            )
+            val preset = ProviderRegistry.SCALEWAY
+            val client = OpenAiCompatibleClient.from(
+                preset, "scw-secret", baseUrlOverride = server.url("/v1/").toString(),
+            )
+
+            val error = shouldThrow<DictateApiException> {
+                client.complete(ChatRequest.ofUser(preset.defaultChatModel.orEmpty(), "Hallo"))
+            }
+
+            error.kind shouldBe DictateApiException.Kind.QUOTA_EXCEEDED
+            error.message.orEmpty() shouldStartWith "You exceeded your current quota"
+            server.requestCount shouldBe 1
+        }
+    }
+
+    // The model server behind Scaleway's gateway answers in OpenAI's envelope, but with `"code":400` as a
+    // number, and a String-typed field used to refuse the whole envelope over it. Both bodies are what the
+    // endpoint returned on 2026-09-25. What has to come out is the provider's sentence rather than the
+    // JSON, and a kind the app can act on: an oversized file offers to keep the recording, and a format it
+    // refuses gets the untouched WAV instead (#281). Two responses each, so a regression back to a retried
+    // UNKNOWN fails on the count rather than hanging on an empty queue.
+    test("Scaleway's refusals are read as the size and format errors they are") {
+        val audio = createTempFile(suffix = ".wav").toFile().apply {
+            writeBytes("RIFF-test-audio".encodeToByteArray())
+        }
+        val tooBig = """{"error":{"message":"Maximum file size exceeded (parameter=audio_filesize_mb, """ +
+            """value=25.000041961669922)","type":"BadRequestError","param":"audio_filesize_mb","code":400}}"""
+        val badFormat = """{"error":{"message":"Invalid file format. Please convert your file to a """ +
+            """supported format: ['flac', 'm4a', 'mpeg', 'mp2', 'mp3', 'mp4', 'ogg', 'wav', 'webm'].",""" +
+            """"type":"BadRequestError","param":null,"code":400}}"""
+        try {
+            listOf(
+                tooBig to DictateApiException.Kind.CONTENT_SIZE_LIMIT,
+                badFormat to DictateApiException.Kind.FORMAT_NOT_SUPPORTED,
+            ).forAll { (body, kind) ->
+                MockWebServer().use { server ->
+                    repeat(2) { server.enqueue(MockResponse().setResponseCode(400).setBody(body)) }
+                    val client = OpenAiCompatibleClient.from(
+                        ProviderRegistry.SCALEWAY, "scw-secret", baseUrlOverride = server.url("/v1/").toString(),
+                    )
+
+                    val error = shouldThrow<DictateApiException> {
+                        client.transcribe(TranscriptionRequest(audio, "whisper-large-v3"))
+                    }
+
+                    error.kind shouldBe kind
+                    error.code shouldBe "400"
+                    error.message.orEmpty() shouldNotContain "\"error\""
+                    server.requestCount shouldBe 1
+                }
+            }
+        } finally {
+            audio.delete()
+        }
+    }
+
+    // A wrong key is a 403 at Scaleway, not a 401, and the credentials step of the connection test is the
+    // catalog request below — so it is the one that has to name the key.
+    test("a wrong Scaleway key is named as one, though it arrives as a 403") {
+        MockWebServer().use { server ->
+            server.enqueue(
+                MockResponse().setResponseCode(403).setBody(
+                    """{"status":403,"error":"FORBIDDEN","message":"insufficient permissions to access the resource"}""",
+                ),
+            )
+            val client = OpenAiCompatibleClient.from(
+                ProviderRegistry.SCALEWAY, "not-a-key", baseUrlOverride = server.url("/v1/").toString(),
+            )
+
+            val error = shouldThrow<DictateApiException> { client.listModels() }
+
+            error.kind shouldBe DictateApiException.Kind.INVALID_API_KEY
+            error.message.orEmpty() shouldContain "insufficient permissions"
+            server.takeRequest().path shouldBe "/v1/models"
+        }
+    }
+
+    // --- OVHcloud (issue #423) ---
+
+    // One base URL for the whole catalog, which is what made OVHcloud the same plain preset as Scaleway
+    // rather than the per-model editor the reporter expected.
+    test("OVHcloud transcribes over plain OpenAI multipart with a Bearer key") {
+        val audio = createTempFile(suffix = ".wav").toFile().apply {
+            writeBytes("RIFF-test-audio".encodeToByteArray())
+        }
+        try {
+            MockWebServer().use { server ->
+                server.enqueue(MockResponse().setResponseCode(200).setBody("""{"text":"Guten Morgen"}"""))
+                val preset = ProviderRegistry.OVHCLOUD
+                val client = OpenAiCompatibleClient.from(
+                    preset, "ovh-token", baseUrlOverride = server.url("/v1/").toString(),
+                )
+
+                val result = client.transcribe(
+                    TranscriptionRequest(audio, preset.defaultTranscriptionModel.orEmpty(), language = "de"),
+                )
+                val recorded = server.takeRequest()
+                val body = recorded.body.readUtf8()
+
+                result.text shouldBe "Guten Morgen"
+                recorded.path shouldBe "/v1/audio/transcriptions"
+                recorded.getHeader("Authorization") shouldBe "Bearer ovh-token"
+                body shouldContain "name=\"model\"\r\n\r\nwhisper-large-v3"
+                body shouldContain "name=\"language\"\r\n\r\nde"
+            }
+        } finally {
+            audio.delete()
+        }
+    }
+
+    // OVHcloud serves anonymous requests, so the worry is a wrong key being served as no key at all — a
+    // connection test that could never fail. It is not: both bodies are what the gateway answered on
+    // 2026-09-25, flat rather than enveloped, and each has to arrive as its own kind with its own words.
+    test("OVHcloud's gateway names a wrong key and a spent rate limit as what they are") {
+        listOf(
+            403 to """{"message":"Forbidden: authentication failed.  Please generate a new one at """ +
+                """https://kepler.ai.cloud.ovh.net/v1/oauth/ovh/authorize?iam_action=publicCloudProject:""" +
+                """ai:endpoints/call"}""",
+            429 to """{"message":"API rate limit exceeded","request_id":"698f0f1a6059fc751c903236eec22a05"}""",
+        ).forAll { (status, body) ->
+            MockWebServer().use { server ->
+                server.enqueue(MockResponse().setResponseCode(status).setBody(body))
+                val client = OpenAiCompatibleClient.from(
+                    ProviderRegistry.OVHCLOUD, "not-a-key", baseUrlOverride = server.url("/v1/").toString(),
+                )
+
+                val error = shouldThrow<DictateApiException> { client.listModels() }
+
+                if (status == 403) {
+                    error.kind shouldBe DictateApiException.Kind.INVALID_API_KEY
+                    error.message.orEmpty() shouldStartWith "Forbidden: authentication failed."
+                } else {
+                    error.kind shouldBe DictateApiException.Kind.QUOTA_EXCEEDED
+                    error.message shouldBe "API rate limit exceeded"
+                }
+                server.requestCount shouldBe 1
+            }
+        }
+    }
+
+    // --- xAI Grok Voice Transcribe (issue #435) ---
+
+    test("the xAI preset transcribes and streams on the key it already rewords with") {
+        val xai = ProviderRegistry.XAI
+        xai.capabilities.chat shouldBe true
+        xai.capabilities.transcription shouldBe true
+        xai.transcriptionApi shouldBe TranscriptionApi.XAI_STT
+        xai.supportsRealtime shouldBe true
+        xai.realtimeApi shouldBe RealtimeApi.XAI
+        xai.defaultTranscriptionModel shouldBe "grok-voice-transcribe-2.0"
+        // Documented: MKV only with MP3, AAC or FLAC inside, so WebM's Opus is not promised; AMR not named.
+        xai.acceptedAudioContainers shouldNotContain AudioContainer.WEBM
+        xai.acceptedAudioContainers shouldNotContain AudioContainer.AMR
+        ProviderRegistry.maxUploadBytes("xai") shouldBe 500_000_000L
+    }
+
+    // The three ways this endpoint differs from OpenAI's, each held here: the path and its fields, the
+    // file part last, and the vocabulary as `keyterm` with the sample sentence left behind.
+    test("xAI sends every field before the file, and the glossary as key terms") {
+        val audio = createTempFile(suffix = ".wav").toFile().apply {
+            writeBytes("RIFF-test-audio".encodeToByteArray())
+        }
+        try {
+            MockWebServer().use { server ->
+                server.enqueue(
+                    MockResponse().setResponseCode(200).setBody(
+                        """
+                        {"text":"Hallo Welt","language":"de","duration":1.2,
+                         "words":[{"text":"Hallo","start":0.1,"end":0.5},{"text":"Welt","start":0.5,"end":1.0}]}
+                        """.trimIndent(),
+                    ),
+                )
+                val client = OpenAiCompatibleClient.from(
+                    ProviderRegistry.XAI, "xai-test", baseUrlOverride = server.url("/v1/").toString(),
+                )
+
+                val result = client.transcribe(
+                    TranscriptionRequest(
+                        audioFile = audio,
+                        model = "grok-voice-transcribe-2.0",
+                        language = "de",
+                        prompt = "Hallo. Vielen Dank. DevEmperor, Dictate, " +
+                            "Donaudampfschifffahrtsgesellschaftskapitänswitwenrente",
+                    ),
+                )
+                val recorded = server.takeRequest()
+                val body = recorded.body.readUtf8()
+
+                result.text shouldBe "Hallo Welt"
+                recorded.path shouldBe "/v1/stt"
+                recorded.getHeader("Authorization") shouldBe "Bearer xai-test"
+                body shouldContain "name=\"model\"\r\n\r\ngrok-voice-transcribe-2.0"
+                // The language alone only formats numbers when `format` is on, and `format` without a
+                // language is a 400 — so they travel as a pair.
+                body shouldContain "name=\"language\"\r\n\r\nde"
+                body shouldContain "name=\"format\"\r\n\r\ntrue"
+                body shouldContain "name=\"keyterm\"\r\n\r\nDevEmperor"
+                body shouldContain "name=\"keyterm\"\r\n\r\nDictate"
+                body shouldNotContain "Vielen Dank"
+                // Past xAI's 50 characters a term, so it is left out rather than refused with the rest.
+                body shouldNotContain "Donaudampfschifffahrt"
+                // Fields after the file "may be ignored" by xAI's streaming upload: nothing may follow it.
+                val file = body.indexOf("name=\"file\"")
+                listOf("model", "language", "format", "keyterm").forAll { field ->
+                    body.lastIndexOf("name=\"$field\"") shouldBeLessThan file
+                }
+                body shouldNotContain "name=\"prompt\""
+                body shouldNotContain "name=\"response_format\""
+            }
+        } finally {
+            audio.delete()
+        }
+    }
+
+    test("xAI auto-detect sends neither the language nor the formatting switch, and no sample as a term") {
+        val audio = createTempFile(suffix = ".wav").toFile().apply {
+            writeBytes("RIFF-test-audio".encodeToByteArray())
+        }
+        try {
+            MockWebServer().use { server ->
+                server.enqueue(MockResponse().setResponseCode(200).setBody("""{"text":"Hello"}"""))
+                server.enqueue(MockResponse().setResponseCode(200).setBody("""{"text":"Привіт"}"""))
+                val client = OpenAiCompatibleClient.from(
+                    ProviderRegistry.XAI, "xai-test", baseUrlOverride = server.url("/v1/").toString(),
+                )
+
+                client.transcribe(TranscriptionRequest(audio, "grok-voice-transcribe-2.0", language = "detect"))
+                // Ukrainian is transcribed but not in xAI's formatting table, and the hint is the bare
+                // sample sentence the app sends when there are no custom words.
+                client.transcribe(
+                    TranscriptionRequest(
+                        audio, "grok-voice-transcribe-2.0", language = "uk", prompt = "Привіт. Дуже дякую.",
+                    ),
+                )
+
+                listOf(server.takeRequest(), server.takeRequest()).forAll { recorded ->
+                    val body = recorded.body.readUtf8()
+                    body shouldNotContain "name=\"language\""
+                    body shouldNotContain "name=\"format\""
+                    body shouldNotContain "name=\"keyterm\""
+                }
+            }
+        } finally {
+            audio.delete()
+        }
+    }
+
+    test("the app's language codes become the ones xAI formats for, or none") {
+        OpenAiCompatibleClient.xaiLanguage("de") shouldBe "de"
+        OpenAiCompatibleClient.xaiLanguage("pt-BR") shouldBe "pt"
+        // Whisper's Tagalog is the Filipino xAI lists as `fil`.
+        OpenAiCompatibleClient.xaiLanguage("tl") shouldBe "fil"
+        OpenAiCompatibleClient.xaiLanguage("zh-CN") shouldBe null
+        OpenAiCompatibleClient.xaiLanguage("uk") shouldBe null
+        OpenAiCompatibleClient.xaiLanguage("detect") shouldBe null
+        OpenAiCompatibleClient.xaiLanguage(null) shouldBe null
+    }
+
+    // Measured 2026-09-29 against api.x.ai: a wrong key is a 400, and the sentence sits in `error` as a
+    // string. Both have to come through — the kind from the sentence, and the sentence instead of JSON.
+    test("a wrong xAI key is named as one in xAI's own words, though it arrives as a 400") {
+        MockWebServer().use { server ->
+            server.enqueue(
+                MockResponse().setResponseCode(400).setBody(
+                    """{"code":"invalid-argument","error":"Incorrect API key provided. """ +
+                        """You can obtain an API key from https://console.x.ai."}""",
+                ),
+            )
+            val client = OpenAiCompatibleClient.from(
+                ProviderRegistry.XAI, "xai-wrong", baseUrlOverride = server.url("/v1/").toString(),
+            )
+
+            val error = shouldThrow<DictateApiException> { client.listModels() }
+
+            error.kind shouldBe DictateApiException.Kind.INVALID_API_KEY
+            error.message shouldBe
+                "Incorrect API key provided. You can obtain an API key from https://console.x.ai."
+            error.code shouldBe "invalid-argument"
+            server.requestCount shouldBe 1
+        }
+    }
+
+    // The bare sample sentence is the whole hint whenever the glossary is empty, and its last sentence
+    // used to come through as a two-word bias term for every dedicated STT model (#435).
+    test("a hint with no glossary behind its sample sentence yields no bias term") {
+        listOf(
+            "Hallo. Vielen Dank.",
+            "Hello. Thank you very much.",
+            "สวัสดี. ขอบคุณมาก.",
+            "你好。非常感谢。",
+            "こんにちは。どうもありがとうございます。",
+            "नमस्ते। बहुत-बहुत धन्यवाद।",
+        ).forAll { OpenAiCompatibleClient.vocabularyTermOf(it) shouldBe null }
+
+        OpenAiCompatibleClient.vocabularyTermOf("Hallo. Vielen Dank. DevEmperor") shouldBe "DevEmperor"
+        OpenAiCompatibleClient.vocabularyTermOf("你好。非常感谢。 DevEmperor") shouldBe "DevEmperor"
+        OpenAiCompatibleClient.vocabularyTermOf("Dr. Meier") shouldBe "Meier"
+        listOf("DevEmperor", "Dr.", "z.B.", "Anna-Lena Müller", "FlorisBoard").forAll {
+            OpenAiCompatibleClient.vocabularyTermOf(" $it ") shouldBe it
         }
     }
 })

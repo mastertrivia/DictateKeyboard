@@ -397,6 +397,8 @@
     <string name="pref__correction__auto_capitalization__summary" comment="Preference summary">Posa en majúscula les paraules en base al context d\'entrada actual</string>
     <string name="pref__correction__auto_space_punctuation__label" comment="Preference title">Espaiat automàtic després de punt</string>
     <string name="pref__correction__auto_space_punctuation__summary" comment="Preference summary">Insereix automàticament un espai després de posar un punt</string>
+    <string name="pref__correction__tighten_punctuation_spacing__label" comment="Preference title">Sense espai abans de la puntuació</string>
+    <string name="pref__correction__tighten_punctuation_spacing__summary" comment="Preference summary">Elimina l\'espai escrit abans de . , ? !</string>
     <string name="pref__correction__remember_caps_lock_state__label" comment="Preference title">Recorda l\'estat de bloqueig de les majúscules</string>
     <string name="pref__correction__remember_caps_lock_state__summary" comment="Preference summary">Es mantindrà el bloqueig de les majúscules en moure\'s a un altre camp de text</string>
     <string name="pref__correction__double_space_period__label" comment="Preference title">Doble pulsació a la barra espaiadora</string>
@@ -635,6 +637,7 @@
     <string name="pref__clipboard__trim_on_copy__label" comment="Preference title, keep short">Retalla en copiar</string>
     <string name="pref__clipboard__trim_on_copy__summary" comment="Preference summary, keep short (one line)">Elimina espais i salts de línia dels extrems</string>
     <string name="pref__clipboard__suggestion_enabled__summary" comment="Preference summary">Suggereix continguts copiats prèviament al porta-retalls</string>
+    <string name="pref__clipboard__suggestion_show_extracted__label" comment="Preference title (switch) in the group Clipboard suggestions, keep short (one line): whether the links, email addresses and phone numbers found inside a copied text are also offered as suggestions of their own, next to the whole text">Enllaços, correus i números</string>
     <string name="pref__clipboard__num_history_grid_columns__label">Nombre de columnes de la graella</string>
     <string name="pref__clipboard__suggestion_timeout__label" comment="Preference title; Translators: This should form a sentence together with `pref__clipboard__suggestion_timeout__summary` and is the first part">Limita els suggeriments del porta-retalls a</string>
     <string name="pref__clipboard__suggestion_timeout__summary" comment="Preference summary; Translators: This should form a sentence together with `pref__clipboard__suggestion_timeout__label` and is the second part">Entrades copiades en els darrers {v} s</string>
@@ -1095,10 +1098,16 @@
     <string name="dictate__floating_button_disclosure_continue">Obre la configuració</string>
     <string name="dictate__floating_button_mic_title">Accés al micròfon</string>
     <string name="dictate__floating_button_mic_summary">Necessari per gravar la teva veu · toca per concedir</string>
-    <string name="dictate__floating_button_show_with_keyboard_title">Mostra amb el teclat Dictate</string>
-    <string name="dictate__floating_button_show_with_keyboard_summary_on">El botó també apareix mentre el teclat Dictate està actiu.</string>
-    <string name="dictate__floating_button_show_with_keyboard_summary_off">Amagat mentre el teclat Dictate està actiu, ja que aquest ja té una tecla de micròfon.</string>
+    <string name="dictate__floating_button_show_when_title">Quan mostrar-lo</string>
+    <string name="dictate__floating_button_show_when_field">Tan bon punt se selecciona un camp de text</string>
+    <string name="dictate__floating_button_show_when_keyboard">Només amb el teclat obert</string>
+    <string name="dictate__floating_button_show_when_dictate_keyboard">També amb el teclat Dictate</string>
     <string name="dictate__action_continue_recording">Continua la gravació</string>
+    <string name="dictate__a11y_mic_hold_local">Transcriu al dispositiu</string>
+    <string name="smartbar__a11y_show_actions">Mostra les accions</string>
+    <string name="smartbar__a11y_show_suggestions">Mostra els suggeriments</string>
+    <string name="smartbar__a11y_show_more_actions">Mostra més accions</string>
+    <string name="smartbar__a11y_hide_more_actions">Amaga les accions addicionals</string>
     <string name="dictate__floating_button_auto_dim_summary_off">Es manté sempre totalment visible.</string>
     <string name="dictate__floating_button_auto_dim_summary_on">Es redueix a un petit punt després d’uns segons; toca per restaurar.</string>
     <string name="dictate__floating_button_auto_dim_title">Atenua en repòs</string>
@@ -1390,9 +1399,10 @@
     <string name="dictate__languages_title">Idiomes de transcripció</string>
     <string name="dictate__languages_summary">Tria els idiomes en què dictes. Canvia ràpidament d\'un a l\'altre des de la barra de gravació.</string>
     <string name="dictate__language_detect">Detecta automàticament</string>
+    <string name="dictate__languages_selected_title">Idiomes seleccionats</string>
     <string name="dictate__languages_active_title">Idioma actiu</string>
     <string name="dictate__languages_follow_keyboard">Segueix l\'idioma del teclat</string>
-    <string name="dictate__languages_follow_keyboard_summary">També canvia el dictat, si l\'idioma està marcat a sota</string>
+    <string name="dictate__languages_follow_keyboard_summary">També canvia el dictat, si l\'idioma està seleccionat</string>
     <string name="quick_action__dictate_switch_provider">Proveïdor de transcripció</string>
     <string name="quick_action__dictate_switch_provider__tooltip">Canvia el proveïdor de transcripció</string>
     <string name="enum__space_bar_mode__transcription_provider">Proveïdor de transcripció</string>
