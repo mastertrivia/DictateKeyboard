@@ -81,6 +81,7 @@ object RealtimeClient {
             RealtimeApi.ELEVENLABS -> "https://api.elevenlabs.io/"
             RealtimeApi.GEMINI -> "https://generativelanguage.googleapis.com/"
             RealtimeApi.MISTRAL_VOXTRAL -> "https://api.mistral.ai/"
+            RealtimeApi.XAI -> "https://api.x.ai/"
         }
         runCatching {
             val request = Request.Builder().url(host).get().build()
